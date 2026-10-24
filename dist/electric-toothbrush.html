@@ -1174,14 +1174,14 @@ const parts=[],byKey=new Map();
 function addPart(key,name,obj,desc,size,color,options={}){const holder=group();holder.add(obj);world.add(holder);obj.traverse(o=>{if(!o.isMesh)return;o.material=o.material.clone();o.userData.omat=o.material;o.userData.key=key;o.castShadow=false;});const p={key,name,obj,g:holder,desc,size,color,...options,e:0,homed:false,base:V(),ex:V(),layer:0};parts.push(p);byKey.set(key,p);return p}
 const bodyProfile=[[9,8.2],[10,9.5],[15,10],[85,10],[96,9.4],[103,6],[107,3.4],[108,3.4],[108,2.4],[103,4.8],[96,8.4],[85,9],[15,9],[10,8.4],[9,8.2]];
 const frontShell=group();
-for(const [ya,yb] of [[10,62],[72,85]]){const o=tube(ya,yb,10,9,M.shell,frontShell,-Math.PI/2+.012,Math.PI-.024);o.scale.z=1.1;}
-for(const [a,len]of [[-Math.PI/2+.012,Math.PI/2-.36-.012],[.36,Math.PI/2-.36-.012]]){const o=tube(62,72,10,9,M.shell,frontShell,a,len);o.scale.z=1.1;}
-mesh(lathe([[85,9],[85,10],[96,9.4],[103,6],[107,3.4],[108,3.4],[108,2.4],[103,4.8],[96,8.4],[85,9]],64,-Math.PI/2+.012,Math.PI-.024),M.shell,frontShell).scale.z=1.1;
-mesh(lathe([[9,8.2],[10,9.5],[10,10],[10,9],[9,8.2]],48,-Math.PI/2+.012,Math.PI-.024),M.shell,frontShell).scale.z=1.1;
+for(const [ya,yb] of [[10,62],[72,85]]){const o=tube(ya,yb,10,9,M.shell,frontShell,-Math.PI/2+.002,Math.PI-.004);o.scale.z=1.1;}
+for(const [a,len]of [[-Math.PI/2+.002,Math.PI/2-.36-.002],[.36,Math.PI/2-.36-.002]]){const o=tube(62,72,10,9,M.shell,frontShell,a,len);o.scale.z=1.1;}
+mesh(lathe([[85,9],[85,10],[96,9.4],[103,6],[107,3.4],[108,3.4],[108,2.4],[103,4.8],[96,8.4],[85,9]],64,-Math.PI/2+.002,Math.PI-.004),M.shell,frontShell).scale.z=1.1;
+mesh(lathe([[9,8.2],[10,9.5],[10,10],[10,9],[9,8.2]],48,-Math.PI/2+.002,Math.PI-.004),M.shell,frontShell).scale.z=1.1;
 mesh(sealSeat(-1),M.shell,frontShell);
 addPart('front','前侧外壳',frontShell,'前后半壳卡扣合拢；按钮处为真实贯通孔。','壁厚约 1 mm · 估算','#dedfd6',{shell:true});
 
-const rearShell=group();mesh(lathe(bodyProfile,64,Math.PI/2+.012,Math.PI-.024),M.shell,rearShell).scale.z=1.1;
+const rearShell=group();mesh(lathe(bodyProfile,64,Math.PI/2+.002,Math.PI-.004),M.shell,rearShell).scale.z=1.1;
 for(const y of [18,58,78,92])for(const x of [-6.6,6.6])box(1.8,1.2,2.5,M.shell,rearShell,V(x,y,-4.95));
 mesh(sealSeat(1),M.shell,rearShell);
 addPart('rear','后侧外壳',rearShell,'内筋固定骨架；壳口圆形环座固定轴封。金属轴穿过壳口，外壳不与刷头传扭。','包络 Ø20 × 99 mm · 估算','#dedfd6',{shell:true});
