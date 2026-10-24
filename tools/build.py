@@ -8,13 +8,14 @@
 """
 import argparse
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 KIT_ORDER = ["icons.mjs", "lab.mjs", "scene.mjs"]
-ITEM_ORDER = ["model.mjs", "manifest.mjs", "main.mjs"]
+ITEM_ORDER = ["model.mjs", "manifest.mjs", "logic.mjs", "main.mjs"]
 MARKERS = {
     "<!--KIT:CSS-->": ("kit", "lab.css"),
     "<!--ITEM:CSS-->": ("item", "lab.css"),
@@ -23,18 +24,47 @@ MARKERS = {
 }
 
 IMPORT_RE = re.compile(r"^\s*(?:import|export\s+\*)\s.*$", re.M)
+THREE_IMPORT_RE = re.compile(r"^\s*import\s+[^;]*?from\s+['\"](three[^'\"]*)['\"];?\s*$", re.M)
 EXPORT_RE = re.compile(r"^\s*export\s+", re.M)
+TOP_RE = re.compile(r"^(?:const|let|var|class|function)\s+([A-Za-z_$][\w$]*)", re.M)
+MODULE_RE = re.compile(r'<script type="module">(.*?)</script>', re.S)
+IMPORTMAP = ('<script type="importmap">{"imports":{"three":"./vendor/three.module.js",'
+             '"three/addons/":"./vendor/addons/"}}</script>')
 
 
-def inline(paths):
-    """把若干模块拼进同一作用域：去掉 import 与 export 前缀。"""
+def inline(paths, imports):
+    """把若干模块拼进同一作用域：three 的 import 提到顶部，其余 import/export 去掉。
+    拼在同一作用域，所以顶层标识符不能重名；由 check_syntax() 把关。"""
     out = []
     for p in paths:
         src = p.read_text(encoding="utf-8")
+        for m in THREE_IMPORT_RE.finditer(src):
+            line = m.group(0).strip()
+            if line not in imports:
+                imports.append(line)
+        src = THREE_IMPORT_RE.sub("", src)
         src = IMPORT_RE.sub("", src)
         src = EXPORT_RE.sub("", src)
         out.append(f"\n/* ==== {p.parent.name}/{p.name} ==== */\n{src}")
     return "".join(out)
+
+
+def check_syntax(html):
+    """用 node 做一次语法与重名检查（浏览器里报错太晚）。"""
+    m = MODULE_RE.search(html)
+    if not m:
+        return
+    tmp = pathlib_tempfile()
+    tmp.write_text(m.group(1), encoding="utf-8")
+    r = subprocess.run(["node", "--check", str(tmp)], capture_output=True, text=True)
+    tmp.unlink(missing_ok=True)
+    if r.returncode:
+        sys.exit("构建产物语法/重名错误：\n" + r.stderr.strip())
+
+
+def pathlib_tempfile():
+    import tempfile
+    return Path(tempfile.mkstemp(suffix=".mjs")[1])
 
 
 def collect(base, names):
@@ -55,12 +85,19 @@ def build(slug, single=False):
 
     css_kit = (ROOT / "kit" / "lab.css").read_text(encoding="utf-8")
     css_item = item_dir / "lab.css"
-    js_kit = inline(collect(ROOT / "kit", "*"))
-    js_item = inline(collect(item_dir, "*"))
+    imports = []
+    kit_files = collect(ROOT / "kit", "*")
+    item_files = collect(item_dir, "*")
+    # 没用到三维的物品不带 scene.mjs（省掉 three 依赖与 importmap）
+    if not any("createStage(" in f.read_text(encoding="utf-8") for f in item_files):
+        kit_files = [f for f in kit_files if f.name != "scene.mjs"]
+    js_kit = inline(kit_files, imports)
+    js_item = inline(item_files, imports)
 
     html = shell.replace("<!--KIT:CSS-->", css_kit)
     html = html.replace("<!--ITEM:CSS-->", css_item.read_text(encoding="utf-8") if css_item.is_file() else "")
-    html = html.replace("<!--KIT:JS-->", js_kit)
+    html = html.replace("<!--IMPORTMAP-->", IMPORTMAP if imports else "")
+    html = html.replace("<!--KIT:JS-->", ("\n".join(imports) + "\n" if imports else "") + js_kit)
     html = html.replace("<!--ITEM:JS-->", js_item)
 
     if "window.__mechbench" not in html:
@@ -68,8 +105,14 @@ def build(slug, single=False):
 
     out_dir = ROOT / "dist"
     out_dir.mkdir(exist_ok=True)
+    if imports:
+        vendor = ROOT / "vendor"
+        if not vendor.is_dir():
+            sys.exit(f"需要三维但缺少 vendor/：{vendor}")
+        shutil.copytree(vendor, out_dir / "vendor", dirs_exist_ok=True)
     out = out_dir / f"{slug}.html"
     out.write_text(html, encoding="utf-8")
+    check_syntax(html)
     print(f"→ {out.relative_to(ROOT)}  ({len(html)//1024} KB)")
 
     if single:

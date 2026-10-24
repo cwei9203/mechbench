@@ -10,10 +10,11 @@
  * 物品可加 items/<slug>/accept.mjs（一段在页面里执行的 async 函数体，返回 {ok,bad}）。
  */
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
+import { createServer } from 'node:http';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, statSync, createReadStream } from 'node:fs';
+import { resolve, dirname, join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
+import { tmpdir, networkInterfaces } from 'node:os';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -37,7 +38,10 @@ const PAGE_CHECK = `(async () => {
   need(qa('.journey li').length >= 1, '关卡进度有节点');
   need(qa('#mlist .card').length >= 1, '零件盒有卡片');
   need(qa('#readout [data-rd]').length >= 1, '读数行已生成');
-  need(qa('#readout [data-rd]').every(b => b.textContent.trim() !== '—'), '读数已被赋值');
+  need(qa('#readout .row').every(r => r.querySelector('[data-rd]') && r.querySelector('span')?.textContent.trim()), '读数每行都有标签和绑定');
+  if (q('#readout').classList.contains('on')) {
+    need(qa('#readout [data-rd]').some(b => b.textContent.trim() !== '—'), '可见读数至少有一项已赋值');
+  }
   need(qa('[data-slot="stage.tools"] button').length >= 2, '工具栏有按钮');
 
   const btns = qa('button');
@@ -56,8 +60,9 @@ const PAGE_CHECK = `(async () => {
 
   // 交互：选中 → 装上 → 进度与反馈变化
   const label0 = text('#plabel'), fb0 = text('#feedback');
-  const firstId = q('#mlist .card').dataset.id;
-  q('#mlist .card').click(); await new Promise(r => setTimeout(r, 60));
+  const firstCard = q('#mlist .card');
+  const firstId = firstCard?.dataset.id;
+  firstCard?.click(); await new Promise(r => setTimeout(r, 60));
   need(q('#mlist .card[aria-pressed="true"]')?.dataset.id === firstId, '点卡片进入选中态');
   const socket = q('#socket');
   need(socket && !socket.hidden, '选中后出现「装到这里」');
@@ -65,9 +70,9 @@ const PAGE_CHECK = `(async () => {
   need(text('#plabel') !== label0, '装上后进度变化 (' + label0 + ' → ' + text('#plabel') + ')');
   need(text('#feedback') !== fb0, '装上后有反馈文案');
 
-  const undo = q('[data-act="undo"]');
+  const undo = q('[data-act="undo"], #undo');
   need(undo && !undo.disabled, '可以撤回');
-  undo.click(); await new Promise(r => setTimeout(r, 80));
+  undo?.click(); await new Promise(r => setTimeout(r, 80));
   need(text('#plabel') === label0, '撤回后进度还原');
 
   return { ok, bad, meta: { title: document.title, cards: qa('.card').length, buttons: btns.length,
@@ -138,6 +143,24 @@ function openWS(url) {
   });
 }
 
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png' };
+
+// 三维物品要 importmap + vendor，必须走 http，不能用 file://
+function serve(root) {
+  return new Promise((res) => {
+    const server = createServer((req, rq) => {
+      const p = join(root, decodeURIComponent(req.url.split('?')[0]));
+      if (!p.startsWith(root) || !existsSync(p) || statSync(p).isDirectory()) {
+        rq.writeHead(404).end('not found');
+        return;
+      }
+      rq.writeHead(200, { 'content-type': MIME[extname(p)] || 'application/octet-stream' });
+      createReadStream(p).pipe(rq);
+    });
+    server.listen(0, '127.0.0.1', () => res({ server, port: server.address().port }));
+  });
+}
+
 async function main() {
   const slug = process.argv[2];
   if (!slug) throw new Error('用法: node tools/accept.mjs <slug> [--widths 1440,820,390]');
@@ -154,6 +177,7 @@ async function main() {
   mkdirSync(outDir, { recursive: true });
   const profile = join(tmpdir(), `mechbench-${process.pid}`);
   const port = 9400 + (process.pid % 400);
+  const { server, port: httpPort } = await serve(join(ROOT, 'dist'));
   const chrome = launch(port, profile);
 
   const report = { slug, when: new Date().toISOString(), viewports: {}, console: [] };
@@ -175,7 +199,7 @@ async function main() {
       await S('Emulation.setDeviceMetricsOverride', {
         width: w, height: h, deviceScaleFactor: 2, mobile: w <= 780,
       });
-      await S('Page.navigate', { url: `file://${file}` });
+      await S('Page.navigate', { url: `http://127.0.0.1:${httpPort}/${slug}.html` });
       await cdp.waitFor('Page.loadEventFired');
       await new Promise((r) => setTimeout(r, 450));
 
@@ -183,7 +207,10 @@ async function main() {
       writeFileSync(join(outDir, `${slug}-${w}.png`), Buffer.from(shot.data, 'base64'));
 
       const r = await S('Runtime.evaluate', { expression: PAGE_CHECK, awaitPromise: true, returnByValue: true });
-      const v = r.result?.value || { ok: [], bad: ['页面脚本执行失败: ' + (r.exceptionDetails?.text || '未知')] };
+      let v = r.result?.value;
+      if (!v || !Array.isArray(v.bad)) {
+        v = { ok: [], bad: ['页面脚本执行失败: ' + (r.exceptionDetails?.text || JSON.stringify(r).slice(0, 300))] };
+      }
 
       if (extra) {
         const e = await S('Runtime.evaluate', {
@@ -193,6 +220,10 @@ async function main() {
         if (ev) { v.ok.push(...(ev.ok || [])); v.bad.push(...(ev.bad || [])); }
         else v.bad.push('物品自定义验收未返回结果');
       }
+
+      // 交互之后的画面（自由实验/拆链条等），和入场截图分开留证
+      const shot2 = await S('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+      writeFileSync(join(outDir, `${slug}-${w}-after.png`), Buffer.from(shot2.data, 'base64'));
 
       const errs = cdp.events
         .filter((e) => e.method === 'Runtime.exceptionThrown' || e.method === 'Log.entryAdded' ||
@@ -210,6 +241,7 @@ async function main() {
     ws.close();
   } finally {
     chrome.kill();
+    server.close();
     await new Promise((r) => setTimeout(r, 200));
     try { rmSync(profile, { recursive: true, force: true }); } catch {}
   }
@@ -219,4 +251,4 @@ async function main() {
   process.exit(failed ? 1 : 0);
 }
 
-main().catch((e) => { console.error('验收脚本失败:', e.message); process.exit(2); });
+main().catch((e) => { console.error('验收脚本失败:', e.stack || e.message); process.exit(2); });

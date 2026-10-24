@@ -5,17 +5,24 @@
 ## 快速开始
 
 ```bash
-python3 tools/build.py _template && node tools/accept.mjs _template
-open dist/_template.html
-open dist/accept/_template/_template-1440.png
+python3 tools/build.py double-cylinder-engine   # 构建
+node tools/accept.mjs double-cylinder-engine    # 浏览器验收 + 截图
+open dist/accept/double-cylinder-engine/double-cylinder-engine-1440-after.png
+```
+
+三维物品要 importmap，必须走 http（验收脚本自带静态服务器）：
+
+```bash
+python3 -m http.server -d dist 8000   # 然后开 http://127.0.0.1:8000/double-cylinder-engine.html
 ```
 
 ## 结构
 
 ```
 kit/            固定骨架（冻结，物品不许改）
-items/<slug>/   一个物品一个文件夹：manifest(文案) + model(几何) + main(接线)
+items/<slug>/   一个物品一个文件夹：manifest(文案/关卡/数值) + model(几何) + logic(规则) + main(接线)
 tools/          build.py · make-item.py · accept.mjs(真实 Chrome 验收)
+vendor/         three.js 0.170.0 + addons（构建时复制到 dist/vendor）
 dist/           构建产物 + 验收报告 + 截图
 ```
 
@@ -28,9 +35,9 @@ dist/           构建产物 + 验收报告 + 截图
 | 通用构建 `tools/build.py` | ✅ |
 | 浏览器验收 `tools/accept.mjs`（CDP，无依赖） | ✅ |
 | 示例物品 `items/_template`（无三维） | ✅ 25 项检查通过 |
-| `kit/scene.mjs` 三维舞台 | ⬜ 随第一个物品落地 |
-| `items/double-cylinder-engine` 迁移 | ⬜ 下一步 |
-| `items/electric-toothbrush` 迁移（验证插槽够用） | ⬜ |
+| `kit/scene.mjs` 三维舞台 | ✅ |
+| `items/double-cylinder-engine` 迁移 | ✅ 41 项检查 × 3 宽度 + 离线单文件 |
+| `items/electric-toothbrush` 迁移（验证插槽够用） | ⬜ 下一步 |
 
 ## 加一个物品
 

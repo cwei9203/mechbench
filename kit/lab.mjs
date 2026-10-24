@@ -1,6 +1,6 @@
 /* mechbench · 布局渲染层
  * 把 manifest 的插槽填进固定骨架，并把玩家操作转成事件。
- * 这里不做三维、不做业务规则：三维在 scene.js，规则在物品自己的 model.js。
+ * 不做三维（kit/scene.mjs）、不做业务规则（物品的 logic.mjs / main.mjs）。
  */
 
 const COPY = {
@@ -18,7 +18,10 @@ const COPY = {
     { id: 'cut', label: '剖开看' },
     { id: 'home', label: '复位' },
   ],
-  labels: { exp: '本关要观察的', quiz: '判断一下', done: '本关完成' },
+  labels: {
+    exp: '本关要观察的', quiz: '判断一下', done: '本关完成',
+    installed: '✓ 已归位', picked: '拿起这块', preloaded: '{n} 组零件预装',
+  },
 };
 
 const q = (sel) => document.querySelector(sel);
@@ -45,17 +48,25 @@ export function mountLab(item) {
     item,
     chapters,
     modules,
+    attached3d: false,
+    taskRenderer: null,
     state: {
       chapter: 0,
       placed: [],
       selected: null,
-      phase: 'build', // build | check | done
+      phase: 'build',
+      completed: [],
       badges: [],
+      progress: null, // {done,total} 覆盖默认的「本关模块数」
       readout: {},
+      visible: {},
       hint: '',
       feedback: '',
       feedbackKind: '',
-      visible: {},
+      stageHint: '',
+      trayTitle: '',
+      trayHint: '',
+      cardsLocked: false,
     },
     handlers: {},
     on(name, fn) {
@@ -71,13 +82,17 @@ export function mountLab(item) {
     chapterModules(i = lab.state.chapter) {
       return modules.filter((m) => m.chapter === i);
     },
+    /** 物品自定义教练面板：fn({chapter, phase, state, lab}) => {html, bind(root)} */
+    task(fn) {
+      lab.taskRenderer = fn;
+      return lab;
+    },
     render,
   };
 
-  /* ---------- 骨架里的静态插槽：只在挂载时填一次 ---------- */
+  /* ---------- 静态插槽：挂载时填一次 ---------- */
   document.title = item.brand?.title || copy.brand.title;
-  const titleEl = q('[data-slot="brand.title"]');
-  if (titleEl) titleEl.textContent = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.title"]').textContent = item.brand?.title || copy.brand.title;
   q('[data-slot="brand.subtitle"]').textContent = item.brand?.subtitle || copy.brand.subtitle;
   const mark = item.brand?.mark || copy.brand.mark;
   q('[data-slot="brand.mark"]').innerHTML = mark.svg
@@ -90,12 +105,8 @@ export function mountLab(item) {
   q('[data-slot="stage.gestures"]').innerHTML = item.stage?.gestures || copy.stage.gestures;
   q('[data-slot="coach.hintLabel"]').textContent = copy.coach.hintLabel;
   q('[data-slot="coach.notesLabel"]').textContent = copy.coach.notesLabel;
-  q('[data-slot="coach.notes"]').innerHTML = (item.notes || [])
-    .map((p) => `<p>${p}</p>`)
-    .join('');
+  q('[data-slot="coach.notes"]').innerHTML = (item.notes || []).map((p) => `<p>${p}</p>`).join('');
   q('#notes').hidden = !(item.notes || []).length;
-  q('#tray-title').textContent = item.tray?.title || copy.tray.title;
-  q('#tray-hint').textContent = item.tray?.hint || copy.tray.hint;
 
   q('[data-slot="journey"]').innerHTML = chapters
     .map((c, i) => `<li data-chapter="${i}"><b>${i + 1}</b>${esc(c.title)}</li>`)
@@ -115,43 +126,42 @@ export function mountLab(item) {
         return `<div class="labctl toggle"><span>${esc(x.label)}</span>
           <button data-exp="${x.id}" aria-pressed="${x.value ? 'true' : 'false'}">${x.value ? '开' : '关'}</button></div>`;
       }
-      if (x.control === 'button') {
-        return `<div class="labgrid"><button data-exp="${x.id}">${esc(x.label)}</button></div>`;
-      }
+      if (x.control === 'button') return `<div class="labgrid"><button data-exp="${x.id}">${esc(x.label)}</button></div>`;
       return `<label class="labctl">${esc(x.label)}<output data-exp-out="${x.id}">${x.value ?? ''}${x.unit || ''}</output>
         <input type="range" data-exp="${x.id}" min="${x.min}" max="${x.max}" step="${x.step || 1}" value="${x.value ?? x.min}"></label>`;
     })
     .join('');
 
-  /* ---------- 动态插槽：每次 render 重建 ---------- */
+  /* ---------- 动态插槽 ---------- */
   function renderCards() {
     const list = q('#mlist');
     const chMods = lab.chapterModules();
-    const todo = chMods.filter((m) => !lab.state.placed.includes(m.id));
-    if (!todo.length) {
-      const last = lab.state.chapter >= chapters.length - 1;
-      list.innerHTML = `<div class="empty"><div><strong>这一盒装完了</strong>${
-        last ? '所有模块都装好了，可以自由实验。' : '进入下一关，继续往下装。'
-      }</div>${
-        last
-          ? '<button class="primary" data-act="free">自由实验</button>'
-          : '<button class="primary" data-act="next">进入下一关</button>'
-      }</div>`;
+    if (!chMods.length) {
+      list.innerHTML = '<div class="empty"><div><strong>这一关没有模块</strong>检查 manifest 的 modules[].chapter。</div></div>';
       return;
     }
-    list.innerHTML = todo
-      .map(
-        (m) => `<button class="card" data-id="${m.id}" style="--pc:${m.color || '#5b6470'}" aria-pressed="${
-          lab.state.selected === m.id
-        }"><svg viewBox="0 0 24 24" aria-hidden="true">${
-          m.icon && m.icon.startsWith('<') ? m.icon : iconBody(m.icon || 'box')
-        }</svg><span><strong>${esc(m.name)}</strong><small>${esc(m.sub || m.tip || '')}</small></span></button>`
-      )
+    list.innerHTML = chMods
+      .map((m) => {
+        const installed = lab.state.placed.includes(m.id);
+        const sub = installed
+          ? copy.labels.installed
+          : m.sub || (m.parts?.length > 1 ? copy.labels.preloaded.replace('{n}', m.parts.length) : copy.labels.picked);
+        return `<button class="card" data-id="${m.id}" data-installed="${installed}" style="--pc:${m.color || '#5b6470'}"
+          aria-pressed="${lab.state.selected === m.id}"${installed || lab.state.cardsLocked ? ' disabled' : ''}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">${m.icon && m.icon.startsWith('<') ? m.icon : iconBody(m.icon || 'box')}</svg>
+          <span><strong>${esc(m.name)}</strong><small>${esc(sub)}</small></span></button>`;
+      })
       .join('');
   }
 
   function renderTask() {
     const ch = chapters[lab.state.chapter] || {};
+    if (lab.taskRenderer) {
+      const out = lab.taskRenderer({ chapter: ch, chapterIndex: lab.state.chapter, phase: lab.state.phase, state: lab.state, lab }) || {};
+      q('#task').innerHTML = out.html || '';
+      out.bind?.(q('#task'));
+      return;
+    }
     const task = tasks[lab.state.chapter] || {};
     const s = lab.state;
     const head = `<p class="label">${esc(copy.labels.exp)}</p><h3>${esc(task.exp || ch.title || '')}</h3>
@@ -165,17 +175,12 @@ export function mountLab(item) {
       return;
     }
     if (s.phase === 'done') {
-      const earned = s.badges || [];
       q('#task').innerHTML =
         head +
-        `<div class="badge">${esc(ch.badge || '✓')}</div>
-         <p>${esc(task.why || '')}</p>
+        `<div class="badge">${esc(ch.badge || '✓')}</div><p>${esc(task.why || '')}</p>
          <div class="sub">${
-           lab.state.chapter < chapters.length - 1
-             ? '<button class="primary" data-act="next">进入下一关</button>'
-             : '<button class="primary" data-act="free">自由实验</button>'
-         }<button data-act="replay">再看一遍</button></div>
-         ${earned.length ? `<div class="earned">${earned.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}`;
+           s.chapter < chapters.length - 1 ? '<button class="primary" data-act="next">进入下一关</button>' : ''
+         }<button data-act="replay">再看一遍</button></div>`;
       return;
     }
     q('#task').innerHTML =
@@ -188,23 +193,28 @@ export function mountLab(item) {
     const s = lab.state;
     for (const li of document.querySelectorAll('.journey li')) {
       const i = Number(li.dataset.chapter);
-      li.className = i === s.chapter ? 'active' : i < s.chapter ? 'done' : '';
+      li.className = s.completed?.[i] ? 'done' : i === s.chapter ? 'active' : '';
+      li.querySelector('b').textContent = s.completed?.[i] ? '✓' : i + 1;
     }
     const ch = chapters[s.chapter] || {};
-    q('[data-slot="coach.tag"]').textContent = (copy.coach.tag || '')
-      .replace('{n}', s.chapter + 1)
-      .replace('{total}', chapters.length);
-    q('[data-slot="coach.title"]').textContent = ch.title || '';
-    q('[data-slot="coach.intro"]').textContent = ch.subtitle || '';
+    const co = s.coach || {};
+    q('[data-slot="coach.tag"]').textContent =
+      co.tag ?? (copy.coach.tag || '').replace('{n}', s.chapter + 1).replace('{total}', chapters.length);
+    q('[data-slot="coach.title"]').textContent = co.title ?? ch.title ?? '';
+    q('[data-slot="coach.intro"]').textContent = co.intro ?? ch.subtitle ?? '';
+    q('[data-slot="stage.hint"]').textContent = s.stageHint || item.stage?.hint || copy.stage.hint;
 
     const chMods = lab.chapterModules();
-    const done = chMods.filter((m) => s.placed.includes(m.id)).length;
+    const p = s.progress || { done: chMods.filter((m) => s.placed.includes(m.id)).length, total: chMods.length };
     const bar = q('#progress');
-    bar.setAttribute('aria-valuemax', String(chMods.length || 1));
-    bar.setAttribute('aria-valuenow', String(done));
-    q('#pfill').style.width = (chMods.length ? (done / chMods.length) * 100 : 0) + '%';
-    q('#plabel').textContent = `${done} / ${chMods.length} 块模块`;
+    bar.setAttribute('aria-valuemax', String(p.total || 1));
+    bar.setAttribute('aria-valuenow', String(p.done));
+    q('#pfill').style.width = (p.total ? (p.done / p.total) * 100 : 0) + '%';
+    q('#plabel').textContent = `${p.done} / ${p.total} 块模块`;
     q('#bcount').textContent = `${(s.badges || []).length} 个徽章`;
+
+    q('#tray-title').textContent = s.trayTitle || item.tray?.title || copy.tray.title;
+    q('#tray-hint').textContent = s.trayHint || item.tray?.hint || copy.tray.hint;
 
     renderTask();
     renderCards();
@@ -220,25 +230,21 @@ export function mountLab(item) {
       const v = s.readout[b.dataset.rd];
       if (v != null) b.textContent = v;
     }
-    q('#socket').hidden = !(s.selected && s.phase === 'build');
+    // 有三维时 socket 的显隐与位置由 kit/scene.mjs 负责
+    if (!lab.attached3d) q('#socket').hidden = !(s.selected && s.phase === 'build');
   }
 
-  /* ---------- 交互：只发事件，不改业务状态 ---------- */
+  /* ---------- 交互：只发事件 ---------- */
   document.addEventListener('click', (e) => {
     const card = e.target.closest('.card');
-    if (card) return lab.emit('select', card.dataset.id);
+    if (card && !card.disabled) return lab.emit('select', card.dataset.id);
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act) return lab.emit(act);
     const tool = e.target.closest('[data-tool]')?.dataset.tool;
     if (tool) {
-      if (tool !== 'home') {
-        for (const b of document.querySelectorAll('[data-tool]')) {
-          if (b.dataset.tool === 'rotate' || b.dataset.tool === 'pan') {
-            b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
-          } else if (b.dataset.tool === tool) {
-            b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
-          }
-        }
+      if (tool === 'cut') {
+        const b = e.target.closest('[data-tool]');
+        b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
       }
       return lab.emit('tool', tool);
     }

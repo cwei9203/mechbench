@@ -1,0 +1,12 @@
+/* 双缸发动机 · 个别控件样式（发动机面板独有的滑杆与传动链示意） */
+.crankctl{margin-top:12px;font-size:11px}
+.crankctl output{float:right;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.crankctl input{width:100%;accent-color:var(--accent);margin:8px 0 0}
+.speed{display:block;margin-top:14px;font-size:11px}
+.speed output{float:right;color:var(--blue);font-weight:700}
+.speed input{width:100%;accent-color:var(--blue);margin:8px 0 0}
+.flow{display:flex;align-items:center;gap:3px;margin:14px 0 8px}
+.flow span{font-size:9px;text-align:center;flex:1;padding:7px 2px;border-radius:4px;background:#e9edf1;color:#8794a0}
+.flow i{font-style:normal;font-size:9px;color:#9aa8b4}
+.flow.on span{background:#e6eff5;color:var(--blue)}
+.flow.on span.off{background:#f2eef0;color:#a9586a;text-decoration:line-through}
