@@ -141,7 +141,7 @@ def build_index():
     for it in items:
         slug = it["slug"]
         thumb = ""
-        for name in (f"{slug}-1440-after.png", f"{slug}-1440.png"):
+        for name in (f"{slug}-card.png", f"{slug}-1440-after.png", f"{slug}-1440.png"):
             rel = Path("accept") / slug / name
             if (ROOT / "dist" / rel).is_file():
                 thumb = f'<img class="thumb" src="./{rel.as_posix()}" alt="" loading="lazy">'

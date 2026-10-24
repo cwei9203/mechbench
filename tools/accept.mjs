@@ -225,6 +225,28 @@ async function main() {
       const shot2 = await S('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       writeFileSync(join(outDir, `${slug}-${w}-after.png`), Buffer.from(shot2.data, 'base64'));
 
+      // 目录页缩略图：只截三维舞台，并临时藏掉覆盖层
+      const box = await S('Runtime.evaluate', {
+        expression: `(() => { const r = document.querySelector('.stage').getBoundingClientRect();
+          return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+        returnByValue: true,
+      });
+      const b = box.result?.value;
+      if (w === widths[0] && b && b.width > 10 && b.height > 10) {
+        const hide = `document.querySelectorAll('.stage-title,.toolbar,.readout,.scene-footer,.socket,.preview-label')
+          .forEach(e => e.style.visibility = 'hidden')`;
+        await S('Runtime.evaluate', { expression: hide });
+        const card = await S('Page.captureScreenshot', {
+          format: 'png', captureBeyondViewport: false,
+          clip: { x: b.x, y: b.y, width: b.width, height: b.height, scale: 1 },
+        });
+        writeFileSync(join(outDir, `${slug}-card.png`), Buffer.from(card.data, 'base64'));
+        await S('Runtime.evaluate', {
+          expression: `document.querySelectorAll('.stage-title,.toolbar,.readout,.scene-footer,.socket,.preview-label')
+            .forEach(e => e.style.visibility = '')`,
+        });
+      }
+
       const errs = cdp.events
         .filter((e) => e.method === 'Runtime.exceptionThrown' || e.method === 'Log.entryAdded' ||
           (e.method === 'Runtime.consoleAPICalled' && e.params.type === 'error'))
