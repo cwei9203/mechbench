@@ -1,0 +1,90 @@
+# 插槽契约
+
+骨架固定，物品只提供数据。**物品不许改 `kit/shell.html` 和 `kit/lab.css`**；需要个别样式时写 `items/<slug>/lab.css`（同名选择器覆盖），需要个别交互时写 `items/<slug>/main.mjs`。
+
+## 文件职责
+
+| 文件 | 谁写 | 职责 |
+|---|---|---|
+| `kit/shell.html` | kit | 固定骨架，只有 8 个 `data-slot` 挂载点 + 固定控件 id |
+| `kit/lab.css` | kit | 区域、断点、控件外观。不含任何物品文案 |
+| `kit/lab.mjs` | kit | 填插槽 → DOM；把点击转成事件；维护 `lab.state` 的显示态 |
+| `kit/icons.mjs` | kit | 通用零件图标库（`box/shaft/gear/spring/screw/plate/disc/piston/valve/coil/battery/bolt/lever/housing/pin`） |
+| `kit/scene.mjs` | kit | three.js 舞台：相机/灯光/地面/剖切/复位/读数刷新（**待写**，随第一个三维物品落地） |
+| `items/<slug>/model.mjs` | 物品 | 几何 + 运动（唯一真源），导出 `PARTS`、`applyMotion`、`bounds`、`createModel` |
+| `items/<slug>/manifest.mjs` | 物品 | **全部插槽填充**，纯数据：`export const MANIFEST = {...}` |
+| `items/<slug>/main.mjs` | 物品 | 接线：`mountLab(MANIFEST)` + 业务规则 + 事件处理 |
+| `items/<slug>/lab.css` | 物品 | 可选，个别视觉覆盖 |
+| `items/<slug>/accept.mjs` | 物品 | 可选，浏览器验收的额外断言（页面内 async 函数体，返回 `{ok,bad}`） |
+| `items/<slug>/notes.md` | 物品 | 尺寸依据、教学简化、未验证项 |
+
+## 插槽（manifest 字段）
+
+`✅` 必填，`—` 有默认值。
+
+| 字段 | 位置 | 必填 | 形式与说明 |
+|---|---|---|---|
+| `brand.title` | 顶栏 + `<title>` | ✅ | 字符串。例：`双缸发动机装配实验室` |
+| `brand.subtitle` | 顶栏第二行 | — | 一行摘要，例：`360° 并列双缸 · 26 组零件 · 3 关` |
+| `brand.mark` | 顶栏左方块 | — | `{a,b}` 两色色块，或 `{svg:'<path .../>'}` 完全自定义 |
+| `chapters[]` | 顶栏进度 + 教练面板头 | ✅ | `{title, subtitle, badge}`，数组长度即关卡数 |
+| `stage.title` | 舞台左上大标题 | ✅ | 一句话说清这一关在干什么 |
+| `stage.hint` | 舞台左上小字 | — | 首次操作提示 |
+| `stage.gestures` | 舞台左下脚注 | — | 默认已写好鼠标/触屏手势 |
+| `tools[]` | 舞台右上 | — | 默认 旋转/平移/剖开看/复位。`{id,label,pressed?}`；`id` 为 `rotate/pan/cut/home` 时骨架内置行为 |
+| `readout[]` | 舞台右下读数 | ✅ | `{key,label,big?}`，`big` 给主读数。行数由物品决定（发动机 5 行，手电筒 2 行） |
+| `tray.title` | 零件盒标题 | — | 默认 `零件盒` |
+| `tray.hint` | 零件盒右侧小字 | — | 拖放提示 |
+| `modules[]` | 零件盒卡片 | ✅ | `{id,chapter,name,sub,parts,tip,learn,color,icon}`；`parts` 对应 `model.mjs` 里的零件 key |
+| `tasks[]` | 教练面板任务区 | ✅ | 按章节一一对应：`{exp,expText,q,options,a,why}` |
+| `experiments[]` | 教练面板实验台 | — | `{id,label,control:'slider'\|'toggle'\|'button',min,max,step,value,unit}`，声明式，不用手写控件 |
+| `notes[]` | 教练面板折叠区 | — | 段落字符串数组（可含内联 HTML），写"这是怎样的一套模型" |
+| `copy.*` | 各类默认文案 | — | `copy.coach.tag` 支持 `{n}` `{total}`；`copy.labels.exp/quiz/done` |
+
+## 事件（物品 → kit 监听）
+
+`lab.on(name, fn)`：
+
+| 事件 | payload | 触发 |
+|---|---|---|
+| `select` | `moduleId` | 点零件卡 |
+| `place` | — | 点「装到这里」/ 骨架 socket |
+| `undo` | — | 点「撤回一步」 |
+| `next` / `replay` | — | 点「进入下一关」/「再看一遍」 |
+| `answer` | `optionIndex` | 点测验选项 |
+| `experiment` | `{id, value}` | 动滑块 / 点开关 |
+| `tool` | `toolId` | 点工具栏按钮（`home` 之外 kit 只切 `aria-pressed`） |
+| `free` / `restart` | — | 点顶栏「自由实验」/「重新开始」 |
+
+## 显示态（`lab.state`，物品直接改 + `lab.render()`）
+
+```js
+lab.state = {
+  chapter: 0,          // 当前关
+  placed: [],          // 已装模块 id
+  selected: null,      // 选中模块 id（决定 socket 是否出现）
+  phase: 'build',      // build | check | done
+  badges: [],          // 已得徽章（字符串）
+  readout: {},         // { key: '显示值' }
+  visible: { readout: true },
+  hint: '', feedback: '', feedbackKind: '', // '' | 'error' | 'success'
+}
+```
+
+`lab.render()` 是幂等的，物品每次改完状态调一次即可。
+
+## 校验
+
+1. `python3 tools/build.py <slug>` — 骨架占位标记齐全、manifest 存在。
+2. `node tools/accept.mjs <slug>` — 3 个宽度下检查：区域可见、插槽非空、读数已赋值、按钮有文字、无横向溢出、无控制台报错、选中→装上→撤回全链路、截图存档。
+3. 物品自定义断言写进 `items/<slug>/accept.mjs`，被第 2 步自动执行。
+
+## 新物品
+
+```
+python3 tools/make-item.py <slug>      # 生成骨架文件
+# 改 manifest.mjs（文案/关卡/模块/读数）
+# 改 model.mjs（几何/运动）
+# 改 main.mjs（规则接线）
+python3 tools/build.py <slug> && node tools/accept.mjs <slug>
+```

@@ -1,0 +1,280 @@
+/* mechbench · 布局渲染层
+ * 把 manifest 的插槽填进固定骨架，并把玩家操作转成事件。
+ * 这里不做三维、不做业务规则：三维在 scene.js，规则在物品自己的 model.js。
+ */
+
+const COPY = {
+  brand: { title: '装配实验室', subtitle: '', mark: { a: '#c2452d', b: '#9aa6b2' } },
+  stage: {
+    title: '装一台能动的机器',
+    hint: '从下方零件盒选一块模块，拖到机身高亮处。',
+    gestures: '拖动空白处旋转 · 右键平移 · 滚轮缩放<br>触屏双指平移 / 缩放',
+  },
+  tray: { title: '零件盒', hint: '点选模块，再拖到高亮位置' },
+  coach: { tag: '第 {n} 关 / {total}', hintLabel: '工作台提示', notesLabel: '这是怎样的一套模型？' },
+  tools: [
+    { id: 'rotate', label: '旋转', pressed: true },
+    { id: 'pan', label: '平移' },
+    { id: 'cut', label: '剖开看' },
+    { id: 'home', label: '复位' },
+  ],
+  labels: { exp: '本关要观察的', quiz: '判断一下', done: '本关完成' },
+};
+
+const q = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function pick(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? pick(base[k] || {}, v) : v;
+  }
+  return out;
+}
+
+export function mountLab(item) {
+  const copy = pick(COPY, item.copy);
+  const chapters = item.chapters || [];
+  const modules = item.modules || [];
+  const tasks = item.tasks || [];
+  const readout = item.readout || [];
+  const tools = item.tools || copy.tools;
+
+  const lab = {
+    item,
+    chapters,
+    modules,
+    state: {
+      chapter: 0,
+      placed: [],
+      selected: null,
+      phase: 'build', // build | check | done
+      badges: [],
+      readout: {},
+      hint: '',
+      feedback: '',
+      feedbackKind: '',
+      visible: {},
+    },
+    handlers: {},
+    on(name, fn) {
+      (lab.handlers[name] ||= []).push(fn);
+      return lab;
+    },
+    emit(name, payload) {
+      for (const fn of lab.handlers[name] || []) fn(payload);
+    },
+    moduleOf(id) {
+      return modules.find((m) => m.id === id);
+    },
+    chapterModules(i = lab.state.chapter) {
+      return modules.filter((m) => m.chapter === i);
+    },
+    render,
+  };
+
+  /* ---------- 骨架里的静态插槽：只在挂载时填一次 ---------- */
+  document.title = item.brand?.title || copy.brand.title;
+  const titleEl = q('[data-slot="brand.title"]');
+  if (titleEl) titleEl.textContent = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.subtitle"]').textContent = item.brand?.subtitle || copy.brand.subtitle;
+  const mark = item.brand?.mark || copy.brand.mark;
+  q('[data-slot="brand.mark"]').innerHTML = mark.svg
+    ? mark.svg
+    : `<span style="position:absolute;left:6px;top:9px;width:9px;height:16px;border-radius:2px;background:${mark.a || '#c2452d'}"></span>
+       <span style="position:absolute;left:19px;top:6px;width:9px;height:16px;border-radius:2px;background:${mark.b || '#9aa6b2'}"></span>`;
+
+  q('[data-slot="stage.title"]').textContent = item.stage?.title || copy.stage.title;
+  q('[data-slot="stage.hint"]').textContent = item.stage?.hint || copy.stage.hint;
+  q('[data-slot="stage.gestures"]').innerHTML = item.stage?.gestures || copy.stage.gestures;
+  q('[data-slot="coach.hintLabel"]').textContent = copy.coach.hintLabel;
+  q('[data-slot="coach.notesLabel"]').textContent = copy.coach.notesLabel;
+  q('[data-slot="coach.notes"]').innerHTML = (item.notes || [])
+    .map((p) => `<p>${p}</p>`)
+    .join('');
+  q('#notes').hidden = !(item.notes || []).length;
+  q('#tray-title').textContent = item.tray?.title || copy.tray.title;
+  q('#tray-hint').textContent = item.tray?.hint || copy.tray.hint;
+
+  q('[data-slot="journey"]').innerHTML = chapters
+    .map((c, i) => `<li data-chapter="${i}"><b>${i + 1}</b>${esc(c.title)}</li>`)
+    .join('');
+
+  q('[data-slot="stage.tools"]').innerHTML = tools
+    .map((t) => `<button data-tool="${t.id}" aria-pressed="${t.pressed ? 'true' : 'false'}">${esc(t.label)}</button>`)
+    .join('');
+
+  q('#readout').innerHTML = readout
+    .map((r) => `<div class="row"><span>${esc(r.label)}</span><b data-rd="${r.key}"${r.big ? ' class="big"' : ''}>—</b></div>`)
+    .join('');
+
+  q('[data-slot="coach.extras"]').innerHTML = (item.experiments || [])
+    .map((x) => {
+      if (x.control === 'toggle') {
+        return `<div class="labctl toggle"><span>${esc(x.label)}</span>
+          <button data-exp="${x.id}" aria-pressed="${x.value ? 'true' : 'false'}">${x.value ? '开' : '关'}</button></div>`;
+      }
+      if (x.control === 'button') {
+        return `<div class="labgrid"><button data-exp="${x.id}">${esc(x.label)}</button></div>`;
+      }
+      return `<label class="labctl">${esc(x.label)}<output data-exp-out="${x.id}">${x.value ?? ''}${x.unit || ''}</output>
+        <input type="range" data-exp="${x.id}" min="${x.min}" max="${x.max}" step="${x.step || 1}" value="${x.value ?? x.min}"></label>`;
+    })
+    .join('');
+
+  /* ---------- 动态插槽：每次 render 重建 ---------- */
+  function renderCards() {
+    const list = q('#mlist');
+    const chMods = lab.chapterModules();
+    const todo = chMods.filter((m) => !lab.state.placed.includes(m.id));
+    if (!todo.length) {
+      const last = lab.state.chapter >= chapters.length - 1;
+      list.innerHTML = `<div class="empty"><div><strong>这一盒装完了</strong>${
+        last ? '所有模块都装好了，可以自由实验。' : '进入下一关，继续往下装。'
+      }</div>${
+        last
+          ? '<button class="primary" data-act="free">自由实验</button>'
+          : '<button class="primary" data-act="next">进入下一关</button>'
+      }</div>`;
+      return;
+    }
+    list.innerHTML = todo
+      .map(
+        (m) => `<button class="card" data-id="${m.id}" style="--pc:${m.color || '#5b6470'}" aria-pressed="${
+          lab.state.selected === m.id
+        }"><svg viewBox="0 0 24 24" aria-hidden="true">${
+          m.icon && m.icon.startsWith('<') ? m.icon : iconBody(m.icon || 'box')
+        }</svg><span><strong>${esc(m.name)}</strong><small>${esc(m.sub || m.tip || '')}</small></span></button>`
+      )
+      .join('');
+  }
+
+  function renderTask() {
+    const ch = chapters[lab.state.chapter] || {};
+    const task = tasks[lab.state.chapter] || {};
+    const s = lab.state;
+    const head = `<p class="label">${esc(copy.labels.exp)}</p><h3>${esc(task.exp || ch.title || '')}</h3>
+      <p>${esc(task.expText || ch.subtitle || '')}</p>`;
+    if (s.phase === 'check' && task.options) {
+      q('#task').innerHTML =
+        head +
+        `<p class="label">${esc(copy.labels.quiz)}</p><div class="options">${task.options
+          .map((o, i) => `<button data-opt="${i}"><b>${'ABCD'[i]}</b>${esc(o)}</button>`)
+          .join('')}</div>`;
+      return;
+    }
+    if (s.phase === 'done') {
+      const earned = s.badges || [];
+      q('#task').innerHTML =
+        head +
+        `<div class="badge">${esc(ch.badge || '✓')}</div>
+         <p>${esc(task.why || '')}</p>
+         <div class="sub">${
+           lab.state.chapter < chapters.length - 1
+             ? '<button class="primary" data-act="next">进入下一关</button>'
+             : '<button class="primary" data-act="free">自由实验</button>'
+         }<button data-act="replay">再看一遍</button></div>
+         ${earned.length ? `<div class="earned">${earned.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}`;
+      return;
+    }
+    q('#task').innerHTML =
+      head +
+      `<div class="sub"><button class="primary" data-act="place"${s.selected ? '' : ' disabled'}>装到这里</button>
+       <button data-act="undo"${s.placed.length ? '' : ' disabled'}>撤回一步</button></div>`;
+  }
+
+  function render() {
+    const s = lab.state;
+    for (const li of document.querySelectorAll('.journey li')) {
+      const i = Number(li.dataset.chapter);
+      li.className = i === s.chapter ? 'active' : i < s.chapter ? 'done' : '';
+    }
+    const ch = chapters[s.chapter] || {};
+    q('[data-slot="coach.tag"]').textContent = (copy.coach.tag || '')
+      .replace('{n}', s.chapter + 1)
+      .replace('{total}', chapters.length);
+    q('[data-slot="coach.title"]').textContent = ch.title || '';
+    q('[data-slot="coach.intro"]').textContent = ch.subtitle || '';
+
+    const chMods = lab.chapterModules();
+    const done = chMods.filter((m) => s.placed.includes(m.id)).length;
+    const bar = q('#progress');
+    bar.setAttribute('aria-valuemax', String(chMods.length || 1));
+    bar.setAttribute('aria-valuenow', String(done));
+    q('#pfill').style.width = (chMods.length ? (done / chMods.length) * 100 : 0) + '%';
+    q('#plabel').textContent = `${done} / ${chMods.length} 块模块`;
+    q('#bcount').textContent = `${(s.badges || []).length} 个徽章`;
+
+    renderTask();
+    renderCards();
+
+    const fb = q('#feedback');
+    fb.className = 'feedback' + (s.feedbackKind ? ' ' + s.feedbackKind : '');
+    if (s.feedback) fb.textContent = s.feedback;
+    q('#hinttext').textContent = s.hint || '';
+
+    const ro = q('#readout');
+    ro.classList.toggle('on', !!s.visible.readout);
+    for (const b of ro.querySelectorAll('[data-rd]')) {
+      const v = s.readout[b.dataset.rd];
+      if (v != null) b.textContent = v;
+    }
+    q('#socket').hidden = !(s.selected && s.phase === 'build');
+  }
+
+  /* ---------- 交互：只发事件，不改业务状态 ---------- */
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (card) return lab.emit('select', card.dataset.id);
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act) return lab.emit(act);
+    const tool = e.target.closest('[data-tool]')?.dataset.tool;
+    if (tool) {
+      if (tool !== 'home') {
+        for (const b of document.querySelectorAll('[data-tool]')) {
+          if (b.dataset.tool === 'rotate' || b.dataset.tool === 'pan') {
+            b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
+          } else if (b.dataset.tool === tool) {
+            b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+          }
+        }
+      }
+      return lab.emit('tool', tool);
+    }
+    if (e.target.id === 'free-lab') return lab.emit('free');
+    if (e.target.id === 'restart') return lab.emit('restart');
+    if (e.target.id === 'socket') return lab.emit('place');
+    const opt = e.target.closest('[data-opt]');
+    if (opt) return lab.emit('answer', Number(opt.dataset.opt));
+    const exp = e.target.closest('[data-exp]');
+    if (exp) {
+      const id = exp.dataset.exp;
+      const spec = (item.experiments || []).find((x) => x.id === id) || {};
+      const value =
+        exp.tagName === 'BUTTON'
+          ? spec.control === 'toggle'
+            ? exp.getAttribute('aria-pressed') !== 'true'
+            : null
+          : Number(exp.value);
+      return lab.emit('experiment', { id, value });
+    }
+  });
+
+  document.addEventListener('input', (e) => {
+    const id = e.target.dataset?.exp;
+    if (!id) return;
+    const out = document.querySelector(`[data-exp-out="${id}"]`);
+    const exp = (item.experiments || []).find((x) => x.id === id);
+    if (out) out.textContent = e.target.value + (exp?.unit || '');
+    lab.emit('experiment', { id, value: Number(e.target.value) });
+  });
+
+  render();
+  return lab;
+}
+
+function iconBody(name) {
+  const set = typeof ICONS === 'undefined' ? {} : ICONS;
+  return set[name] || set.box || '<rect x="4" y="8" width="16" height="11" rx="1.5"/>';
+}

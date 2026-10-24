@@ -1,0 +1,77 @@
+<!doctype html>
+<!-- mechbench · 固定页面骨架。物品不许改这个文件；个性化一律走插槽（kit/slots.md）。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-slot="brand.title"></title>
+<style><!--KIT:CSS--></style>
+<style><!--ITEM:CSS--></style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="mark" data-slot="brand.mark" aria-hidden="true"></div>
+    <div><strong data-slot="brand.title"></strong><small data-slot="brand.subtitle"></small></div>
+  </div>
+  <ol class="journey" data-slot="journey" aria-label="关卡进度"></ol>
+  <div class="topacts">
+    <button class="ghost" id="free-lab">自由实验</button>
+    <button class="bare" id="restart">重新开始</button>
+  </div>
+</header>
+
+<main class="lab">
+  <section class="stage" id="stage" aria-label="三维装配工作台">
+    <div id="viewport"></div>
+    <div class="stage-title">
+      <h1 data-slot="stage.title"></h1>
+      <p data-slot="stage.hint"></p>
+    </div>
+    <div class="toolbar" data-slot="stage.tools" aria-label="观察工具"></div>
+    <button class="socket" id="socket" hidden>装到这里</button>
+    <div class="preview-label" id="preview-label" hidden>拖动这块</div>
+    <div class="scene-footer">
+      <span data-slot="stage.gestures"></span>
+      <div class="readout" id="readout" data-slot="stage.readout"></div>
+    </div>
+    <div id="fault" role="alert"></div>
+  </section>
+
+  <aside class="coach">
+    <div class="ctag" data-slot="coach.tag"></div>
+    <h2 data-slot="coach.title"></h2>
+    <p class="intro" data-slot="coach.intro"></p>
+    <div class="progress" role="progressbar" aria-label="装配进度" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" id="progress"><i id="pfill"></i></div>
+    <div class="plabel"><span id="plabel"></span><span id="bcount"></span></div>
+    <div class="task" id="task"></div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="hintbox"><b data-slot="coach.hintLabel"></b><span id="hinttext"></span></div>
+    <div data-slot="coach.extras"></div>
+    <details class="technical" id="notes">
+      <summary data-slot="coach.notesLabel"></summary>
+      <div data-slot="coach.notes"></div>
+    </details>
+  </aside>
+
+  <section class="tray" aria-label="零件盒">
+    <div class="tray-head"><span id="tray-title"></span><small id="tray-hint"></small></div>
+    <div class="mlist" id="mlist"></div>
+  </section>
+</main>
+
+<pre id="debug"></pre>
+
+<script>
+window.addEventListener('error', e => {
+  const el = document.getElementById('fault');
+  el.style.display = 'block';
+  el.textContent = '工作台未能加载：' + e.message;
+});
+</script>
+<script type="module">
+<!--KIT:JS-->
+<!--ITEM:JS-->
+</script>
+</body>
+</html>

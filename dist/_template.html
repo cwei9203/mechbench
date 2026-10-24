@@ -1,0 +1,761 @@
+<!doctype html>
+<!-- mechbench · 固定页面骨架。物品不许改这个文件；个性化一律走插槽（kit/slots.md）。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-slot="brand.title"></title>
+<style>/* mechbench · 固定布局层
+ * 只放"所有物品共用"的东西：区域、断点、控件外观、无障碍焦点。
+ * 物品自己的视觉微调写在 items/<slug>/lab.css。
+ */
+
+:root{
+  --ink:#1d2228; --muted:#63707d; --line:#cfd6dc; --stage:#e7ebee; --paper:#f8fafb;
+  --accent:#c2452d; --accent-dark:#93301e;
+  --steel:#4d5966; --blue:#2f6f9f; --green:#2f7d5c; --gold:#b8862f;
+  --topbar-h:70px; --coach-w:344px; --tray-h:182px; --radius:9px;
+}
+
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:#dfe4e8;color:var(--ink);
+  font:14px/1.5 "Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button,input{font:inherit}
+button{cursor:pointer;color:inherit;border:1px solid var(--line);background:#fff;
+  border-radius:var(--radius);padding:8px 13px;font-weight:600;transition:background .14s,transform .1s}
+button:hover:not(:disabled){background:#f4f7f9}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:default}
+:focus-visible{outline:3px solid #d99b2b;outline-offset:2px}
+button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 0 var(--accent-dark)}
+.primary:hover:not(:disabled){background:#b03c26}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- 顶栏 ---------- */
+.topbar{height:var(--topbar-h);display:flex;align-items:center;gap:22px;padding:0 24px;
+  border-bottom:1px solid var(--line);background:#f7f9fa}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.mark{width:34px;height:34px;border-radius:8px;background:var(--steel);position:relative;overflow:hidden;flex:none}
+.mark svg{display:block;width:100%;height:100%}
+.brand strong{display:block;font-size:16px;letter-spacing:-.2px}
+.brand small{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.journey{list-style:none;display:flex;gap:6px;margin:0 auto;padding:0}
+.journey li{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8b98a4;white-space:nowrap}
+.journey b{width:23px;height:23px;display:grid;place-items:center;border:1px solid #cbd4dc;border-radius:50%;font-size:11px}
+.journey .active{color:var(--accent);font-weight:700}
+.journey .active b{background:var(--accent);color:#fff;border-color:var(--accent)}
+.journey .done{color:var(--green)}
+.journey .done b{background:#e3f1ea;border-color:#a9cdbc}
+.topacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex:none}
+.topacts .ghost{font-size:11px;padding:6px 10px;border-radius:999px;background:#fff}
+.topacts .ghost:hover{border-color:var(--accent);color:var(--accent)}
+.topacts .bare{font-size:11px;background:transparent;border-color:transparent;padding:6px}
+
+/* ---------- 主网格 ---------- */
+.lab{display:grid;grid-template-columns:minmax(0,1fr) var(--coach-w);
+  grid-template-rows:minmax(420px,1fr) var(--tray-h);
+  grid-template-areas:"stage coach" "tray coach";
+  height:calc(100dvh - var(--topbar-h));min-height:640px}
+.stage{grid-area:stage;position:relative;overflow:hidden;min-width:0;background-color:var(--stage);
+  background-image:radial-gradient(#c6cfd7 1px,transparent 1px);background-size:24px 24px}
+#viewport{position:absolute;inset:0}
+#viewport canvas{display:block;touch-action:none}
+.stage-title{position:absolute;top:18px;left:22px;pointer-events:none;max-width:360px}
+.stage-title h1{font-size:27px;line-height:1.2;margin:0 0 5px;letter-spacing:-.6px;font-weight:800}
+.stage-title p{margin:0;font-size:11px;color:var(--muted)}
+.toolbar{position:absolute;top:18px;right:16px;display:flex;flex-wrap:wrap;gap:5px;max-width:250px;justify-content:flex-end}
+.toolbar button{font-size:10.5px;padding:6px 10px;background:#fffefbe8}
+.toolbar button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.socket{position:absolute;z-index:4;transform:translate(-50%,-50%);background:var(--accent);color:#fff;
+  border:2px solid #fff;border-radius:20px;box-shadow:0 2px 0 #8f2d1b,0 3px 12px #c2452d30;
+  white-space:nowrap;font-size:11px;padding:6px 12px}
+.socket.near{background:var(--green);box-shadow:0 0 0 8px #2f7d5c22}
+.preview-label{position:absolute;pointer-events:none;transform:translate(-50%,0);background:#fff6ec;
+  border:1px solid #e2b393;border-radius:6px;padding:3px 8px;font-size:10px;color:#96562f;white-space:nowrap}
+.scene-footer{position:absolute;bottom:12px;left:20px;right:20px;display:flex;align-items:flex-end;
+  justify-content:space-between;gap:12px;pointer-events:none}
+.scene-footer>span{font-size:9.5px;color:#7d8b98;line-height:1.6;max-width:44%}
+.readout{display:none;background:#ffffffef;border:1px solid #ccd6de;border-radius:var(--radius);
+  padding:8px 12px;min-width:196px;pointer-events:auto}
+.readout.on{display:block}
+.readout .row{display:flex;justify-content:space-between;gap:12px;font-size:10.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums;line-height:1.75}
+.readout .row b{color:var(--ink);font-weight:700}
+.readout .big{font-size:12px;color:var(--steel);font-weight:800}
+#fault{position:absolute;inset:34% 12%;z-index:20;background:#fff;padding:18px;border:2px solid #e0b088;
+  border-radius:10px;color:#7c4a22;display:none;font-size:13px}
+
+/* ---------- 教练面板 ---------- */
+.coach{grid-area:coach;background:var(--paper);border-left:1px solid var(--line);padding:22px 22px 26px;overflow:auto}
+.coach .ctag{color:var(--accent);font-weight:700;font-size:11px;margin-bottom:6px}
+.coach h2{font-size:21px;line-height:1.28;margin:0 0 8px;letter-spacing:-.4px;font-weight:800}
+.coach .intro{font-size:12px;line-height:1.8;color:var(--muted);margin:0 0 16px}
+.progress{height:6px;border-radius:6px;background:#e0e7ec;overflow:hidden;margin:6px 0 4px}
+.progress i{display:block;background:var(--accent);height:100%;width:0;transition:width .3s}
+.plabel{font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+.task{margin-top:18px}
+.task .label{font-size:10px;color:var(--muted);margin:0 0 4px}
+.task h3{font-size:17px;line-height:1.4;margin:0 0 8px;font-weight:750}
+.task p{font-size:12px;line-height:1.8;margin:0 0 10px}
+.task .action{width:100%;margin-top:6px}
+.sub{display:flex;gap:6px;margin-top:10px}
+.sub button{font-size:11px;padding:7px 9px;flex:1}
+.feedback{min-height:40px;padding:9px 11px;background:#e9eef3;border-radius:8px;font-size:11px;
+  line-height:1.7;margin:16px 0 0;border-left:3px solid #8fa4b8}
+.feedback.error{background:#fdf0e8;border-color:#d59a6c;color:#7c4a22}
+.feedback.success{background:#e8f3ed;border-color:#77b295;color:#2f6b52}
+.hintbox{border-top:1px solid var(--line);padding-top:14px;margin-top:16px;font-size:11px;line-height:1.8;color:var(--muted)}
+.hintbox b{display:block;font-size:11px;color:#8a6a1c;margin-bottom:4px}
+.options{display:grid;gap:7px;margin-top:12px}
+.options button{text-align:left;font-size:12px;font-weight:500;padding:10px 11px;line-height:1.6}
+.options button b{display:inline-block;color:var(--accent);margin-right:7px}
+.badge{display:grid;place-items:center;width:66px;height:66px;background:var(--gold);color:#fff;
+  border:5px solid #e4c98c;border-radius:50%;margin:10px 0;font-size:28px;font-weight:800}
+.earned{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px}
+.earned span{border:1px solid #ddc98d;background:#fbf5e3;color:#8a6a1c;font-size:9px;padding:3px 6px;border-radius:5px}
+.technical{font-size:10px;color:var(--muted);line-height:1.8;border-top:1px solid var(--line);margin-top:18px;padding-top:11px}
+.technical summary{cursor:pointer;font-weight:600}
+.technical p{margin:8px 0 0}
+.note{font-size:10.5px!important;color:var(--muted)}
+
+/* ---------- 实验台控件（experiments 插槽） ---------- */
+.labctl{margin-top:12px;font-size:11px}
+.labctl output{float:right;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.labctl input[type=range]{width:100%;accent-color:var(--blue);margin:8px 0 0}
+.labctl.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.labgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+.labgrid .primary{grid-column:1/-1}
+.labgrid button{font-size:11px;padding:8px 6px}
+
+/* ---------- 零件盒 ---------- */
+.tray{grid-area:tray;border-top:2px solid #c3ccd5;padding:12px 22px 14px;background:#dae1e7;min-width:0;overflow:auto}
+.tray-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;font-size:12px;font-weight:700;gap:12px}
+.tray-head small{font-size:10px;color:#7c8a96;font-weight:400;text-align:right}
+.mlist{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.card{position:relative;border:1px solid #c3ccd5;border-bottom:4px solid #b2bec8;background:#fbfcfd;
+  border-radius:10px;display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:6px;
+  text-align:left;padding:10px 9px;min-height:74px;--pc:#5b6470}
+.card svg{width:34px;height:34px;stroke:var(--pc);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.card strong{font-size:11.5px;display:block;line-height:1.3}
+.card small{font-size:9.5px;color:var(--muted);font-weight:400;display:block;margin-top:3px}
+.card[aria-pressed=true]{border-color:#d99878;border-bottom-color:var(--accent);background:#fdf1ea;color:var(--ink)}
+.card[data-installed=true]{background:#e9f2ec;border-color:#b2cec0;border-bottom-color:#9dbfae}
+.card[data-installed=true] small{color:var(--green)}
+.empty{font-size:12px;color:#5f7488;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0}
+.empty strong{display:block;color:#2f4c63;margin-bottom:4px}
+.empty .primary{flex:none}
+
+#debug{display:none;position:fixed;left:0;bottom:0;background:#fff;font-size:10px;z-index:30;padding:2px}
+
+/* ---------- 断点 ---------- */
+@media(max-width:1180px){
+  .lab{grid-template-columns:minmax(0,1fr) 306px}
+  .coach{padding:20px 16px}
+  .card{grid-template-columns:1fr;text-align:center;padding:9px 6px}
+  .card svg{display:none}
+  .mlist{gap:6px}
+}
+@media(max-width:780px){
+  .topbar{height:auto;min-height:96px;padding:12px 14px 8px;flex-wrap:wrap;gap:8px}
+  .brand{min-width:0;flex:1}
+  .brand strong{font-size:13.5px}
+  .brand small{font-size:9px}
+  .journey{order:3;width:100%;justify-content:space-between;margin:0;gap:2px}
+  .journey li{font-size:9.5px;gap:5px;min-width:0}
+  .journey b{width:19px;height:19px;font-size:9.5px}
+  .tray-head small{max-width:130px;font-size:9px}
+  .lab{grid-template-columns:1fr;grid-template-areas:"stage" "tray" "coach";
+    grid-template-rows:minmax(360px,56dvh) auto auto;height:auto;min-height:0}
+  .stage-title h1{font-size:21px}
+  .stage-title{max-width:calc(100% - 172px)}
+  .toolbar{top:14px;max-width:150px}
+  .mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .card{grid-template-columns:32px minmax(0,1fr);text-align:left;min-height:62px}
+  .card svg{display:block;width:28px;height:28px}
+  .coach{border-left:0;border-top:1px solid var(--line);padding:20px}
+  .readout{min-width:0;padding:6px 9px}
+  .readout .row{font-size:9.5px;gap:8px}
+  .scene-footer>span{max-width:150px;font-size:8.5px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<style></style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="mark" data-slot="brand.mark" aria-hidden="true"></div>
+    <div><strong data-slot="brand.title"></strong><small data-slot="brand.subtitle"></small></div>
+  </div>
+  <ol class="journey" data-slot="journey" aria-label="关卡进度"></ol>
+  <div class="topacts">
+    <button class="ghost" id="free-lab">自由实验</button>
+    <button class="bare" id="restart">重新开始</button>
+  </div>
+</header>
+
+<main class="lab">
+  <section class="stage" id="stage" aria-label="三维装配工作台">
+    <div id="viewport"></div>
+    <div class="stage-title">
+      <h1 data-slot="stage.title"></h1>
+      <p data-slot="stage.hint"></p>
+    </div>
+    <div class="toolbar" data-slot="stage.tools" aria-label="观察工具"></div>
+    <button class="socket" id="socket" hidden>装到这里</button>
+    <div class="preview-label" id="preview-label" hidden>拖动这块</div>
+    <div class="scene-footer">
+      <span data-slot="stage.gestures"></span>
+      <div class="readout" id="readout" data-slot="stage.readout"></div>
+    </div>
+    <div id="fault" role="alert"></div>
+  </section>
+
+  <aside class="coach">
+    <div class="ctag" data-slot="coach.tag"></div>
+    <h2 data-slot="coach.title"></h2>
+    <p class="intro" data-slot="coach.intro"></p>
+    <div class="progress" role="progressbar" aria-label="装配进度" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" id="progress"><i id="pfill"></i></div>
+    <div class="plabel"><span id="plabel"></span><span id="bcount"></span></div>
+    <div class="task" id="task"></div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="hintbox"><b data-slot="coach.hintLabel"></b><span id="hinttext"></span></div>
+    <div data-slot="coach.extras"></div>
+    <details class="technical" id="notes">
+      <summary data-slot="coach.notesLabel"></summary>
+      <div data-slot="coach.notes"></div>
+    </details>
+  </aside>
+
+  <section class="tray" aria-label="零件盒">
+    <div class="tray-head"><span id="tray-title"></span><small id="tray-hint"></small></div>
+    <div class="mlist" id="mlist"></div>
+  </section>
+</main>
+<script>window.__mechbench={slug:'_template',built:true}</script>
+
+<pre id="debug"></pre>
+
+<script>
+window.addEventListener('error', e => {
+  const el = document.getElementById('fault');
+  el.style.display = 'block';
+  el.textContent = '工作台未能加载：' + e.message;
+});
+</script>
+<script type="module">
+
+/* ==== kit/icons.mjs ==== */
+/* mechbench · 通用零件图标（24×24，描边）
+ * 物品在 manifest 里写 icon:'gear' 即可；要自定义就写 icon:'<path d="..."/>' 原样 SVG。
+ */
+const ICONS = {
+  box:'<rect x="4" y="8" width="16" height="11" rx="1.5"/><path d="M4 12h16M9 8V5h6v3"/>',
+  shell:'<path d="M4 9l8-4 8 4v7l-8 4-8-4z"/><path d="M4 9l8 4 8-4M12 13v7"/>',
+  shaft:'<path d="M3 12h18"/><path d="M6 9v6M18 9v6"/>',
+  gear:'<circle cx="12" cy="12" r="5"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3M6.5 6.5l2 2M15.5 15.5l2 2M17.5 6.5l-2 2M8.5 15.5l-2 2"/>',
+  spring:'<path d="M8 4h8M8 20h8"/><path d="M8 6l8 3-8 3 8 3-8 3"/>',
+  screw:'<path d="M9 4h6l-1 3H10z"/><path d="M10 7v10l2 3 2-3V7"/><path d="M10 11h4M10 14h4"/>',
+  plate:'<path d="M4 14l8-4 8 4-8 4z"/><path d="M7 13l3 1.5"/>',
+  disc:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/>',
+  piston:'<path d="M7 5h10v7H7z"/><path d="M10 12v6M14 12v6"/><path d="M7 8h10"/>',
+  valve:'<path d="M12 4v9"/><path d="M8 16h8l-4 4z"/><path d="M9 4h6"/>',
+  coil:'<circle cx="12" cy="12" r="6"/><path d="M12 6v12M9 6.8v10.4M15 6.8v10.4"/>',
+  battery:'<rect x="3" y="8" width="15" height="8" rx="1.5"/><path d="M21 11v2"/><path d="M7 10v4M11 10v4"/>',
+  bolt:'<path d="M12 4l5 3v6l-5 3-5-3V7z"/><circle cx="12" cy="10" r="2"/>',
+  lever:'<path d="M4 18h16"/><path d="M8 18l6-10"/><circle cx="15" cy="7" r="2"/>',
+  housing:'<rect x="4" y="6" width="16" height="13" rx="2"/><path d="M8 6V4h8v2M4 12h16"/>',
+  pin:'<path d="M5 12h14"/><path d="M8 9v6M16 9v6"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/>',
+};
+function iconSvg(name, color) {
+  const body = ICONS[name] || ICONS.box;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"${color ? ` style="--pc:${color}"` : ''}>${body}</svg>`;
+}
+
+/* ==== kit/lab.mjs ==== */
+/* mechbench · 布局渲染层
+ * 把 manifest 的插槽填进固定骨架，并把玩家操作转成事件。
+ * 这里不做三维、不做业务规则：三维在 scene.js，规则在物品自己的 model.js。
+ */
+
+const COPY = {
+  brand: { title: '装配实验室', subtitle: '', mark: { a: '#c2452d', b: '#9aa6b2' } },
+  stage: {
+    title: '装一台能动的机器',
+    hint: '从下方零件盒选一块模块，拖到机身高亮处。',
+    gestures: '拖动空白处旋转 · 右键平移 · 滚轮缩放<br>触屏双指平移 / 缩放',
+  },
+  tray: { title: '零件盒', hint: '点选模块，再拖到高亮位置' },
+  coach: { tag: '第 {n} 关 / {total}', hintLabel: '工作台提示', notesLabel: '这是怎样的一套模型？' },
+  tools: [
+    { id: 'rotate', label: '旋转', pressed: true },
+    { id: 'pan', label: '平移' },
+    { id: 'cut', label: '剖开看' },
+    { id: 'home', label: '复位' },
+  ],
+  labels: { exp: '本关要观察的', quiz: '判断一下', done: '本关完成' },
+};
+
+const q = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function pick(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? pick(base[k] || {}, v) : v;
+  }
+  return out;
+}
+function mountLab(item) {
+  const copy = pick(COPY, item.copy);
+  const chapters = item.chapters || [];
+  const modules = item.modules || [];
+  const tasks = item.tasks || [];
+  const readout = item.readout || [];
+  const tools = item.tools || copy.tools;
+
+  const lab = {
+    item,
+    chapters,
+    modules,
+    state: {
+      chapter: 0,
+      placed: [],
+      selected: null,
+      phase: 'build', // build | check | done
+      badges: [],
+      readout: {},
+      hint: '',
+      feedback: '',
+      feedbackKind: '',
+      visible: {},
+    },
+    handlers: {},
+    on(name, fn) {
+      (lab.handlers[name] ||= []).push(fn);
+      return lab;
+    },
+    emit(name, payload) {
+      for (const fn of lab.handlers[name] || []) fn(payload);
+    },
+    moduleOf(id) {
+      return modules.find((m) => m.id === id);
+    },
+    chapterModules(i = lab.state.chapter) {
+      return modules.filter((m) => m.chapter === i);
+    },
+    render,
+  };
+
+  /* ---------- 骨架里的静态插槽：只在挂载时填一次 ---------- */
+  document.title = item.brand?.title || copy.brand.title;
+  const titleEl = q('[data-slot="brand.title"]');
+  if (titleEl) titleEl.textContent = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.subtitle"]').textContent = item.brand?.subtitle || copy.brand.subtitle;
+  const mark = item.brand?.mark || copy.brand.mark;
+  q('[data-slot="brand.mark"]').innerHTML = mark.svg
+    ? mark.svg
+    : `<span style="position:absolute;left:6px;top:9px;width:9px;height:16px;border-radius:2px;background:${mark.a || '#c2452d'}"></span>
+       <span style="position:absolute;left:19px;top:6px;width:9px;height:16px;border-radius:2px;background:${mark.b || '#9aa6b2'}"></span>`;
+
+  q('[data-slot="stage.title"]').textContent = item.stage?.title || copy.stage.title;
+  q('[data-slot="stage.hint"]').textContent = item.stage?.hint || copy.stage.hint;
+  q('[data-slot="stage.gestures"]').innerHTML = item.stage?.gestures || copy.stage.gestures;
+  q('[data-slot="coach.hintLabel"]').textContent = copy.coach.hintLabel;
+  q('[data-slot="coach.notesLabel"]').textContent = copy.coach.notesLabel;
+  q('[data-slot="coach.notes"]').innerHTML = (item.notes || [])
+    .map((p) => `<p>${p}</p>`)
+    .join('');
+  q('#notes').hidden = !(item.notes || []).length;
+  q('#tray-title').textContent = item.tray?.title || copy.tray.title;
+  q('#tray-hint').textContent = item.tray?.hint || copy.tray.hint;
+
+  q('[data-slot="journey"]').innerHTML = chapters
+    .map((c, i) => `<li data-chapter="${i}"><b>${i + 1}</b>${esc(c.title)}</li>`)
+    .join('');
+
+  q('[data-slot="stage.tools"]').innerHTML = tools
+    .map((t) => `<button data-tool="${t.id}" aria-pressed="${t.pressed ? 'true' : 'false'}">${esc(t.label)}</button>`)
+    .join('');
+
+  q('#readout').innerHTML = readout
+    .map((r) => `<div class="row"><span>${esc(r.label)}</span><b data-rd="${r.key}"${r.big ? ' class="big"' : ''}>—</b></div>`)
+    .join('');
+
+  q('[data-slot="coach.extras"]').innerHTML = (item.experiments || [])
+    .map((x) => {
+      if (x.control === 'toggle') {
+        return `<div class="labctl toggle"><span>${esc(x.label)}</span>
+          <button data-exp="${x.id}" aria-pressed="${x.value ? 'true' : 'false'}">${x.value ? '开' : '关'}</button></div>`;
+      }
+      if (x.control === 'button') {
+        return `<div class="labgrid"><button data-exp="${x.id}">${esc(x.label)}</button></div>`;
+      }
+      return `<label class="labctl">${esc(x.label)}<output data-exp-out="${x.id}">${x.value ?? ''}${x.unit || ''}</output>
+        <input type="range" data-exp="${x.id}" min="${x.min}" max="${x.max}" step="${x.step || 1}" value="${x.value ?? x.min}"></label>`;
+    })
+    .join('');
+
+  /* ---------- 动态插槽：每次 render 重建 ---------- */
+  function renderCards() {
+    const list = q('#mlist');
+    const chMods = lab.chapterModules();
+    const todo = chMods.filter((m) => !lab.state.placed.includes(m.id));
+    if (!todo.length) {
+      const last = lab.state.chapter >= chapters.length - 1;
+      list.innerHTML = `<div class="empty"><div><strong>这一盒装完了</strong>${
+        last ? '所有模块都装好了，可以自由实验。' : '进入下一关，继续往下装。'
+      }</div>${
+        last
+          ? '<button class="primary" data-act="free">自由实验</button>'
+          : '<button class="primary" data-act="next">进入下一关</button>'
+      }</div>`;
+      return;
+    }
+    list.innerHTML = todo
+      .map(
+        (m) => `<button class="card" data-id="${m.id}" style="--pc:${m.color || '#5b6470'}" aria-pressed="${
+          lab.state.selected === m.id
+        }"><svg viewBox="0 0 24 24" aria-hidden="true">${
+          m.icon && m.icon.startsWith('<') ? m.icon : iconBody(m.icon || 'box')
+        }</svg><span><strong>${esc(m.name)}</strong><small>${esc(m.sub || m.tip || '')}</small></span></button>`
+      )
+      .join('');
+  }
+
+  function renderTask() {
+    const ch = chapters[lab.state.chapter] || {};
+    const task = tasks[lab.state.chapter] || {};
+    const s = lab.state;
+    const head = `<p class="label">${esc(copy.labels.exp)}</p><h3>${esc(task.exp || ch.title || '')}</h3>
+      <p>${esc(task.expText || ch.subtitle || '')}</p>`;
+    if (s.phase === 'check' && task.options) {
+      q('#task').innerHTML =
+        head +
+        `<p class="label">${esc(copy.labels.quiz)}</p><div class="options">${task.options
+          .map((o, i) => `<button data-opt="${i}"><b>${'ABCD'[i]}</b>${esc(o)}</button>`)
+          .join('')}</div>`;
+      return;
+    }
+    if (s.phase === 'done') {
+      const earned = s.badges || [];
+      q('#task').innerHTML =
+        head +
+        `<div class="badge">${esc(ch.badge || '✓')}</div>
+         <p>${esc(task.why || '')}</p>
+         <div class="sub">${
+           lab.state.chapter < chapters.length - 1
+             ? '<button class="primary" data-act="next">进入下一关</button>'
+             : '<button class="primary" data-act="free">自由实验</button>'
+         }<button data-act="replay">再看一遍</button></div>
+         ${earned.length ? `<div class="earned">${earned.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}`;
+      return;
+    }
+    q('#task').innerHTML =
+      head +
+      `<div class="sub"><button class="primary" data-act="place"${s.selected ? '' : ' disabled'}>装到这里</button>
+       <button data-act="undo"${s.placed.length ? '' : ' disabled'}>撤回一步</button></div>`;
+  }
+
+  function render() {
+    const s = lab.state;
+    for (const li of document.querySelectorAll('.journey li')) {
+      const i = Number(li.dataset.chapter);
+      li.className = i === s.chapter ? 'active' : i < s.chapter ? 'done' : '';
+    }
+    const ch = chapters[s.chapter] || {};
+    q('[data-slot="coach.tag"]').textContent = (copy.coach.tag || '')
+      .replace('{n}', s.chapter + 1)
+      .replace('{total}', chapters.length);
+    q('[data-slot="coach.title"]').textContent = ch.title || '';
+    q('[data-slot="coach.intro"]').textContent = ch.subtitle || '';
+
+    const chMods = lab.chapterModules();
+    const done = chMods.filter((m) => s.placed.includes(m.id)).length;
+    const bar = q('#progress');
+    bar.setAttribute('aria-valuemax', String(chMods.length || 1));
+    bar.setAttribute('aria-valuenow', String(done));
+    q('#pfill').style.width = (chMods.length ? (done / chMods.length) * 100 : 0) + '%';
+    q('#plabel').textContent = `${done} / ${chMods.length} 块模块`;
+    q('#bcount').textContent = `${(s.badges || []).length} 个徽章`;
+
+    renderTask();
+    renderCards();
+
+    const fb = q('#feedback');
+    fb.className = 'feedback' + (s.feedbackKind ? ' ' + s.feedbackKind : '');
+    if (s.feedback) fb.textContent = s.feedback;
+    q('#hinttext').textContent = s.hint || '';
+
+    const ro = q('#readout');
+    ro.classList.toggle('on', !!s.visible.readout);
+    for (const b of ro.querySelectorAll('[data-rd]')) {
+      const v = s.readout[b.dataset.rd];
+      if (v != null) b.textContent = v;
+    }
+    q('#socket').hidden = !(s.selected && s.phase === 'build');
+  }
+
+  /* ---------- 交互：只发事件，不改业务状态 ---------- */
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (card) return lab.emit('select', card.dataset.id);
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act) return lab.emit(act);
+    const tool = e.target.closest('[data-tool]')?.dataset.tool;
+    if (tool) {
+      if (tool !== 'home') {
+        for (const b of document.querySelectorAll('[data-tool]')) {
+          if (b.dataset.tool === 'rotate' || b.dataset.tool === 'pan') {
+            b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
+          } else if (b.dataset.tool === tool) {
+            b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+          }
+        }
+      }
+      return lab.emit('tool', tool);
+    }
+    if (e.target.id === 'free-lab') return lab.emit('free');
+    if (e.target.id === 'restart') return lab.emit('restart');
+    if (e.target.id === 'socket') return lab.emit('place');
+    const opt = e.target.closest('[data-opt]');
+    if (opt) return lab.emit('answer', Number(opt.dataset.opt));
+    const exp = e.target.closest('[data-exp]');
+    if (exp) {
+      const id = exp.dataset.exp;
+      const spec = (item.experiments || []).find((x) => x.id === id) || {};
+      const value =
+        exp.tagName === 'BUTTON'
+          ? spec.control === 'toggle'
+            ? exp.getAttribute('aria-pressed') !== 'true'
+            : null
+          : Number(exp.value);
+      return lab.emit('experiment', { id, value });
+    }
+  });
+
+  document.addEventListener('input', (e) => {
+    const id = e.target.dataset?.exp;
+    if (!id) return;
+    const out = document.querySelector(`[data-exp-out="${id}"]`);
+    const exp = (item.experiments || []).find((x) => x.id === id);
+    if (out) out.textContent = e.target.value + (exp?.unit || '');
+    lab.emit('experiment', { id, value: Number(e.target.value) });
+  });
+
+  render();
+  return lab;
+}
+
+function iconBody(name) {
+  const set = typeof ICONS === 'undefined' ? {} : ICONS;
+  return set[name] || set.box || '<rect x="4" y="8" width="16" height="11" rx="1.5"/>';
+}
+
+
+/* ==== _template/model.mjs ==== */
+/* 模板物品 · 三维层（当前为空，用来验证"没有三维也能装配布局"）
+ * 真物品在这里建件，导出：
+ *   PARTS      [{ key, g:THREE.Object3D, shell?:bool, layer?:number }]
+ *   applyMotion(view)        view = { crankDeg, camDeg, running, ... }
+ *   bounds(partKeys[])       返回 THREE.Box3（用于拖动包围盒）
+ *   createModel(MANIFEST)    可选：把零件装进场景，返回 { install(id), uninstall(id) }
+ */
+const PARTS = [];
+function applyMotion() {}
+function createModel() {
+  return { install() {}, uninstall() {} };
+}
+
+/* ==== _template/manifest.mjs ==== */
+/* 模板物品 · 插槽填充（纯数据，不含逻辑）
+ * 字段含义见 kit/slots.md；把这里换成真物品的文案与模块表即可。
+ */
+const MANIFEST = {
+  slug: '_template',
+  brand: {
+    title: '示例装配实验室',
+    subtitle: '骨架自检 · 3 模块 · 2 关',
+    mark: { a: '#c2452d', b: '#9aa6b2' },
+  },
+
+  chapters: [
+    { title: '底座与轴', subtitle: '先把不动的东西放稳。', badge: 'A' },
+    { title: '盖板与传动', subtitle: '再接动的东西。', badge: 'B' },
+  ],
+
+  stage: {
+    title: '搭一个最小的例子',
+    hint: '从下方零件盒选一块模块，拖到机身高亮处。',
+  },
+
+  readout: [
+    { key: 'crank', label: '主轴', big: true },
+    { key: 'state', label: '状态' },
+  ],
+
+  tray: { title: '零件盒 · 示例', hint: '点选模块，再拖到高亮位置' },
+
+  modules: [
+    {
+      id: 'base', chapter: 0, name: '底座', sub: '固定不动的那块', parts: ['base'],
+      color: '#5b6470', icon: 'box',
+      tip: '先放底座：后面所有件都以它为基准。',
+      learn: '底座提供支承面。任何会动的零件都要能追到一块不动的件上。',
+    },
+    {
+      id: 'shaft', chapter: 0, name: '主轴', sub: '只转不平移', parts: ['shaft'],
+      color: '#c2452d', icon: 'shaft',
+      tip: '主轴两端落进底座的轴承孔。',
+      learn: '轴由两处支承定位，旋转自由度只有一个。',
+    },
+    {
+      id: 'cover', chapter: 1, name: '盖板', sub: '最后合上', parts: ['cover'],
+      color: '#9aa6b2', icon: 'plate',
+      tip: '盖板压在主轴上，挡住内部。',
+      learn: '盖板是外壳，装上之后要靠剖切才能看见内部。',
+    },
+  ],
+
+  tasks: [
+    {
+      exp: '转一下主轴',
+      expText: '拖动滑块转主轴，观察它只是转，位置不变。',
+      q: '主轴被几处支承定位？',
+      options: ['两处', '一处', '不需要支承'],
+      a: 0,
+      why: '两端各一处轴承，两个支承点才能约束住轴的径向位置、只留旋转。',
+    },
+    {
+      exp: '合上盖板',
+      expText: '装盖板前后各看一次内部。',
+      q: '盖板装上以后还能看见内部吗？',
+      options: ['可以，打开剖切', '不能，永远看不见'],
+      a: 0,
+      why: '剖切模式下外壳变成半透明/切开，内部仍然可见。',
+    },
+  ],
+
+  experiments: [
+    { id: 'crank', label: '主轴转角', control: 'slider', min: 0, max: 360, step: 1, value: 0, unit: '°' },
+  ],
+
+  notes: [
+    '这是骨架自检用的示例物品，没有三维模型，只用来验证布局、插槽和浏览器验收链路。',
+    '真物品把 <code>model.mjs</code> 换成真实几何，其余插槽照抄。',
+  ],
+};
+
+/* ==== _template/main.mjs ==== */
+/* 模板物品 · 接线（真物品照这个结构写，只是多了三维调用）
+ * 规则：lab.state 只是"要显示什么"；装配是否合法在这里判断，失败不动状态。
+ */
+const lab = mountLab(MANIFEST);
+const model = createModel(MANIFEST);
+const TOTAL = lab.modules.length;
+
+function sync() {
+  const chMods = lab.chapterModules();
+  const done = chMods.every((m) => lab.state.placed.includes(m.id));
+  if (done && lab.state.phase === 'build') lab.state.phase = 'check';
+  lab.state.readout = {
+    crank: (lab.state.crankDeg ?? 0) + '°',
+    state: lab.state.phase === 'done' ? '本关完成' : lab.state.placed.length + ' / ' + TOTAL,
+  };
+  lab.state.visible.readout = true;
+  lab.render();
+}
+
+function say(text, kind = '') {
+  lab.state.feedback = text;
+  lab.state.feedbackKind = kind;
+}
+
+lab.on('select', (id) => {
+  lab.state.selected = lab.state.selected === id ? null : id;
+  say(id ? `已选中「${lab.moduleOf(id).name}」，按「装到这里」或直接拖过去。` : '');
+  sync();
+});
+
+lab.on('place', () => {
+  const id = lab.state.selected;
+  if (!id) return say('先在零件盒里选一块模块。', 'error');
+  const m = lab.moduleOf(id);
+  lab.state.placed.push(id);
+  lab.state.selected = null;
+  model.install(id);
+  say(`「${m.name}」装好了。${m.learn}`, 'success');
+  sync();
+});
+
+lab.on('undo', () => {
+  const id = lab.state.placed.pop();
+  if (!id) return;
+  model.uninstall(id);
+  lab.state.phase = 'build';
+  say(`撤回一步：把「${lab.moduleOf(id).name}」拿回零件盒。`);
+  sync();
+});
+
+lab.on('answer', (i) => {
+  const task = lab.item.tasks[lab.state.chapter];
+  if (i !== task.a) return say(`再想想：${task.options[i]} 不对。提示——${task.expText}`, 'error');
+  lab.state.badges.push(lab.chapters[lab.state.chapter].badge);
+  lab.state.phase = 'done';
+  say(task.why, 'success');
+  sync();
+});
+
+lab.on('next', () => {
+  lab.state.chapter = Math.min(lab.state.chapter + 1, lab.chapters.length - 1);
+  lab.state.phase = 'build';
+  lab.state.selected = null;
+  say('');
+  sync();
+});
+
+lab.on('replay', () => {
+  lab.state.phase = 'check';
+  say('再看一遍刚才的现象，然后重新作答。');
+  sync();
+});
+
+lab.on('free', () => {
+  for (const m of lab.modules) if (!lab.state.placed.includes(m.id)) lab.state.placed.push(m.id);
+  lab.state.chapter = lab.chapters.length - 1;
+  lab.state.phase = 'done';
+  lab.state.selected = null;
+  say('自由实验：全部模块已装上，随便拆、随便试。');
+  sync();
+});
+
+lab.on('restart', () => {
+  lab.state.placed = [];
+  lab.state.badges = [];
+  lab.state.chapter = 0;
+  lab.state.phase = 'build';
+  lab.state.selected = null;
+  lab.state.crankDeg = 0;
+  say('');
+  sync();
+});
+
+lab.on('experiment', ({ id, value }) => {
+  if (id === 'crank') lab.state.crankDeg = value;
+  sync();
+});
+
+lab.on('tool', (id) => {
+  if (id === 'home') say('视角已复位。');
+  sync();
+});
+
+say('从下方选中「底座」，开始第一步。');
+sync();
+
+</script>
+</body>
+</html>
