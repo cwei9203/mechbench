@@ -5,7 +5,13 @@
 ## 快速开始
 
 ```bash
-python3 tools/build.py double-cylinder-engine   # 构建
+python3 tools/serve.py          # 构建全部 → 起服务 → 打开 http://127.0.0.1:8000/
+```
+
+目录页列出所有物品；点进去就是那一台的装配实验室。单独构建 / 验收：
+
+```bash
+python3 tools/build.py double-cylinder-engine   # 构建 → dist/double-cylinder-engine.html
 node tools/accept.mjs double-cylinder-engine    # 浏览器验收 + 截图
 open dist/accept/double-cylinder-engine/double-cylinder-engine-1440-after.png
 ```
@@ -38,6 +44,10 @@ dist/           构建产物 + 验收报告 + 截图
 | `kit/scene.mjs` 三维舞台 | ✅ |
 | `items/double-cylinder-engine` 迁移 | ✅ 41 项检查 × 3 宽度 + 离线单文件 |
 | `items/electric-toothbrush` 迁移（验证插槽够用） | ⬜ 下一步 |
+
+## 项目内 skill
+
+`.pi/skills/mechbench-item/SKILL.md` 把“提需求 → 出成品”的流程固化下来：机构核对 → 填 4 个文件 → 构建 → 浏览器验收 → 交付。只要说想做什么物件，agent 会按它执行。
 
 ## 加一个物品
 

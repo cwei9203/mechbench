@@ -125,6 +125,46 @@ def build(slug, single=False):
     return out
 
 
+def build_index():
+    """扫描 items/ 生成 dist/index.html（目录页）。node 不可用时跳过。"""
+    import json
+    try:
+        r = subprocess.run(["node", str(ROOT / "tools" / "manifest-dump.mjs")], cwd=ROOT,
+                           capture_output=True, text=True, check=True)
+        items = json.loads(r.stdout)
+    except Exception as e:
+        print(f"  （跳过目录页：{e}）")
+        return
+
+    tpl = (ROOT / "kit" / "index.html").read_text(encoding="utf-8")
+    cards = []
+    for it in items:
+        slug = it["slug"]
+        thumb = ""
+        for name in (f"{slug}-1440-after.png", f"{slug}-1440.png"):
+            rel = Path("accept") / slug / name
+            if (ROOT / "dist" / rel).is_file():
+                thumb = f'<img class="thumb" src="./{rel.as_posix()}" alt="" loading="lazy">'
+                break
+        if not thumb:
+            thumb = '<span class="thumb"></span>'
+        meta = [f'{it["chapters"]} 关', f'{it["modules"]} 模块']
+        if it.get("has3d"):
+            meta.append('<span class="solid">三维</span>')
+        tags = "".join(m if m.startswith("<") else f"<span>{m}</span>" for m in meta)
+        title = it["title"].replace("&", "&amp;").replace("<", "&lt;")
+        sub = (it["subtitle"] or "").replace("&", "&amp;").replace("<", "&lt;")
+        cards.append(f'<a class="item" href="./{slug}.html">{thumb}<div class="body">'
+                     f'<strong>{title}</strong><small>{sub}</small><div class="meta">{tags}</div></div></a>')
+
+    html = tpl.replace("{{ITEMS}}", "".join(cards) or
+                       '<div class="empty">items/ 下还没有物品。先跑 <code>python3 tools/make-item.py &lt;slug&gt;</code>。</div>')
+    html = html.replace("{{COUNT}}", f'{len(items)} 个物品' if items else "")
+    out = ROOT / "dist" / "index.html"
+    out.write_text(html, encoding="utf-8")
+    print(f"→ {out.relative_to(ROOT)}  ({len(items)} 个物品)")
+
+
 def main():
     ap = argparse.ArgumentParser(description="mechbench 构建")
     ap.add_argument("slug", help="物品目录名，或 all")
@@ -132,13 +172,15 @@ def main():
     a = ap.parse_args()
 
     if a.slug == "all":
-        items = sorted(p.name for p in (ROOT / "items").iterdir() if (p / "manifest.mjs").is_file())
+        items = sorted(p.name for p in (ROOT / "items").iterdir()
+                       if (p / "manifest.mjs").is_file() and not p.name.startswith("_"))
         if not items:
             sys.exit("items/ 下还没有物品")
         for s in items:
             build(s, a.single)
     else:
         build(a.slug, a.single)
+    build_index()
 
 
 if __name__ == "__main__":

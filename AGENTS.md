@@ -10,6 +10,16 @@
 4. **物品各自成文件夹**：一个物品 = `items/<slug>/` 一整个目录，不许跨物品共享文件。
 5. **没跑浏览器验收就不算完成**：`node tools/accept.mjs <slug>` 全绿 + 人眼看过截图，才算交付。
 
+## 入口
+
+```bash
+python3 tools/serve.py        # 构建全部 + 起服务 + 打开目录页 http://127.0.0.1:8000/
+```
+
+- 目录页 `dist/index.html`（由 `tools/build.py` 扫描 `items/` 自动生成，**不要手改**）
+- 单个物品 `/<slug>.html` 是交付产物，也是直接调试入口
+- 项目内 skill：`.pi/skills/mechbench-item/SKILL.md`（约束“提需求 → 出成品”的流程）
+
 ## 目录
 
 ```
@@ -29,8 +39,10 @@ items/<slug>/   一个物品
   accept.mjs    可选浏览器断言（只能用 DOM 驱动）
   notes.md      尺寸依据 / 教学简化 / 验证记录
 tools/
-  build.py      骨架+kit+物品 → dist/<slug>.html（内含 node --check 把关）
+  build.py      骨架+kit+物品 → dist/<slug>.html，并生成 dist/index.html（内含 node --check 把关）
+  serve.py      本地启动：构建全部 + 静态服务 + 打开目录页
   make-item.py  新物品脚手架
+  manifest-dump.mjs  扫描 items/ 输出目录页元数据
   accept.mjs    真实 Chrome 验收 + 截图（CDP + 内置 http 服务，无第三方依赖）
 vendor/         three.js 0.170.0 + addons（构建时复制到 dist/vendor）
 dist/           构建产物 + 验收报告 + 截图（提交进库，作为交付证据）
@@ -99,6 +111,7 @@ dist/           构建产物 + 验收报告 + 截图（提交进库，作为交�
 ## 命令速查
 
 ```bash
+python3 tools/serve.py                          # 启动（构建 + 服务 + 目录页）
 python3 tools/make-item.py <slug> --title "…"   # 新物品
 python3 tools/build.py <slug>                   # 构建 → dist/<slug>.html
 python3 tools/build.py all                      # 全部构建
