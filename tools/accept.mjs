@@ -80,6 +80,47 @@ const PAGE_CHECK = `(async () => {
     scrollW: de.scrollWidth, innerW: window.innerWidth } };
 })()`;
 
+
+const PIXEL_CHECK = `(async () => {
+  const ok = [], bad = [];
+  const need = (cond, msg) => (cond ? ok : bad).push(msg);
+  const st = window.__lab && window.__lab.stage;
+  if (!st || !st.probe) return { ok: ['无三维舞台，跳过像素检查'], bad: [] };
+  const q = (s) => document.querySelector(s);
+  const box = q('.stage').getBoundingClientRect();
+  const W = box.width, H = box.height;
+  const pr = st.renderer.getPixelRatio() || 1;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // 1. 局部放大窗：canvas 上要有画面，而且不能被 DOM 背景盖住
+  const ins = q('#inset');
+  if (ins && !ins.hidden) {
+    const r = ins.getBoundingClientRect();
+    const p = await st.probe({ x: r.left - box.left, y: r.top - box.top, width: r.width, height: r.height });
+    need(p.colors >= 4, '放大窗里有画面（颜色 ' + p.colors + ' 种）');
+    need(p.lit > p.w * p.h * 0.02, '放大窗不是空白（非空像素 ' + p.lit + '）');
+    const bg = getComputedStyle(ins).backgroundColor;
+    const alpha = bg === 'transparent' ? 0 : bg.startsWith('rgba') ? parseFloat(bg.slice(bg.lastIndexOf(',') + 1)) : 1;
+    need(alpha === 0, '放大窗背景透明，没盖住 canvas（当前 ' + bg + '）');
+  }
+
+  // 2. 剖开 / 实体外观必须真的不一样（否则剖切或材质还原失效）
+  const cutBtn = q('[data-tool="cut"]');
+  const area = { x: W * 0.25, y: H * 0.2, width: W * 0.5, height: H * 0.6 };
+  if (cutBtn) {
+    const wasOn = cutBtn.getAttribute('aria-pressed') === 'true';
+    if (!wasOn) { cutBtn.click(); await wait(260); }
+    const a1 = await st.probe(area);
+    cutBtn.click(); await wait(260);
+    const a2 = await st.probe(area);
+    need(a1.lit > 0 && a2.lit > 0, '舞台上有实体（剖开 ' + a1.lit + ' / 实体 ' + a2.lit + ' 像素）');
+    need(Math.abs(a1.lit - a2.lit) > a1.lit * 0.02 || a1.colors !== a2.colors, '剖开确实改变了画面');
+    if (wasOn) { cutBtn.click(); await wait(200); }
+  }
+
+  return { ok, bad };
+})()`;
+
 class CDP {
   constructor(ws) {
     this.ws = ws;
@@ -199,7 +240,7 @@ async function main() {
       await S('Emulation.setDeviceMetricsOverride', {
         width: w, height: h, deviceScaleFactor: 2, mobile: w <= 780,
       });
-      await S('Page.navigate', { url: `http://127.0.0.1:${httpPort}/${slug}.html` });
+      await S('Page.navigate', { url: `http://127.0.0.1:${httpPort}/${slug}.html?debug=1` });
       await cdp.waitFor('Page.loadEventFired');
       await new Promise((r) => setTimeout(r, 450));
 
@@ -220,6 +261,11 @@ async function main() {
         if (ev) { v.ok.push(...(ev.ok || [])); v.bad.push(...(ev.bad || [])); }
         else v.bad.push('物品自定义验收未返回结果');
       }
+
+      const px = await S('Runtime.evaluate', { expression: PIXEL_CHECK, awaitPromise: true, returnByValue: true });
+      const pv = px.result?.value;
+      if (pv) { v.ok.push(...(pv.ok || [])); v.bad.push(...(pv.bad || [])); }
+      else v.bad.push('像素检查未返回结果');
 
       // 交互之后的画面（自由实验/拆链条等），和入场截图分开留证
       const shot2 = await S('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });

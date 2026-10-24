@@ -442,6 +442,44 @@ export function createStage(opts) {
     renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
   }
 
+  /* ---------- 像素探针：给验收用，肉眼看不到的"空"要能被机器测出来 ---------- */
+  // 必须在渲染循环里紧接着 render() 读，否则默认帧缓冲内容已经丢弃（读到全 0）
+  const pendingProbes = [];
+  function probe(rect) {
+    return new Promise((res) => pendingProbes.push({ rect, res }));
+  }
+  function runProbes() {
+    if (!pendingProbes.length) return;
+    const gl = renderer.getContext();
+    const pr = renderer.getPixelRatio();
+    const H = renderer.domElement.height;
+    for (const { rect, res } of pendingProbes.splice(0)) {
+      const x = Math.max(0, Math.round(rect.x * pr));
+      const y = Math.max(0, Math.round(H - (rect.y + rect.height) * pr));
+      const w = Math.max(1, Math.round(rect.width * pr));
+      const h = Math.max(1, Math.round(rect.height * pr));
+      const buf = new Uint8Array(w * h * 4);
+      gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      const colors = new Set();
+      const rows = new Array(h).fill(0);
+      const cols = new Array(w).fill(0);
+      let lit = 0;
+      for (let j = 0; j < h; j++) {
+        for (let i = 0; i < w; i++) {
+          const k = ((h - 1 - j) * w + i) * 4;
+          const r = buf[k], g = buf[k + 1], b = buf[k + 2], a = buf[k + 3];
+          // 画布是 alpha:true 的清屏，舞台底色是 CSS 背景 → alpha 就是最干净的"有没有物体"判据
+          if (a < 8) continue;
+          colors.add((r >> 3) * 1024 + (g >> 3) * 32 + (b >> 3));
+          rows[j]++;
+          cols[i]++;
+          lit++;
+        }
+      }
+      res({ colors: colors.size, lit, rows, cols, w, h });
+    }
+  }
+
   /* ---------- 尺寸与循环 ---------- */
   function resize() {
     const w = stageEl.clientWidth, h = stageEl.clientHeight;
@@ -464,6 +502,7 @@ export function createStage(opts) {
       overlay();
       renderer.render(scene, camera);
       drawInset();
+      runProbes();
     });
   }
 
@@ -473,7 +512,7 @@ export function createStage(opts) {
 
   return {
     view, renderer, scene, camera, controls, info, spawn: SPAWN, fitCamera, setNavigation, project,
-    nearTarget, overlay, render, start, setTarget, resize,
+    nearTarget, overlay, render, start, setTarget, resize, probe,
     get solidScreen() {
       return renderer.domElement;
     },

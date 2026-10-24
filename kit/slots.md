@@ -59,6 +59,12 @@
 | `focus` | 取景预设：`{名字: {dir:[yaw,pitch], fit, box?}}`。`box:[[cx,cy,cz],[sx,sy,sz]]` 用于「自由实验看行程区」这种虚拟取景 |
 | `hiddenPart` | `(key, state) => bool`，拆件后不再渲染某零件（如 `valveCover`） |
 
+## 三维验收探针（`stage.probe`）
+
+`stage.probe({x,y,width,height})` 返回 Promise → `{colors, lit, rows, cols, w, h}`。
+rect 是相对舞台左上角的 CSS 像素；内部排队到渲染帧内 `readPixels`（帧外读只会得到全 0）。
+用途：判断某块区域「有没有画面」「有没有贯通裂缝」。`tools/accept.mjs` 已内置三条断言。
+
 ## 事件（物品 → kit 监听）
 
 `lab.on(name, fn)`：

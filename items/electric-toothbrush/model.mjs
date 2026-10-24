@@ -57,7 +57,8 @@ const contacts=group(),capSpring=group();contacts.add(capSpring);helix(11.5,14.9
 addPart('contacts','弹簧与电池触片',contacts,'底弹簧固定于底盖，打开时随盖移开；上触片卡在骨架，导线连控制板。','弹簧线径 0.36 mm · 估算','#aab8bd');
 const pcb=group();box(9,14,1,M.pcb,pcb,V(0,67,-2.6));box(3.2,3.2,1.5,M.dark,pcb,V(0,67,-1.3));cylinder(1,1.1,M.metal,pcb,V(0,67,.1),'z');for(const x of [-3,3])for(const y of [63,71])box(1.2,2,1.4,M.metal,pcb,V(x,y,-1.5));wire([[-2,73,-2],[-4.3,76,-2],[-4.3,85.5,0]],.22,M.copper,pcb);wire([[2,73,-2],[4.3,76,-2],[4.3,85.5,0]],.22,M.dark,pcb);
 addPart('pcb','升压与交变驱动板',pcb,'板卡固定于骨架槽；电池直流经升压、驱动电路交变励磁。电路和线圈接线仅示意。','9 × 14 × 1 mm · 估算','#3a7152');
-const button=group();box(7.8,10.6,1,M.rubber,button,V(0,67,9.7));cylinder(2.7,2.4,M.teal,button,V(0,67,10.7),'z');cylinder(.75,9,M.teal,button,V(0,67,5),'z');const symbol=torus(1.1,.1,M.white,button,0);symbol.rotation.x=0;symbol.position.set(0,67,11.93);
+// 硅胶唇缘按窗洞尺寸放大 1 mm（旧版 7.8×10.6 盖不住前壳按钮窗，实体外观下露出横缝）
+const button=group();box(8.9,11.7,1.6,M.rubber,button,V(0,67,9.9));cylinder(2.7,2.4,M.teal,button,V(0,67,10.7),'z');cylinder(.75,9,M.teal,button,V(0,67,5),'z');const symbol=torus(1.1,.1,M.white,button,0);symbol.rotation.x=0;symbol.position.set(0,67,11.93);
 addPart('button','硅胶电源按键',button,'唇缘扣在前壳孔内，顶杆连接板上开关；点按可启动。','按面 Ø5.4 mm · 行程 0.5 mm','#287363');
 const stator=group();box(12.8,16,1.2,M.metal,stator,V(0,87,-4.8));
 for(const sign of [-1,1]){box(1.2,14,5.4,M.metal,stator,V(sign*5.8,87,-2.1));const core=cylinder(1.05,2.8,M.dark,stator,V(sign*4.3,87,0));core.rotation.z=Math.PI/2;const coil=helix(-.85,.85,1.45,.1,7,M.copper,stator);coil.rotation.z=-Math.PI/2;coil.position.set(sign*4.2,87,0);box(.5,10,4.4,M.metal,stator,V(sign*2.9,87,0));}
