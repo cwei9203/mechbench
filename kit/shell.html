@@ -37,6 +37,7 @@
       <span data-slot="stage.gestures"></span>
       <div class="readout" id="readout" data-slot="stage.readout"></div>
     </div>
+    <div id="inset" hidden><div class="top"><span id="inset-title">局部放大</span><span>DETAIL VIEW</span></div></div>
     <div id="fault" role="alert"></div>
   </section>
 
@@ -48,6 +49,7 @@
     <div class="plabel"><span id="plabel"></span><span id="bcount"></span></div>
     <div class="task" id="task"></div>
     <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="discovery" id="discovery" hidden><b>刚刚发现</b><span id="discovery-text"></span></div>
     <div class="hintbox"><b data-slot="coach.hintLabel"></b><span id="hinttext"></span></div>
     <div data-slot="coach.extras"></div>
     <details class="technical" id="notes">
@@ -62,6 +64,7 @@
   </section>
 </main>
 
+<div id="celebration" aria-hidden="true"></div>
 <pre id="debug"></pre>
 
 <script>

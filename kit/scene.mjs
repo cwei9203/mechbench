@@ -88,6 +88,7 @@ export function createStage(opts) {
     scene.add(dir);
   }
 
+  if (cfg.bench !== false) {
   const bench = new THREE.Mesh(
     new THREE.PlaneGeometry(cfg.bench.size, cfg.bench.size),
     new THREE.MeshStandardMaterial({ color: cfg.bench.color, roughness: 0.97, metalness: 0 })
@@ -95,6 +96,7 @@ export function createStage(opts) {
   bench.rotation.x = -Math.PI / 2;
   bench.position.y = cfg.bench.y;
   scene.add(bench);
+  }
 
   /* ---------- 剖切 ---------- */
   const CUT = new THREE.Plane(vec(...cfg.cut.normal), cfg.cut.constant);
@@ -132,7 +134,14 @@ export function createStage(opts) {
   const state = () => (opts.getState ? opts.getState() : {});
 
   /* ---------- 摆位与材质 ---------- */
-  const moduleOffsetTarget = (id) => (state().placed?.includes(id) ? vec() : SPAWN.clone());
+  const moduleOffsetTarget = (id) => {
+    if (state().placed?.includes(id)) return vec();
+    if (typeof cfg.spawnFor === 'function') {
+      const v = cfg.spawnFor(id, info.get(id), state(), view);
+      if (v) return v.isVector3 ? v.clone() : vec(...v);
+    }
+    return SPAWN.clone();
+  };
 
   function render(dt = 1) {
     const s = state();
@@ -159,15 +168,17 @@ export function createStage(opts) {
         materials(p, installed || view.solid);
       }
     }
-    model.applyMotion(view.crankDeg, view.camDeg);
+    model.applyMotion(view, s);
     worldGroup.updateMatrixWorld(true);
   }
 
-  // 外壳在剖开模式下换成剖切玻璃；正在拖动的模块保持实体，否则会被切成半个
+  // 剖开：外壳换玻璃；带 userData.cutaway 的网格（被切掉的那半）直接隐藏
   function materials(p, showSolid) {
-    const ghost = showSolid && view.cut && p.shell && !(view.focus !== 'all' && view.focus === p.key);
+    const cutting = showSolid && view.cut;
     p.g.traverse((o) => {
       if (!o.isMesh) return;
+      if (o.userData.cutaway) o.visible = !cutting;
+      const ghost = cutting && (p.shell || o.userData.socketCover) && !(view.focus !== 'all' && view.focus === p.key);
       if (ghost) {
         if (!p.ghostMat) {
           p.ghostMat = GHOST.clone();
@@ -218,7 +229,10 @@ export function createStage(opts) {
   function focusSpec(name) {
     const f = cfg.focus[name] || {};
     const dir = f.dir || [0, 18];
-    if (f.box) return { center: vec(...f.box[0]), size: vec(...f.box[1]), dir, fit: f.fit || 1 };
+    if (f.box) {
+      const b = typeof f.box === 'function' ? f.box(state(), view) : f.box;
+      return { center: vec(...b[0]), size: vec(...b[1]), dir, fit: f.fit || 1 };
+    }
     if (name === cfg.camera.defaultFocus || !name) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
     const p = byKey.get(name);
     if (!p) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
@@ -395,6 +409,39 @@ export function createStage(opts) {
     if (k && opts.onPickKey) opts.onPickKey(k, view.focus === k);
   });
 
+  /* ---------- 局部放大窗（同一个 canvas 里用 scissor 画第二视角） ---------- */
+  const insetEl = document.getElementById('inset');
+  const insetCam = new THREE.PerspectiveCamera(cfg.inset?.fov || 36, 1, cfg.inset?.near || 0.1, cfg.inset?.far || 500);
+  function drawInset() {
+    if (!insetEl || !cfg.inset) return;
+    const s = state();
+    const ic = cfg.inset;
+    const fits = stageEl.clientWidth > (ic.minWidth || 760) && stageEl.clientHeight > (ic.minHeight || 430);
+    const spec = fits && ic.visible?.(s, view) ? ic.target?.(s, view) : null;
+    const part = spec && byKey.get(spec.part);
+    insetEl.hidden = !part;
+    if (!part) return;
+    const title = insetEl.querySelector('#inset-title');
+    if (title && spec.title) title.textContent = spec.title;
+    const target = part.g.localToWorld(vec(...(spec.local || [0, 0, 0])));
+    insetCam.position.copy(target).add(vec(...spec.offset));
+    insetCam.lookAt(target);
+    const r = insetEl.getBoundingClientRect(), base = stageEl.getBoundingClientRect();
+    if (r.width < 10 || r.height < 10) return;
+    insetCam.aspect = r.width / r.height;
+    insetCam.updateProjectionMatrix();
+    const x = r.left - base.left, y = stageEl.clientHeight - (r.bottom - base.top);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+    renderer.setScissor(x, y, r.width, r.height);
+    renderer.setViewport(x, y, r.width, r.height);
+    renderer.setScissorTest(true);
+    renderer.clearDepth();
+    renderer.render(scene, insetCam);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+  }
+
   /* ---------- 尺寸与循环 ---------- */
   function resize() {
     const w = stageEl.clientWidth, h = stageEl.clientHeight;
@@ -416,6 +463,7 @@ export function createStage(opts) {
       controls.update();
       overlay();
       renderer.render(scene, camera);
+      drawInset();
     });
   }
 

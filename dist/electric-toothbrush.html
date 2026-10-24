@@ -1,0 +1,1696 @@
+<!doctype html>
+<!-- mechbench · 固定页面骨架。物品不许改这个文件；个性化一律走插槽（kit/slots.md）。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>装配实验室</title>
+<style>/* mechbench · 固定布局层
+ * 只放"所有物品共用"的东西：区域、断点、控件外观、无障碍焦点。
+ * 物品自己的视觉微调写在 items/<slug>/lab.css。
+ */
+
+:root{
+  --ink:#1d2228; --muted:#63707d; --line:#cfd6dc; --stage:#e7ebee; --paper:#f8fafb;
+  --accent:#c2452d; --accent-dark:#93301e;
+  --steel:#4d5966; --blue:#2f6f9f; --green:#2f7d5c; --gold:#b8862f;
+  --topbar-h:70px; --coach-w:344px; --tray-h:182px; --radius:9px;
+}
+
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:#dfe4e8;color:var(--ink);
+  font:14px/1.5 "Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button,input{font:inherit}
+button{cursor:pointer;color:inherit;border:1px solid var(--line);background:#fff;
+  border-radius:var(--radius);padding:8px 13px;font-weight:600;transition:background .14s,transform .1s}
+button:hover:not(:disabled){background:#f4f7f9}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:default}
+:focus-visible{outline:3px solid #d99b2b;outline-offset:2px}
+button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 0 var(--accent-dark)}
+.primary:hover:not(:disabled){background:#b03c26}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- 顶栏 ---------- */
+.topbar{height:var(--topbar-h);display:flex;align-items:center;gap:22px;padding:0 24px;
+  border-bottom:1px solid var(--line);background:#f7f9fa}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.mark{width:34px;height:34px;border-radius:8px;background:var(--steel);position:relative;overflow:hidden;flex:none}
+.mark svg{display:block;width:100%;height:100%}
+.brand strong{display:block;font-size:16px;letter-spacing:-.2px}
+.brand small{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.journey{list-style:none;display:flex;gap:6px;margin:0 auto;padding:0}
+.journey li{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8b98a4;white-space:nowrap}
+.journey b{width:23px;height:23px;display:grid;place-items:center;border:1px solid #cbd4dc;border-radius:50%;font-size:11px}
+.journey .active{color:var(--accent);font-weight:700}
+.journey .active b{background:var(--accent);color:#fff;border-color:var(--accent)}
+.journey .done{color:var(--green)}
+.journey .done b{background:#e3f1ea;border-color:#a9cdbc}
+.topacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex:none}
+.topacts .ghost{font-size:11px;padding:6px 10px;border-radius:999px;background:#fff}
+.topacts .ghost:hover{border-color:var(--accent);color:var(--accent)}
+.topacts .bare{font-size:11px;background:transparent;border-color:transparent;padding:6px}
+
+/* ---------- 主网格 ---------- */
+.lab{display:grid;grid-template-columns:minmax(0,1fr) var(--coach-w);
+  grid-template-rows:minmax(420px,1fr) var(--tray-h);
+  grid-template-areas:"stage coach" "tray coach";
+  height:calc(100dvh - var(--topbar-h));min-height:640px}
+.stage{grid-area:stage;position:relative;overflow:hidden;min-width:0;background-color:var(--stage);
+  background-image:radial-gradient(#c6cfd7 1px,transparent 1px);background-size:24px 24px}
+#viewport{position:absolute;inset:0}
+#viewport canvas{display:block;touch-action:none}
+.stage-title{position:absolute;top:18px;left:22px;pointer-events:none;max-width:360px}
+.stage-title h1{font-size:27px;line-height:1.2;margin:0 0 5px;letter-spacing:-.6px;font-weight:800}
+.stage-title p{margin:0;font-size:11px;color:var(--muted)}
+.toolbar{position:absolute;top:18px;right:16px;display:flex;flex-wrap:wrap;gap:5px;max-width:250px;justify-content:flex-end}
+.toolbar button{font-size:10.5px;padding:6px 10px;background:#fffefbe8}
+.toolbar button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.socket{position:absolute;z-index:4;transform:translate(-50%,-50%);background:var(--accent);color:#fff;
+  border:2px solid #fff;border-radius:20px;box-shadow:0 2px 0 #8f2d1b,0 3px 12px #c2452d30;
+  white-space:nowrap;font-size:11px;padding:6px 12px}
+.socket.near{background:var(--green);box-shadow:0 0 0 8px #2f7d5c22}
+.preview-label{position:absolute;pointer-events:none;transform:translate(-50%,0);background:#fff6ec;
+  border:1px solid #e2b393;border-radius:6px;padding:3px 8px;font-size:10px;color:#96562f;white-space:nowrap}
+.scene-footer{position:absolute;bottom:12px;left:20px;right:20px;display:flex;align-items:flex-end;
+  justify-content:space-between;gap:12px;pointer-events:none}
+.scene-footer>span{font-size:9.5px;color:#7d8b98;line-height:1.6;max-width:44%}
+.readout{display:none;background:#ffffffef;border:1px solid #ccd6de;border-radius:var(--radius);
+  padding:8px 12px;min-width:196px;pointer-events:auto}
+.readout.on{display:block}
+.readout .row{display:flex;justify-content:space-between;gap:12px;font-size:10.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums;line-height:1.75}
+.readout .row b{color:var(--ink);font-weight:700}
+.readout .big{font-size:12px;color:var(--steel);font-weight:800}
+#inset{position:absolute;right:16px;bottom:56px;z-index:5;width:192px;height:188px;border:1px solid #c3ccd5;border-radius:10px;
+  background:#ffffffd9;overflow:hidden;box-shadow:0 4px 16px #1d222814}
+#inset[hidden]{display:none}
+#inset .top{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;font-size:10px;
+  color:var(--muted);border-bottom:1px solid var(--line);background:#f7f9fa}
+#inset .top span:last-child{letter-spacing:.12em;font-size:8.5px}
+.discovery{margin-top:12px;border-left:3px solid var(--gold);background:#fdf8ea;border-radius:8px;
+  padding:9px 11px;font-size:11px;line-height:1.75;color:#7a5c1e}
+.discovery[hidden]{display:none}
+.discovery b{display:block;font-size:10.5px;margin-bottom:3px;color:#8a6a1c}
+#celebration{position:fixed;inset:0;pointer-events:none;z-index:40;display:grid;place-items:center}
+#celebration i{position:absolute;width:9px;height:9px;border-radius:2px;opacity:0;
+  animation:confetti 1.1s ease-out forwards}
+@keyframes confetti{
+  0%{opacity:1;transform:translate(0,0) rotate(0)}
+  100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r))}}
+#fault{position:absolute;inset:34% 12%;z-index:20;background:#fff;padding:18px;border:2px solid #e0b088;
+  border-radius:10px;color:#7c4a22;display:none;font-size:13px}
+
+/* ---------- 教练面板 ---------- */
+.coach{grid-area:coach;background:var(--paper);border-left:1px solid var(--line);padding:22px 22px 26px;overflow:auto}
+.coach .ctag{color:var(--accent);font-weight:700;font-size:11px;margin-bottom:6px}
+.coach h2{font-size:21px;line-height:1.28;margin:0 0 8px;letter-spacing:-.4px;font-weight:800}
+.coach .intro{font-size:12px;line-height:1.8;color:var(--muted);margin:0 0 16px}
+.progress{height:6px;border-radius:6px;background:#e0e7ec;overflow:hidden;margin:6px 0 4px}
+.progress i{display:block;background:var(--accent);height:100%;width:0;transition:width .3s}
+.plabel{font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+.task{margin-top:18px}
+.task .label{font-size:10px;color:var(--muted);margin:0 0 4px}
+.task h3{font-size:17px;line-height:1.4;margin:0 0 8px;font-weight:750}
+.task p{font-size:12px;line-height:1.8;margin:0 0 10px}
+.task .action{width:100%;margin-top:6px}
+.sub{display:flex;gap:6px;margin-top:10px}
+.sub button{font-size:11px;padding:7px 9px;flex:1}
+.feedback{min-height:40px;padding:9px 11px;background:#e9eef3;border-radius:8px;font-size:11px;
+  line-height:1.7;margin:16px 0 0;border-left:3px solid #8fa4b8}
+.feedback.error{background:#fdf0e8;border-color:#d59a6c;color:#7c4a22}
+.feedback.success{background:#e8f3ed;border-color:#77b295;color:#2f6b52}
+.hintbox{border-top:1px solid var(--line);padding-top:14px;margin-top:16px;font-size:11px;line-height:1.8;color:var(--muted)}
+.hintbox b{display:block;font-size:11px;color:#8a6a1c;margin-bottom:4px}
+.options{display:grid;gap:7px;margin-top:12px}
+.options button{text-align:left;font-size:12px;font-weight:500;padding:10px 11px;line-height:1.6}
+.options button b{display:inline-block;color:var(--accent);margin-right:7px}
+.badge{display:grid;place-items:center;width:66px;height:66px;background:var(--gold);color:#fff;
+  border:5px solid #e4c98c;border-radius:50%;margin:10px 0;font-size:28px;font-weight:800}
+.earned{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px}
+.earned span{border:1px solid #ddc98d;background:#fbf5e3;color:#8a6a1c;font-size:9px;padding:3px 6px;border-radius:5px}
+.technical{font-size:10px;color:var(--muted);line-height:1.8;border-top:1px solid var(--line);margin-top:18px;padding-top:11px}
+.technical summary{cursor:pointer;font-weight:600}
+.technical p{margin:8px 0 0}
+.note{font-size:10.5px!important;color:var(--muted)}
+
+/* ---------- 实验台控件（experiments 插槽） ---------- */
+.labctl{margin-top:12px;font-size:11px}
+.labctl output{float:right;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.labctl input[type=range]{width:100%;accent-color:var(--blue);margin:8px 0 0}
+.labctl.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.labgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+.labgrid .primary{grid-column:1/-1}
+.labgrid button{font-size:11px;padding:8px 6px}
+
+/* ---------- 零件盒 ---------- */
+.tray{grid-area:tray;border-top:2px solid #c3ccd5;padding:12px 22px 14px;background:#dae1e7;min-width:0;overflow:auto}
+.tray-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;font-size:12px;font-weight:700;gap:12px}
+.tray-head small{font-size:10px;color:#7c8a96;font-weight:400;text-align:right}
+.mlist{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.card{position:relative;border:1px solid #c3ccd5;border-bottom:4px solid #b2bec8;background:#fbfcfd;
+  border-radius:10px;display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:6px;
+  text-align:left;padding:10px 9px;min-height:74px;--pc:#5b6470}
+.card svg{width:34px;height:34px;stroke:var(--pc);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.card strong{font-size:11.5px;display:block;line-height:1.3}
+.card small{font-size:9.5px;color:var(--muted);font-weight:400;display:block;margin-top:3px}
+.card[aria-pressed=true]{border-color:#d99878;border-bottom-color:var(--accent);background:#fdf1ea;color:var(--ink)}
+.card[data-installed=true]{background:#e9f2ec;border-color:#b2cec0;border-bottom-color:#9dbfae}
+.card[data-installed=true] small{color:var(--green)}
+.empty{font-size:12px;color:#5f7488;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0}
+.empty strong{display:block;color:#2f4c63;margin-bottom:4px}
+.empty .primary{flex:none}
+
+#debug{display:none;position:fixed;left:0;bottom:0;background:#fff;font-size:10px;z-index:30;padding:2px}
+
+/* ---------- 断点 ---------- */
+@media(max-width:1180px){
+  .lab{grid-template-columns:minmax(0,1fr) 306px}
+  .coach{padding:20px 16px}
+  .card{grid-template-columns:1fr;text-align:center;padding:9px 6px}
+  .card svg{display:none}
+  .mlist{gap:6px}
+}
+@media(max-width:780px){
+  .topbar{height:auto;min-height:96px;padding:12px 14px 8px;flex-wrap:wrap;gap:8px}
+  .brand{min-width:0;flex:1}
+  .brand strong{font-size:13.5px}
+  .brand small{font-size:9px}
+  .journey{order:3;width:100%;justify-content:space-between;margin:0;gap:2px}
+  .journey li{font-size:9.5px;gap:5px;min-width:0}
+  .journey b{width:19px;height:19px;font-size:9.5px}
+  .tray-head small{max-width:130px;font-size:9px}
+  .lab{grid-template-columns:1fr;grid-template-areas:"stage" "tray" "coach";
+    grid-template-rows:minmax(360px,56dvh) auto auto;height:auto;min-height:0}
+  .stage-title h1{font-size:21px}
+  .stage-title{max-width:calc(100% - 172px)}
+  .toolbar{top:14px;max-width:150px}
+  .mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .card{grid-template-columns:32px minmax(0,1fr);text-align:left;min-height:62px}
+  .card svg{display:block;width:28px;height:28px}
+  .coach{border-left:0;border-top:1px solid var(--line);padding:20px}
+  #inset{right:12px;bottom:12px;width:132px}
+  .readout{min-width:0;padding:6px 9px}
+  .readout .row{font-size:9.5px;gap:8px}
+  .scene-footer>span{max-width:150px;font-size:8.5px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
+<style></style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="mark" data-slot="brand.mark" aria-hidden="true"></div>
+    <div><strong data-slot="brand.title"></strong><small data-slot="brand.subtitle"></small></div>
+  </div>
+  <ol class="journey" data-slot="journey" aria-label="关卡进度"></ol>
+  <div class="topacts">
+    <button class="ghost" id="free-lab">自由实验</button>
+    <button class="bare" id="restart">重新开始</button>
+  </div>
+</header>
+
+<main class="lab">
+  <section class="stage" id="stage" aria-label="三维装配工作台">
+    <div id="viewport"></div>
+    <div class="stage-title">
+      <h1 data-slot="stage.title"></h1>
+      <p data-slot="stage.hint"></p>
+    </div>
+    <div class="toolbar" data-slot="stage.tools" aria-label="观察工具"></div>
+    <button class="socket" id="socket" hidden>装到这里</button>
+    <div class="preview-label" id="preview-label" hidden>拖动这块</div>
+    <div class="scene-footer">
+      <span data-slot="stage.gestures"></span>
+      <div class="readout" id="readout" data-slot="stage.readout"></div>
+    </div>
+    <div id="inset" hidden><div class="top"><span id="inset-title">局部放大</span><span>DETAIL VIEW</span></div></div>
+    <div id="fault" role="alert"></div>
+  </section>
+
+  <aside class="coach">
+    <div class="ctag" data-slot="coach.tag"></div>
+    <h2 data-slot="coach.title"></h2>
+    <p class="intro" data-slot="coach.intro"></p>
+    <div class="progress" role="progressbar" aria-label="装配进度" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" id="progress"><i id="pfill"></i></div>
+    <div class="plabel"><span id="plabel"></span><span id="bcount"></span></div>
+    <div class="task" id="task"></div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="discovery" id="discovery" hidden><b>刚刚发现</b><span id="discovery-text"></span></div>
+    <div class="hintbox"><b data-slot="coach.hintLabel"></b><span id="hinttext"></span></div>
+    <div data-slot="coach.extras"></div>
+    <details class="technical" id="notes">
+      <summary data-slot="coach.notesLabel"></summary>
+      <div data-slot="coach.notes"></div>
+    </details>
+  </aside>
+
+  <section class="tray" aria-label="零件盒">
+    <div class="tray-head"><span id="tray-title"></span><small id="tray-hint"></small></div>
+    <div class="mlist" id="mlist"></div>
+  </section>
+</main>
+<script>window.__mechbench={slug:'electric-toothbrush',built:true}</script>
+
+<div id="celebration" aria-hidden="true"></div>
+<pre id="debug"></pre>
+
+<script>
+window.addEventListener('error', e => {
+  const el = document.getElementById('fault');
+  el.style.display = 'block';
+  el.textContent = '工作台未能加载：' + e.message;
+});
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ==== kit/icons.mjs ==== */
+/* mechbench · 通用零件图标（24×24，描边）
+ * 物品在 manifest 里写 icon:'gear' 即可；要自定义就写 icon:'<path d="..."/>' 原样 SVG。
+ */
+const ICONS = {
+  box:'<rect x="4" y="8" width="16" height="11" rx="1.5"/><path d="M4 12h16M9 8V5h6v3"/>',
+  shell:'<path d="M4 9l8-4 8 4v7l-8 4-8-4z"/><path d="M4 9l8 4 8-4M12 13v7"/>',
+  shaft:'<path d="M3 12h18"/><path d="M6 9v6M18 9v6"/>',
+  gear:'<circle cx="12" cy="12" r="5"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3M6.5 6.5l2 2M15.5 15.5l2 2M17.5 6.5l-2 2M8.5 15.5l-2 2"/>',
+  spring:'<path d="M8 4h8M8 20h8"/><path d="M8 6l8 3-8 3 8 3-8 3"/>',
+  screw:'<path d="M9 4h6l-1 3H10z"/><path d="M10 7v10l2 3 2-3V7"/><path d="M10 11h4M10 14h4"/>',
+  plate:'<path d="M4 14l8-4 8 4-8 4z"/><path d="M7 13l3 1.5"/>',
+  disc:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/>',
+  piston:'<path d="M7 5h10v7H7z"/><path d="M10 12v6M14 12v6"/><path d="M7 8h10"/>',
+  valve:'<path d="M12 4v9"/><path d="M8 16h8l-4 4z"/><path d="M9 4h6"/>',
+  coil:'<circle cx="12" cy="12" r="6"/><path d="M12 6v12M9 6.8v10.4M15 6.8v10.4"/>',
+  battery:'<rect x="3" y="8" width="15" height="8" rx="1.5"/><path d="M21 11v2"/><path d="M7 10v4M11 10v4"/>',
+  bolt:'<path d="M12 4l5 3v6l-5 3-5-3V7z"/><circle cx="12" cy="10" r="2"/>',
+  lever:'<path d="M4 18h16"/><path d="M8 18l6-10"/><circle cx="15" cy="7" r="2"/>',
+  housing:'<rect x="4" y="6" width="16" height="13" rx="2"/><path d="M8 6V4h8v2M4 12h16"/>',
+  pin:'<path d="M5 12h14"/><path d="M8 9v6M16 9v6"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/>',
+};
+function iconSvg(name, color) {
+  const body = ICONS[name] || ICONS.box;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"${color ? ` style="--pc:${color}"` : ''}>${body}</svg>`;
+}
+
+/* ==== kit/lab.mjs ==== */
+/* mechbench · 布局渲染层
+ * 把 manifest 的插槽填进固定骨架，并把玩家操作转成事件。
+ * 不做三维（kit/scene.mjs）、不做业务规则（物品的 logic.mjs / main.mjs）。
+ */
+
+const COPY = {
+  brand: { title: '装配实验室', subtitle: '', mark: { a: '#c2452d', b: '#9aa6b2' } },
+  stage: {
+    title: '装一台能动的机器',
+    hint: '从下方零件盒选一块模块，拖到机身高亮处。',
+    gestures: '拖动空白处旋转 · 右键平移 · 滚轮缩放<br>触屏双指平移 / 缩放',
+  },
+  tray: { title: '零件盒', hint: '点选模块，再拖到高亮位置' },
+  coach: { tag: '第 {n} 关 / {total}', hintLabel: '工作台提示', notesLabel: '这是怎样的一套模型？' },
+  tools: [
+    { id: 'rotate', label: '旋转', pressed: true },
+    { id: 'pan', label: '平移' },
+    { id: 'cut', label: '剖开看' },
+    { id: 'home', label: '复位' },
+  ],
+  labels: {
+    exp: '本关要观察的', quiz: '判断一下', done: '本关完成',
+    installed: '✓ 已归位', picked: '拿起这块', preloaded: '{n} 组零件预装',
+  },
+};
+
+const q = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function pick(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? pick(base[k] || {}, v) : v;
+  }
+  return out;
+}
+function mountLab(item) {
+  const copy = pick(COPY, item.copy);
+  const chapters = item.chapters || [];
+  const modules = item.modules || [];
+  const tasks = item.tasks || [];
+  const readout = item.readout || [];
+  const tools = item.tools || copy.tools;
+
+  const lab = {
+    item,
+    chapters,
+    modules,
+    attached3d: false,
+    taskRenderer: null,
+    state: {
+      chapter: 0,
+      placed: [],
+      selected: null,
+      phase: 'build',
+      completed: [],
+      badges: [],
+      progress: null, // {done,total} 覆盖默认的「本关模块数」
+      readout: {},
+      visible: {},
+      hint: '',
+      feedback: '',
+      feedbackKind: '',
+      stageHint: '',
+      trayTitle: '',
+      trayHint: '',
+      cardsLocked: false,
+      discovery: '',
+    },
+    handlers: {},
+    on(name, fn) {
+      (lab.handlers[name] ||= []).push(fn);
+      return lab;
+    },
+    emit(name, payload) {
+      for (const fn of lab.handlers[name] || []) fn(payload);
+    },
+    moduleOf(id) {
+      return modules.find((m) => m.id === id);
+    },
+    chapterModules(i = lab.state.chapter) {
+      return modules.filter((m) => m.chapter === i);
+    },
+    /** 物品自定义教练面板：fn({chapter, phase, state, lab}) => {html, bind(root)} */
+    task(fn) {
+      lab.taskRenderer = fn;
+      return lab;
+    },
+    /** 发现卡：放一段“刚刚发现”的观察，传空串隐藏 */
+    setDiscovery(text) {
+      lab.state.discovery = text || '';
+      const box = q('#discovery');
+      if (!box) return lab;
+      box.hidden = !text;
+      if (text) q('#discovery-text').textContent = text;
+      return lab;
+    },
+    /** 通关撒花：纯装饰，reduced-motion 下静默 */
+    celebrate() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return lab;
+      const el = q('#celebration');
+      if (!el) return lab;
+      el.replaceChildren();
+      const colors = ['#c2452d', '#b8862f', '#2f6f9f', '#2f7d5c'];
+      for (let i = 0; i < 28; i++) {
+        const bit = document.createElement('i');
+        bit.style.background = colors[i % 4];
+        const angle = (i / 28) * Math.PI * 2;
+        bit.style.setProperty('--x', Math.cos(angle) * (95 + (i % 5) * 27) + 'px');
+        bit.style.setProperty('--y', Math.sin(angle) * 130 + 130 + 'px');
+        bit.style.setProperty('--r', i * 47 + 'deg');
+        el.appendChild(bit);
+      }
+      setTimeout(() => el.replaceChildren(), 1500);
+      return lab;
+    },
+    setInsetTitle(text) {
+      const el = q('#inset-title');
+      if (el) el.textContent = text;
+      return lab;
+    },
+    render,
+  };
+
+  /* ---------- 静态插槽：挂载时填一次 ---------- */
+  document.title = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.title"]').textContent = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.subtitle"]').textContent = item.brand?.subtitle || copy.brand.subtitle;
+  const mark = item.brand?.mark || copy.brand.mark;
+  q('[data-slot="brand.mark"]').innerHTML = mark.svg
+    ? mark.svg
+    : `<span style="position:absolute;left:6px;top:9px;width:9px;height:16px;border-radius:2px;background:${mark.a || '#c2452d'}"></span>
+       <span style="position:absolute;left:19px;top:6px;width:9px;height:16px;border-radius:2px;background:${mark.b || '#9aa6b2'}"></span>`;
+
+  q('[data-slot="stage.title"]').textContent = item.stage?.title || copy.stage.title;
+  q('[data-slot="stage.hint"]').textContent = item.stage?.hint || copy.stage.hint;
+  q('[data-slot="stage.gestures"]').innerHTML = item.stage?.gestures || copy.stage.gestures;
+  q('[data-slot="coach.hintLabel"]').textContent = copy.coach.hintLabel;
+  q('[data-slot="coach.notesLabel"]').textContent = copy.coach.notesLabel;
+  q('[data-slot="coach.notes"]').innerHTML = (item.notes || []).map((p) => `<p>${p}</p>`).join('');
+  q('#notes').hidden = !(item.notes || []).length;
+
+  q('[data-slot="journey"]').innerHTML = chapters
+    .map((c, i) => `<li data-chapter="${i}"><b>${i + 1}</b>${esc(c.title)}</li>`)
+    .join('');
+
+  q('[data-slot="stage.tools"]').innerHTML = tools
+    .map((t) => `<button data-tool="${t.id}" aria-pressed="${t.pressed ? 'true' : 'false'}">${esc(t.label)}</button>`)
+    .join('');
+
+  q('#readout').innerHTML = readout
+    .map((r) => `<div class="row"><span>${esc(r.label)}</span><b data-rd="${r.key}"${r.big ? ' class="big"' : ''}>—</b></div>`)
+    .join('');
+
+  q('[data-slot="coach.extras"]').innerHTML = (item.experiments || [])
+    .map((x) => {
+      if (x.control === 'toggle') {
+        return `<div class="labctl toggle"><span>${esc(x.label)}</span>
+          <button data-exp="${x.id}" aria-pressed="${x.value ? 'true' : 'false'}">${x.value ? '开' : '关'}</button></div>`;
+      }
+      if (x.control === 'button') return `<div class="labgrid"><button data-exp="${x.id}">${esc(x.label)}</button></div>`;
+      return `<label class="labctl">${esc(x.label)}<output data-exp-out="${x.id}">${x.value ?? ''}${x.unit || ''}</output>
+        <input type="range" data-exp="${x.id}" min="${x.min}" max="${x.max}" step="${x.step || 1}" value="${x.value ?? x.min}"></label>`;
+    })
+    .join('');
+
+  /* ---------- 动态插槽 ---------- */
+  function renderCards() {
+    const list = q('#mlist');
+    const chMods = lab.chapterModules();
+    if (!chMods.length) {
+      list.innerHTML = '<div class="empty"><div><strong>这一关没有模块</strong>检查 manifest 的 modules[].chapter。</div></div>';
+      return;
+    }
+    list.innerHTML = chMods
+      .map((m) => {
+        const installed = lab.state.placed.includes(m.id);
+        const sub = installed
+          ? copy.labels.installed
+          : m.sub || (m.parts?.length > 1 ? copy.labels.preloaded.replace('{n}', m.parts.length) : copy.labels.picked);
+        return `<button class="card" data-id="${m.id}" data-installed="${installed}" style="--pc:${m.color || '#5b6470'}"
+          aria-pressed="${lab.state.selected === m.id}"${installed || lab.state.cardsLocked ? ' disabled' : ''}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">${m.icon && m.icon.startsWith('<') ? m.icon : iconBody(m.icon || 'box')}</svg>
+          <span><strong>${esc(m.name)}</strong><small>${esc(sub)}</small></span></button>`;
+      })
+      .join('');
+  }
+
+  function renderTask() {
+    const ch = chapters[lab.state.chapter] || {};
+    if (lab.taskRenderer) {
+      const out = lab.taskRenderer({ chapter: ch, chapterIndex: lab.state.chapter, phase: lab.state.phase, state: lab.state, lab }) || {};
+      q('#task').innerHTML = out.html || '';
+      out.bind?.(q('#task'));
+      return;
+    }
+    const task = tasks[lab.state.chapter] || {};
+    const s = lab.state;
+    const head = `<p class="label">${esc(copy.labels.exp)}</p><h3>${esc(task.exp || ch.title || '')}</h3>
+      <p>${esc(task.expText || ch.subtitle || '')}</p>`;
+    if (s.phase === 'check' && task.options) {
+      q('#task').innerHTML =
+        head +
+        `<p class="label">${esc(copy.labels.quiz)}</p><div class="options">${task.options
+          .map((o, i) => `<button data-opt="${i}"><b>${'ABCD'[i]}</b>${esc(o)}</button>`)
+          .join('')}</div>`;
+      return;
+    }
+    if (s.phase === 'done') {
+      q('#task').innerHTML =
+        head +
+        `<div class="badge">${esc(ch.badge || '✓')}</div><p>${esc(task.why || '')}</p>
+         <div class="sub">${
+           s.chapter < chapters.length - 1 ? '<button class="primary" data-act="next">进入下一关</button>' : ''
+         }<button data-act="replay">再看一遍</button></div>`;
+      return;
+    }
+    q('#task').innerHTML =
+      head +
+      `<div class="sub"><button class="primary" data-act="place"${s.selected ? '' : ' disabled'}>装到这里</button>
+       <button data-act="undo"${s.placed.length ? '' : ' disabled'}>撤回一步</button></div>`;
+  }
+
+  function render() {
+    const s = lab.state;
+    for (const li of document.querySelectorAll('.journey li')) {
+      const i = Number(li.dataset.chapter);
+      li.className = s.completed?.[i] ? 'done' : i === s.chapter ? 'active' : '';
+      li.querySelector('b').textContent = s.completed?.[i] ? '✓' : i + 1;
+    }
+    const ch = chapters[s.chapter] || {};
+    const co = s.coach || {};
+    q('[data-slot="coach.tag"]').textContent =
+      co.tag ?? (copy.coach.tag || '').replace('{n}', s.chapter + 1).replace('{total}', chapters.length);
+    q('[data-slot="coach.title"]').textContent = co.title ?? ch.title ?? '';
+    q('[data-slot="coach.intro"]').textContent = co.intro ?? ch.subtitle ?? '';
+    q('[data-slot="stage.hint"]').textContent = s.stageHint || item.stage?.hint || copy.stage.hint;
+
+    const chMods = lab.chapterModules();
+    const p = s.progress || { done: chMods.filter((m) => s.placed.includes(m.id)).length, total: chMods.length };
+    const bar = q('#progress');
+    bar.setAttribute('aria-valuemax', String(p.total || 1));
+    bar.setAttribute('aria-valuenow', String(p.done));
+    q('#pfill').style.width = (p.total ? (p.done / p.total) * 100 : 0) + '%';
+    q('#plabel').textContent = `${p.done} / ${p.total} 块模块`;
+    q('#bcount').textContent = `${(s.badges || []).length} 个徽章`;
+
+    q('#tray-title').textContent = s.trayTitle || item.tray?.title || copy.tray.title;
+    q('#tray-hint').textContent = s.trayHint || item.tray?.hint || copy.tray.hint;
+
+    renderTask();
+    renderCards();
+
+    const fb = q('#feedback');
+    fb.className = 'feedback' + (s.feedbackKind ? ' ' + s.feedbackKind : '');
+    if (s.feedback) fb.textContent = s.feedback;
+    q('#hinttext').textContent = s.hint || '';
+
+    const ro = q('#readout');
+    ro.classList.toggle('on', !!s.visible.readout);
+    for (const b of ro.querySelectorAll('[data-rd]')) {
+      const v = s.readout[b.dataset.rd];
+      if (v != null) b.textContent = v;
+    }
+    // 有三维时 socket 的显隐与位置由 kit/scene.mjs 负责
+    if (!lab.attached3d) q('#socket').hidden = !(s.selected && s.phase === 'build');
+  }
+
+  /* ---------- 交互：只发事件 ---------- */
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (card && !card.disabled) return lab.emit('select', card.dataset.id);
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act) return lab.emit(act);
+    const tool = e.target.closest('[data-tool]')?.dataset.tool;
+    if (tool) {
+      if (tool === 'cut') {
+        const b = e.target.closest('[data-tool]');
+        b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+      }
+      return lab.emit('tool', tool);
+    }
+    if (e.target.id === 'free-lab') return lab.emit('free');
+    if (e.target.id === 'restart') return lab.emit('restart');
+    if (e.target.id === 'socket') return lab.emit('place');
+    const opt = e.target.closest('[data-opt]');
+    if (opt) return lab.emit('answer', Number(opt.dataset.opt));
+    const exp = e.target.closest('[data-exp]');
+    if (exp) {
+      const id = exp.dataset.exp;
+      const spec = (item.experiments || []).find((x) => x.id === id) || {};
+      const value =
+        exp.tagName === 'BUTTON'
+          ? spec.control === 'toggle'
+            ? exp.getAttribute('aria-pressed') !== 'true'
+            : null
+          : Number(exp.value);
+      return lab.emit('experiment', { id, value });
+    }
+  });
+
+  document.addEventListener('input', (e) => {
+    const id = e.target.dataset?.exp;
+    if (!id) return;
+    const out = document.querySelector(`[data-exp-out="${id}"]`);
+    const exp = (item.experiments || []).find((x) => x.id === id);
+    if (out) out.textContent = e.target.value + (exp?.unit || '');
+    lab.emit('experiment', { id, value: Number(e.target.value) });
+  });
+
+  render();
+  // 调试钩子：?debug=1 时把 lab（含 lab.stage）挂到 window，方便控制台/验收排查
+  if (new URLSearchParams(location.search).has('debug')) window.__lab = lab;
+  return lab;
+}
+
+function iconBody(name) {
+  const set = typeof ICONS === 'undefined' ? {} : ICONS;
+  return set[name] || set.box || '<rect x="4" y="8" width="16" height="11" rx="1.5"/>';
+}
+
+/* ==== kit/scene.mjs ==== */
+/* mechbench · 三维舞台（kit）
+ * 相机/灯光/地面/剖切/目标轮廓/拾取/拖放/取景/循环 —— 所有物品共用。
+ * 物品只给几何（model.mjs）、数值（manifest.scene）、回调。
+ */
+
+
+
+const vec = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+
+const DEFAULT = {
+  spawn: [255, 26, 155],
+  renderer: { exposure: 0.94, pixelRatio: 1.5 },
+  camera: { fov: 32, near: 2, far: 6000, defaultFocus: 'engine' },
+  orbit: { minDistance: 190, maxDistance: 1800, minPolar: 0.06, maxPolar: 0.54 },
+  bench: { y: -110, color: 0xdfe5ea, size: 4000 },
+  env: 0.48,
+  lights: {
+    hemi: [0xffffff, 0x9aa7b3, 0.62],
+    key: { color: 0xfff6ec, intensity: 2.0, pos: [-190, 300, 240] },
+    fill: { color: 0xdce8f4, intensity: 0.85, pos: [280, 90, 240] },
+    rim: { color: 0xcfe0f0, intensity: 0.8, pos: [160, 200, -300] },
+  },
+  cut: { normal: [0, 0, -1], constant: 0 },
+  ghost: { color: 0x9aa4ad, opacity: 0.62 },
+  target: { color: 0x2f6f9f, opacity: 0.17 },
+  focus: {},
+  nearRadius: { wide: 52, narrow: 66 },
+};
+
+function merge(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? merge(base[k] || {}, v) : v;
+  }
+  return out;
+}
+function createStage(opts) {
+  const cfg = merge(DEFAULT, opts.config);
+  const host = opts.host;
+  const stageEl = opts.stageEl;
+  const worldGroup = opts.world;
+  const modules = opts.modules || [];
+  const model = opts.model || {};
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 渲染器 / 场景 ---------- */
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, cfg.renderer.pixelRatio));
+  renderer.setSize(stageEl.clientWidth, stageEl.clientHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = cfg.renderer.exposure;
+  renderer.localClippingEnabled = true;
+  renderer.domElement.setAttribute('aria-label', '三维装配台：选中模块后拖到安装位置，也可用「装到这里」按钮');
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.add(worldGroup);
+  const camera = new THREE.PerspectiveCamera(cfg.camera.fov, stageEl.clientWidth / stageEl.clientHeight, cfg.camera.near, cfg.camera.far);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.085;
+  controls.enablePan = true;
+  controls.screenSpacePanning = true;
+  controls.rotateSpeed = 0.62;
+  controls.zoomSpeed = 0.8;
+  controls.panSpeed = 0.8;
+  controls.minDistance = cfg.orbit.minDistance;
+  controls.maxDistance = cfg.orbit.maxDistance;
+  controls.minPolarAngle = Math.PI * cfg.orbit.minPolar;
+  controls.maxPolarAngle = Math.PI * cfg.orbit.maxPolar;
+  controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  scene.environmentIntensity = cfg.env;
+
+  const [hs, hg, hi] = cfg.lights.hemi;
+  scene.add(new THREE.HemisphereLight(hs, hg, hi));
+  for (const k of ['key', 'fill', 'rim']) {
+    const l = cfg.lights[k];
+    if (!l) continue;
+    const dir = new THREE.DirectionalLight(l.color, l.intensity);
+    dir.position.set(...l.pos);
+    scene.add(dir);
+  }
+
+  if (cfg.bench !== false) {
+  const bench = new THREE.Mesh(
+    new THREE.PlaneGeometry(cfg.bench.size, cfg.bench.size),
+    new THREE.MeshStandardMaterial({ color: cfg.bench.color, roughness: 0.97, metalness: 0 })
+  );
+  bench.rotation.x = -Math.PI / 2;
+  bench.position.y = cfg.bench.y;
+  scene.add(bench);
+  }
+
+  /* ---------- 剖切 ---------- */
+  const CUT = new THREE.Plane(vec(...cfg.cut.normal), cfg.cut.constant);
+  const GHOST = new THREE.MeshStandardMaterial({
+    color: cfg.ghost.color, roughness: 0.9, metalness: 0,
+    transparent: true, opacity: cfg.ghost.opacity, depthWrite: false,
+    side: THREE.DoubleSide, clippingPlanes: [CUT],
+  });
+  const TARGET = new THREE.MeshBasicMaterial({
+    color: cfg.target.color, transparent: true, opacity: cfg.target.opacity,
+    depthWrite: false, side: THREE.DoubleSide,
+  });
+  const ghostGroup = new THREE.Group();
+  scene.add(ghostGroup);
+  let targetKey = null;
+
+  /* ---------- 视图状态 ---------- */
+  const view = {
+    crankDeg: 0, camDeg: 0, speed: 1, running: false, cut: false, solid: false,
+    navigation: 'rotate', selected: null, offsets: new Map(), drag: null, focus: cfg.camera.defaultFocus,
+    hintOn: false,
+  };
+  const SPAWN = vec(...cfg.spawn);
+
+  const byKey = model.byKey;
+  const info = new Map(
+    modules.map((m) => {
+      const b = model.moduleBounds(m.parts);
+      return [m.id, { ...m, bounds: b, center: b.getCenter(vec()), size: b.getSize(vec()) }];
+    })
+  );
+
+  const socketEl = document.getElementById('socket');
+  const previewEl = document.getElementById('preview-label');
+  const state = () => (opts.getState ? opts.getState() : {});
+
+  /* ---------- 摆位与材质 ---------- */
+  const moduleOffsetTarget = (id) => {
+    if (state().placed?.includes(id)) return vec();
+    if (typeof cfg.spawnFor === 'function') {
+      const v = cfg.spawnFor(id, info.get(id), state(), view);
+      if (v) return v.isVector3 ? v.clone() : vec(...v);
+    }
+    return SPAWN.clone();
+  };
+
+  function render(dt = 1) {
+    const s = state();
+    for (const m of modules) {
+      const installed = s.placed?.includes(m.id);
+      const selected = s.selected === m.id;
+      const visible = installed || selected;
+      let off = view.offsets.get(m.id);
+      if (!off) {
+        off = moduleOffsetTarget(m.id).clone();
+        view.offsets.set(m.id, off);
+      }
+      if (view.drag?.id !== m.id) {
+        const want = moduleOffsetTarget(m.id);
+        if (reduced || dt === 1) off.copy(want);
+        else off.lerp(want, Math.min(1, dt * 12));
+      }
+      for (const key of m.parts) {
+        const p = byKey.get(key);
+        if (!p) continue;
+        p.g.visible =
+          visible && !(cfg.hiddenPart && cfg.hiddenPart(key, s));
+        p.g.position.copy(off);
+        materials(p, installed || view.solid);
+      }
+    }
+    model.applyMotion(view, s);
+    worldGroup.updateMatrixWorld(true);
+  }
+
+  // 剖开：外壳换玻璃；带 userData.cutaway 的网格（被切掉的那半）直接隐藏
+  function materials(p, showSolid) {
+    const cutting = showSolid && view.cut;
+    p.g.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.userData.cutaway) o.visible = !cutting;
+      const ghost = cutting && (p.shell || o.userData.socketCover) && !(view.focus !== 'all' && view.focus === p.key);
+      if (ghost) {
+        if (!p.ghostMat) {
+          p.ghostMat = GHOST.clone();
+          p.ghostMat.opacity = 0.58 + 0.06 * Math.min(p.layer || 0, 2);
+        }
+        o.material = p.ghostMat;
+        o.renderOrder = 3;
+      } else if (o.material !== o.userData.omat) {
+        o.material = o.userData.omat;
+        o.renderOrder = 0;
+      }
+    });
+  }
+
+  /* ---------- 目标轮廓 ---------- */
+  function setTarget(keys) {
+    const want = keys ? keys.join('|') : null;
+    const always = typeof opts.targetAlways === 'function' ? opts.targetAlways() : !!opts.targetAlways;
+    const show = !!keys && keys.length && (view.hintOn || always);
+    if (want === targetKey && !show) {
+      ghostGroup.visible = show;
+      return;
+    }
+    for (const c of [...ghostGroup.children]) ghostGroup.remove(c);
+    targetKey = want;
+    if (!show) {
+      ghostGroup.visible = false;
+      return;
+    }
+    for (const key of keys) {
+      const p = byKey.get(key);
+      if (!p) continue;
+      const clone = p.obj.clone(true);
+      clone.traverse((o) => {
+        if (o.isMesh) o.material = TARGET;
+      });
+      ghostGroup.add(clone);
+    }
+    ghostGroup.visible = true;
+  }
+
+  /* ---------- 相机 ---------- */
+  const box = new THREE.Box3();
+  for (const p of model.PARTS || []) box.union(new THREE.Box3().setFromObject(p.g));
+  const MODEL_CENTER = box.getCenter(vec());
+  const MODEL_SIZE = box.getSize(vec());
+
+  function focusSpec(name) {
+    const f = cfg.focus[name] || {};
+    const dir = f.dir || [0, 18];
+    if (f.box) {
+      const b = typeof f.box === 'function' ? f.box(state(), view) : f.box;
+      return { center: vec(...b[0]), size: vec(...b[1]), dir, fit: f.fit || 1 };
+    }
+    if (name === cfg.camera.defaultFocus || !name) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
+    const p = byKey.get(name);
+    if (!p) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
+    const b = new THREE.Box3().setFromObject(p.g);
+    const size = b.getSize(vec());
+    size.set(Math.max(size.x, 30), Math.max(size.y, 30), Math.max(size.z, 30));
+    return { center: b.getCenter(vec()), size, dir, fit: f.fit || 1.75 };
+  }
+
+  function fitCamera(name = cfg.camera.defaultFocus) {
+    view.focus = name;
+    const { center, size, dir, fit } = focusSpec(name);
+    const f = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const narrow = stageEl.clientWidth < 620;
+    const usableW = stageEl.clientWidth - (narrow ? 40 : 90);
+    const usableH = stageEl.clientHeight - (narrow ? 150 : 40);
+    const dist =
+      Math.max(
+        (size.y / (2 * f)) * (stageEl.clientHeight / usableH),
+        (size.x / (2 * f * camera.aspect)) * (stageEl.clientWidth / usableW)
+      ) * fit + 40;
+    const [yaw, pitch] = dir.map((d) => (d * Math.PI) / 180);
+    camera.position.copy(center).add(vec(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).multiplyScalar(dist));
+    controls.target.copy(center);
+    controls.update();
+  }
+
+  let userNavigated = false;
+  controls.addEventListener('start', () => {
+    userNavigated = true;
+  });
+
+  /* ---------- 导航 ---------- */
+  function setNavigation(mode) {
+    view.navigation = mode;
+    controls.mouseButtons.LEFT = mode === 'pan' ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.touches.ONE = mode === 'pan' ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+    for (const b of document.querySelectorAll('[data-tool]')) {
+      if (b.dataset.tool === 'rotate' || b.dataset.tool === 'pan') b.setAttribute('aria-pressed', String(b.dataset.tool === mode));
+    }
+    renderer.domElement.style.cursor = mode === 'pan' ? 'move' : 'grab';
+  }
+
+  /* ---------- 屏幕坐标 ---------- */
+  function project(v) {
+    const p = v.clone().project(camera);
+    return { x: (p.x * 0.5 + 0.5) * stageEl.clientWidth, y: (-0.5 * p.y + 0.5) * stageEl.clientHeight };
+  }
+
+  function nearTarget(id) {
+    const next = opts.nextModule ? opts.nextModule() : null;
+    if (!next || !info.get(id)) return false;
+    const a = project(info.get(id).center.clone().add(view.offsets.get(id) || vec()));
+    const b = project(info.get(next.id).center);
+    const r = stageEl.clientWidth < 620 ? cfg.nearRadius.narrow : cfg.nearRadius.wide;
+    return Math.hypot(a.x - b.x, a.y - b.y) < r;
+  }
+
+  function overlay() {
+    const s = state();
+    const next = opts.nextModule ? opts.nextModule() : null;
+    const showSocket = !!next && s.phase === 'build' && !s.lab;
+    if (socketEl) {
+      socketEl.hidden = !showSocket;
+      if (showSocket) {
+        const md = info.get(next.id);
+        const p = project(vec(md.center.x, md.bounds.max.y + 16, md.center.z));
+        socketEl.style.left = p.x + 'px';
+        socketEl.style.top = p.y + 'px';
+        socketEl.disabled = !s.selected;
+        socketEl.classList.toggle('near', !!s.selected && nearTarget(s.selected));
+      }
+    }
+    const sel = s.selected && info.get(s.selected);
+    if (previewEl) {
+      previewEl.hidden = !sel || s.phase !== 'build';
+      if (sel) {
+        const c = sel.center.clone().add(view.offsets.get(sel.id) || vec());
+        const p = project(vec(c.x, c.y + sel.size.y / 2 + 14, c.z));
+        previewEl.style.left = p.x + 'px';
+        previewEl.style.top = p.y + 'px';
+      }
+    }
+    if (next) setTarget(next.parts);
+    else setTarget(null);
+  }
+
+  /* ---------- 拾取与拖放 ---------- */
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const clickables = [];
+  for (const p of model.PARTS || []) p.g.traverse((o) => o.isMesh && clickables.push(o));
+
+  function rayAt(e) {
+    const r = renderer.domElement.getBoundingClientRect();
+    pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, 1 - ((e.clientY - r.top) / r.height) * 2);
+    raycaster.setFromCamera(pointer, camera);
+  }
+  const visibleIn = (o) => {
+    for (let x = o; x; x = x.parent) if (!x.visible) return false;
+    return true;
+  };
+  function pickKey(e) {
+    rayAt(e);
+    const hit = raycaster.intersectObjects(clickables.filter(visibleIn), false)[0];
+    if (!hit) return null;
+    let o = hit.object;
+    while (o && !o.userData.key) o = o.parent;
+    return o ? o.userData.key : null;
+  }
+
+  const canDrag = () => (opts.canDrag ? opts.canDrag() : true) && view.navigation !== 'pan';
+  let downPt = null;
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    downPt = { x: e.clientX, y: e.clientY };
+  }, { capture: true });
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !canDrag()) return;
+    const s = state();
+    const m = info.get(s.selected);
+    if (!m) return;
+    rayAt(e);
+    const objs = m.parts.map((k) => byKey.get(k).g).filter(Boolean);
+    const hit = raycaster.intersectObjects(objs, true).find((h) => visibleIn(h.object));
+    if (!hit) return;
+    const off = view.offsets.get(m.id) || vec();
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(vec()), m.center.clone().add(off));
+    const point = raycaster.ray.intersectPlane(plane, vec());
+    if (!point) return;
+    view.drag = { id: m.id, pointerId: e.pointerId, plane, start: point.clone(), offset: off.clone() };
+    controls.enabled = false;
+    renderer.domElement.setPointerCapture?.(e.pointerId);
+    renderer.domElement.style.cursor = 'grabbing';
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!view.drag || view.drag.pointerId !== e.pointerId) return;
+    rayAt(e);
+    const p = raycaster.ray.intersectPlane(view.drag.plane, vec());
+    if (p) {
+      if (!view.offsets.has(view.drag.id)) view.offsets.set(view.drag.id, vec());
+      view.offsets.get(view.drag.id).copy(view.drag.offset).add(p.sub(view.drag.start));
+    }
+    socketEl?.classList.toggle('near', nearTarget(view.drag.id));
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  function releaseDrag(e, cancel) {
+    if (!view.drag || view.drag.pointerId !== e.pointerId) return;
+    const id = view.drag.id;
+    const onTarget = !cancel && nearTarget(id);
+    view.drag = null;
+    controls.enabled = true;
+    renderer.domElement.releasePointerCapture?.(e.pointerId);
+    setNavigation(view.navigation);
+    socketEl?.classList.remove('near');
+    if (!cancel && onTarget) opts.onDrop?.(id, true);
+    else if (!cancel) opts.onDrop?.(id, false);
+    e.stopImmediatePropagation();
+  }
+  renderer.domElement.addEventListener('pointerup', (e) => releaseDrag(e, false), { capture: true });
+  renderer.domElement.addEventListener('pointercancel', (e) => releaseDrag(e, true), { capture: true });
+
+  renderer.domElement.addEventListener('click', (e) => {
+    // 旋转/平移后松手也会派发 click：位移 > 5px 就不算点击
+    if (downPt && Math.hypot(e.clientX - downPt.x, e.clientY - downPt.y) > 5) return;
+    if (view.drag) return;
+    const k = pickKey(e);
+    if (k && opts.onPickKey) opts.onPickKey(k, view.focus === k);
+  });
+
+  /* ---------- 局部放大窗（同一个 canvas 里用 scissor 画第二视角） ---------- */
+  const insetEl = document.getElementById('inset');
+  const insetCam = new THREE.PerspectiveCamera(cfg.inset?.fov || 36, 1, cfg.inset?.near || 0.1, cfg.inset?.far || 500);
+  function drawInset() {
+    if (!insetEl || !cfg.inset) return;
+    const s = state();
+    const ic = cfg.inset;
+    const fits = stageEl.clientWidth > (ic.minWidth || 760) && stageEl.clientHeight > (ic.minHeight || 430);
+    const spec = fits && ic.visible?.(s, view) ? ic.target?.(s, view) : null;
+    const part = spec && byKey.get(spec.part);
+    insetEl.hidden = !part;
+    if (!part) return;
+    const title = insetEl.querySelector('#inset-title');
+    if (title && spec.title) title.textContent = spec.title;
+    const target = part.g.localToWorld(vec(...(spec.local || [0, 0, 0])));
+    insetCam.position.copy(target).add(vec(...spec.offset));
+    insetCam.lookAt(target);
+    const r = insetEl.getBoundingClientRect(), base = stageEl.getBoundingClientRect();
+    if (r.width < 10 || r.height < 10) return;
+    insetCam.aspect = r.width / r.height;
+    insetCam.updateProjectionMatrix();
+    const x = r.left - base.left, y = stageEl.clientHeight - (r.bottom - base.top);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+    renderer.setScissor(x, y, r.width, r.height);
+    renderer.setViewport(x, y, r.width, r.height);
+    renderer.setScissorTest(true);
+    renderer.clearDepth();
+    renderer.render(scene, insetCam);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+  }
+
+  /* ---------- 尺寸与循环 ---------- */
+  function resize() {
+    const w = stageEl.clientWidth, h = stageEl.clientHeight;
+    if (!w || !h) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    if (!userNavigated) fitCamera(view.focus);
+  }
+  new ResizeObserver(resize).observe(stageEl);
+
+  function start() {
+    let prev = performance.now();
+    renderer.setAnimationLoop((now) => {
+      const dt = Math.min(0.05, Math.max(0, (now - prev) / 1000));
+      prev = now;
+      opts.tick?.(dt);
+      render(dt);
+      controls.update();
+      overlay();
+      renderer.render(scene, camera);
+      drawInset();
+    });
+  }
+
+  resize();
+  render(1);
+  fitCamera(view.focus);
+
+  return {
+    view, renderer, scene, camera, controls, info, spawn: SPAWN, fitCamera, setNavigation, project,
+    nearTarget, overlay, render, start, setTarget, resize,
+    get solidScreen() {
+      return renderer.domElement;
+    },
+  };
+}
+
+
+/* ==== electric-toothbrush/model.mjs ==== */
+
+/* 电动牙刷 · 几何与运动（几何段从旧项目 model.html 原样迁移，未改尺寸）
+ * 基准：1 unit = 1 mm；通用电磁摆动轴式教学模型，160 × 20 × 22 mm 外形及内部参数均为估算，非品牌复刻。
+ * 零件清单（21 件）：前壳/后壳/底盖/底盖密封圈/内骨架/AAA 电池/触片弹簧/驱动板/按键/
+ * 线圈磁轭/永磁转子/金属轴/扭簧/两轴套/轴唇封/D 形内衬/空心刷颈/刷毛。
+ */
+const world = new THREE.Group();
+
+const M={shell:new THREE.MeshPhysicalMaterial({color:0xf6f5ef,roughness:.3,clearcoat:.3}),teal:new THREE.MeshStandardMaterial({color:0x287363,roughness:.56}),chassis:new THREE.MeshStandardMaterial({color:0x53695e,roughness:.65}),metal:new THREE.MeshStandardMaterial({color:0xaab8bd,metalness:.85,roughness:.3}),gold:new THREE.MeshStandardMaterial({color:0xc49c50,metalness:.75,roughness:.28}),copper:new THREE.MeshStandardMaterial({color:0xcb7a43,metalness:.65,roughness:.33}),rubber:new THREE.MeshStandardMaterial({color:0x263c35,roughness:.84}),battery:new THREE.MeshStandardMaterial({color:0x496e8e,metalness:.2,roughness:.38}),pcb:new THREE.MeshStandardMaterial({color:0x3a7152,roughness:.68}),white:new THREE.MeshStandardMaterial({color:0xe4eeeb,roughness:.4}),bristle:new THREE.MeshStandardMaterial({color:0x87c4bb,roughness:.5}),dark:new THREE.MeshStandardMaterial({color:0x344542,roughness:.6})};
+const DRIVE_AMPLITUDE=THREE.MathUtils.degToRad(3);
+const TAU=Math.PI*2,V=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
+function group(){return new THREE.Group()}
+function mesh(g,m,parent,pos){const o=new THREE.Mesh(g,m);if(pos)o.position.copy(pos);if(parent)parent.add(o);return o}
+function lathe(profile,seg=64,start=0,len=TAU){return new THREE.LatheGeometry(profile.map(([y,r])=>new THREE.Vector2(r,y)),seg,start,len)}
+function tube(y0,y1,ro,ri,mat,parent,start=0,len=TAU){return mesh(lathe([[y0,ri],[y0,ro],[y1,ro],[y1,ri],[y0,ri]],64,start,len),mat,parent)}
+function cylinder(radius,height,mat,parent,pos,axis='y'){const o=mesh(new THREE.CylinderGeometry(radius,radius,height,40),mat,parent,pos);if(axis==='z')o.rotation.x=Math.PI/2;return o}
+function box(w,h,d,mat,parent,pos){return mesh(new THREE.BoxGeometry(w,h,d),mat,parent,pos)}
+function wire(points,r,mat,parent){return mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p=>V(...p))),Math.max(18,points.length*5),r,6,false),mat,parent)}
+function helix(y0,y1,radius,wireR,turns,mat,parent){const pts=[];for(let i=0;i<=turns*32;i++){const t=i/(turns*32);pts.push([radius*Math.cos(t*turns*TAU),y0+(y1-y0)*t,radius*Math.sin(t*turns*TAU)])}return wire(pts,wireR,mat,parent)}
+function torus(radius,wireR,mat,parent,y){const o=mesh(new THREE.TorusGeometry(radius,wireR,10,64),mat,parent,V(0,y,0));o.rotation.x=Math.PI/2;return o}
+// D 形截面为真实几何；内衬分前后半件，透视仅剖开前半，保留实体壁厚。
+function dShaft(y0,y1,r,flat){const a=Math.acos(flat/r),pts=[];for(let i=0;i<=80;i++){const t=a+(TAU-2*a)*i/80;pts.push(new THREE.Vector2(r*Math.cos(t),r*Math.sin(t)));}const g=new THREE.ExtrudeGeometry(new THREE.Shape(pts),{depth:y1-y0,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(0,y0,0);return g;}
+function socketHalf(y0,y1,sign,relief=false){const ro=2.62,ri=1.47,flat=.92,a=Math.acos(flat/ri),pts=[];for(let i=0;i<=48;i++){const t=Math.PI*i/48;pts.push([ro*Math.cos(t),ro*Math.sin(t)]);}for(let i=0;i<=48;i++){const t=Math.PI+(a-Math.PI)*i/48;pts.push([ri*Math.cos(t),ri*Math.sin(t)]);}if(relief)pts.push([flat,.4],[1.6,.4],[1.6,0]);else pts.push([flat,0]);const shape=new THREE.Shape(pts.map(([x,z])=>new THREE.Vector2(x,sign*z)));const g=new THREE.ExtrudeGeometry(shape,{depth:y1-y0,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(0,y0,0);return g;}
+function sealSeat(sign){const pts=[];for(let i=0;i<=48;i++){const a=Math.PI*i/48;pts.push(new THREE.Vector2(3.4*Math.cos(a),sign*3.74*Math.sin(a)));}for(let i=0;i<=48;i++){const a=Math.PI*(1-i/48);pts.push(new THREE.Vector2(2.4*Math.cos(a),sign*2.4*Math.sin(a)));}const g=new THREE.ExtrudeGeometry(new THREE.Shape(pts),{depth:.8,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(0,107.2,0);return g;}
+function printLabel(text,w,h,parent,pos){const c=document.createElement('canvas');c.width=512;c.height=Math.round(512*h/w);const ctx=c.getContext('2d');ctx.fillStyle='#e0eae5';ctx.font=`500 ${Math.floor(c.height*.65)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,c.width/2,c.height/2);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;const m=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false});const o=mesh(new THREE.PlaneGeometry(w,h),m,parent,pos);o.userData.label=true;return o}
+const parts=[],byKey=new Map();
+function addPart(key,name,obj,desc,size,color,options={}){const holder=group();holder.add(obj);world.add(holder);obj.traverse(o=>{if(!o.isMesh)return;o.material=o.material.clone();o.userData.omat=o.material;o.userData.key=key;o.castShadow=false;});const p={key,name,obj,g:holder,desc,size,color,...options,e:0,homed:false,base:V(),ex:V(),layer:0};parts.push(p);byKey.set(key,p);return p}
+const bodyProfile=[[9,8.2],[10,9.5],[15,10],[85,10],[96,9.4],[103,6],[107,3.4],[108,3.4],[108,2.4],[103,4.8],[96,8.4],[85,9],[15,9],[10,8.4],[9,8.2]];
+const frontShell=group();
+for(const [ya,yb] of [[10,62],[72,85]]){const o=tube(ya,yb,10,9,M.shell,frontShell,-Math.PI/2+.012,Math.PI-.024);o.scale.z=1.1;}
+for(const [a,len]of [[-Math.PI/2+.012,Math.PI/2-.36-.012],[.36,Math.PI/2-.36-.012]]){const o=tube(62,72,10,9,M.shell,frontShell,a,len);o.scale.z=1.1;}
+mesh(lathe([[85,9],[85,10],[96,9.4],[103,6],[107,3.4],[108,3.4],[108,2.4],[103,4.8],[96,8.4],[85,9]],64,-Math.PI/2+.012,Math.PI-.024),M.shell,frontShell).scale.z=1.1;
+mesh(lathe([[9,8.2],[10,9.5],[10,10],[10,9],[9,8.2]],48,-Math.PI/2+.012,Math.PI-.024),M.shell,frontShell).scale.z=1.1;
+mesh(sealSeat(-1),M.shell,frontShell);
+addPart('front','前侧外壳',frontShell,'前后半壳卡扣合拢；按钮处为真实贯通孔。','壁厚约 1 mm · 估算','#dedfd6',{shell:true});
+
+const rearShell=group();mesh(lathe(bodyProfile,64,Math.PI/2+.012,Math.PI-.024),M.shell,rearShell).scale.z=1.1;
+for(const y of [18,58,78,92])for(const x of [-6.6,6.6])box(1.8,1.2,2.5,M.shell,rearShell,V(x,y,-4.95));
+mesh(sealSeat(1),M.shell,rearShell);
+addPart('rear','后侧外壳',rearShell,'内筋固定骨架；壳口圆形环座固定轴封。金属轴穿过壳口，外壳不与刷头传扭。','包络 Ø20 × 99 mm · 估算','#dedfd6',{shell:true});
+const cap=group();mesh(lathe([[0,0],[0,7.5],[1,9.2],[3,10],[6.8,10],[7.4,9.2],[8.6,9.2],[9,9],[9,8],[3,8],[3,0]]),M.teal,cap).scale.z=1.1;
+cylinder(2.8,8.4,M.teal,cap,V(0,7.2,0));
+for(const x of [-7.8,7.8])box(1.4,2,3,M.teal,cap,V(x,9,0));
+addPart('cap','卡口底盖',cap,'旋转卡口固定，打开后才能抽出电池。','Ø20 × 9 mm · 估算','#287363',{shell:true});
+const seal=group();torus(9.3,.5,M.rubber,seal,8).scale.y=1.1;addPart('seal','底盖密封圈',seal,'嵌入底盖槽内，随底盖取下。','Ø18.6 × 1 mm · 估算','#35453d');
+const chassis=group();for(const x of [-6.8,6.8])box(1.3,83,5,M.chassis,chassis,V(x,52.5,-1.4));
+for(const y of [11,61,78.4,94])box(14,1.6,1.4,M.chassis,chassis,V(0,y,y===11?-6:-4.8));
+tube(77.5,79,3.2,2.39,M.chassis,chassis);box(6.4,1.5,1.4,M.chassis,chassis,V(0,78.25,-3.6));
+for(const x of [-6.2,6.2])wire([[x,93,-1.8],[Math.sign(x)*1.3,104.5,-2.4]],.55,M.chassis,chassis);
+tube(103.5,105.5,3,2.39,M.chassis,chassis);box(1.4,.8,3,M.chassis,chassis,V(5,96,-1));
+for(const x of [-5.5,5.5])for(const y of [62,72])box(2.6,2,2,M.chassis,chassis,V(x,y,-2.6));
+addPart('chassis','内骨架与轴套座',chassis,'壳体内筋夹持骨架；后横梁固定磁轭，斜撑连接上轴套座；侧台固定扭簧下腿。','约 15 × 95 × 9 mm · 估算','#53695e');
+const battery=group();cylinder(5.25,42.3,M.battery,battery,V(0,36.85,0));cylinder(5.2,.7,M.metal,battery,V(0,15.35,0));cylinder(5.2,.6,M.metal,battery,V(0,58.3,0));cylinder(1.7,.9,M.metal,battery,V(0,59.05,0));printLabel('AAA',7,3,battery,V(0,39,5.29));printLabel('+',2,2,battery,V(0,55,5.3));
+addPart('battery','AAA 电池',battery,'标准 LR03 电池，正极朝向电机；两端触片夹持。','Ø10.5 × 44.5 mm · 标准尺寸','#496e8e');
+const contacts=group(),capSpring=group();contacts.add(capSpring);helix(11.5,14.9,2.5,.18,3,M.metal,capSpring);wire([[2.5,11.5,0],[4,11,-1.7],[5.8,10.5,-3.3]],.2,M.copper,capSpring);box(5,.35,5,M.metal,contacts,V(0,59.8,0));wire([[0,60,-2],[0,61,-3],[2,62,-3]],.22,M.copper,contacts);wire([[5.8,10.5,-3.3],[5.8,12,-3.3],[5.8,61,-3.3],[4,63,-3]],.2,M.copper,contacts);
+addPart('contacts','弹簧与电池触片',contacts,'底弹簧固定于底盖，打开时随盖移开；上触片卡在骨架，导线连控制板。','弹簧线径 0.36 mm · 估算','#aab8bd');
+const pcb=group();box(9,14,1,M.pcb,pcb,V(0,67,-2.6));box(3.2,3.2,1.5,M.dark,pcb,V(0,67,-1.3));cylinder(1,1.1,M.metal,pcb,V(0,67,.1),'z');for(const x of [-3,3])for(const y of [63,71])box(1.2,2,1.4,M.metal,pcb,V(x,y,-1.5));wire([[-2,73,-2],[-4.3,76,-2],[-4.3,85.5,0]],.22,M.copper,pcb);wire([[2,73,-2],[4.3,76,-2],[4.3,85.5,0]],.22,M.dark,pcb);
+addPart('pcb','升压与交变驱动板',pcb,'板卡固定于骨架槽；电池直流经升压、驱动电路交变励磁。电路和线圈接线仅示意。','9 × 14 × 1 mm · 估算','#3a7152');
+const button=group();box(7.8,10.6,1,M.rubber,button,V(0,67,9.7));cylinder(2.7,2.4,M.teal,button,V(0,67,10.7),'z');cylinder(.75,9,M.teal,button,V(0,67,5),'z');const symbol=torus(1.1,.1,M.white,button,0);symbol.rotation.x=0;symbol.position.set(0,67,11.93);
+addPart('button','硅胶电源按键',button,'唇缘扣在前壳孔内，顶杆连接板上开关；点按可启动。','按面 Ø5.4 mm · 行程 0.5 mm','#287363');
+const stator=group();box(12.8,16,1.2,M.metal,stator,V(0,87,-4.8));
+for(const sign of [-1,1]){box(1.2,14,5.4,M.metal,stator,V(sign*5.8,87,-2.1));const core=cylinder(1.05,2.8,M.dark,stator,V(sign*4.3,87,0));core.rotation.z=Math.PI/2;const coil=helix(-.85,.85,1.45,.1,7,M.copper,stator);coil.rotation.z=-Math.PI/2;coil.position.set(sign*4.2,87,0);box(.5,10,4.4,M.metal,stator,V(sign*2.9,87,0));}
+addPart('stator','固定线圈与磁轭',stator,'U 形磁轭固定于骨架后横梁，两组铜线交变励磁；极靴与永磁转子之间留气隙。','约 12.8 × 16 × 9 mm · 估算','#cb7a43');
+const rotor=group();tube(80,94,1.8,1.38,M.metal,rotor);
+for(const sign of [-1,1]){box(2.4,12,.5,M.metal,rotor,V(0,87,sign*1.75));box(2.4,12,.8,sign>0?M.teal:M.dark,rotor,V(0,87,sign*2.2));}
+addPart('rotor','永磁摆动转子',rotor,'磁块固定在转子载体上；轮毂压装在金属轴，交变磁场使转子小角度往复摆动。','轮毂 Ø3.6 × 14 mm · 估算','#287363');
+const shaft=group();cylinder(1.4,33.7,M.metal,shaft,V(0,93.35,0));mesh(dShaft(110.2,125,1.4,.85),M.metal,shaft);
+for(const [a,b,r]of [[76.8,77.45,2],[100.5,101.5,1.9],[105.55,106.2,2],[109.2,110.2,2.1]])tube(a,b,r,1.38,M.metal,shaft);
+addPart('shaft','金属输出轴与轴肩',shaft,'下段圆轴在两轴套内摆动；上端 D 形插入刷头内衬传扭。轴肩托住内衬，止推环限制轴向窜动；拔头后轴留在手柄。','Ø2.8 × 48.5 mm · D 形平面 x=0.85 mm · 估算','#aab8bd');
+const spring=group(),springPoints=[[5,96,0],[2.8,96,0]];for(let i=1;i<=96;i++){const t=i/96;springPoints.push([2.8*Math.cos(t*3*TAU),96+5*t,2.8*Math.sin(t*3*TAU)]);}springPoints.push([1.8,101,0]);const springWire=wire(springPoints,.25,M.gold,spring);const springRest=springWire.geometry.attributes.position.array.slice(),springNormals=springWire.geometry.attributes.normal.array.slice();
+// shortcut: 按高度插值扭转仅展示两端约束；分析共振或应力时需换弹性动力学模型。
+function deformSpring(theta){const pos=springWire.geometry.attributes.position,normal=springWire.geometry.attributes.normal;for(let i=0;i<pos.count;i++){const j=i*3,a=theta*THREE.MathUtils.clamp((springRest[j+1]-96)/5,0,1),c=Math.cos(a),s=Math.sin(a);pos.setXYZ(i,c*springRest[j]+s*springRest[j+2],springRest[j+1],-s*springRest[j]+c*springRest[j+2]);normal.setXYZ(i,c*springNormals[j]+s*springNormals[j+2],springNormals[j+1],-s*springNormals[j]+c*springNormals[j+2]);}pos.needsUpdate=true;normal.needsUpdate=true;}
+addPart('spring','扭转复位弹簧',spring,'下腿固定骨架侧台，上腿固定轴环；输出轴摆动时弹簧扭转并提供回复力。','中径 5.6 mm · 线径 0.5 mm · 3 圈 · 估算','#c49c50');
+const bearings=group();for(const [a,b]of [[77.5,79],[103.5,105.5]])tube(a,b,2.4,1.42,M.gold,bearings);addPart('bearings','两端滑动轴套',bearings,'外圆压装在骨架轴套座中，估算单边干涉 0.01 mm，弹性省略；圆孔支撑金属轴，轴套固定。','外径 4.8 mm · 孔径 2.84 mm · 估算','#ac914f');
+const neckseal=group();mesh(lathe([[106.6,1.4],[106.6,2.4],[108,2.4],[108,1.4],[107.7,1.4],[107.7,1.8],[106.9,1.8],[106.9,1.4],[106.6,1.4]]),M.rubber,neckseal);addPart('neckseal','输出轴唇封',neckseal,'外缘固定于机壳口，内唇贴合金属轴；允许小角度往复，密封压缩未模拟。','外径 4.8 mm · 内唇轴孔 2.8 mm · 估算','#35453d');
+const coupler=group();for(const sign of [-1,1])for(const [a,b,relief]of [[110.2,112,false],[112,123,true],[123,126,false]])mesh(socketHalf(a,b,sign,relief),M.teal,coupler).userData.cutaway=sign<0;
+for(const sign of [-1,1]){box(.28,13,.5,M.teal,coupler,V(sign*2.66,118,0));box(.5,13,.28,M.teal,coupler,V(0,118,sign*2.66)).userData.cutaway=sign>0;}
+const clipPoints=[V(1.35,111.7,0),V(.91,114,0),V(.91,121,0),V(1.35,123.3,0)];for(let i=1;i<clipPoints.length;i++){const a=clipPoints[i-1],b=clipPoints[i],delta=b.clone().sub(a),clip=box(.12,delta.length(),.6,M.metal,coupler,a.clone().add(b).multiplyScalar(.5));clip.rotation.z=-Math.atan2(delta.x,delta.y);clip.userData.clampSpring=true;}
+addPart('coupler','D 形内衬与夹持弹片',coupler,'内衬外肋压入空心刷颈，D 形孔与金属轴配合传扭；弹片压紧轴平面，底面坐在轴肩上。透视剖开前半内衬；夹持变形省略。','外径 5.24 mm · D 孔半径 1.47 mm · 平面 x=0.92 mm · 估算','#287363');
+const brush=group();tube(109.7,127,3.4,2.7,M.shell,brush).userData.socketCover=true;mesh(lathe([[127,0],[127,3.4],[136,2.1],[142,2.7],[143,0]]),M.shell,brush);
+const headshape=new THREE.Shape();headshape.absellipse(0,0,5,11.5,0,TAU,false,0);const hg=new THREE.ExtrudeGeometry(headshape,{depth:3.4,bevelEnabled:true,bevelSize:.5,bevelThickness:.4,bevelSegments:3,curveSegments:40});mesh(hg,M.shell,brush,V(0,148,0));
+addPart('brush','空心刷颈与刷头基座',brush,'下部真空腔容纳内衬和金属轴；上部与刷毛基座为一体件。由内衬传扭，同步往复摆动；与机壳留 1.7 mm 间隙。','空腔 Ø5.4 × 17.3 mm · 刷头约 10 × 23 × 4 mm · 估算','#e0e5db');
+const bristles=group(),positions=[];for(let row=-4;row<=4;row++){const y=148+row*2.1;for(let col=-1;col<=1;col++){if(Math.abs(row)===4&&col!==0)continue;positions.push([col*2.55,y]);}}
+const fiberGeom=new THREE.CylinderGeometry(.08,.1,5,5);fiberGeom.rotateX(Math.PI/2);const fibers=new THREE.InstancedMesh(fiberGeom,M.bristle,positions.length*19);const dummy=new THREE.Object3D();let fi=0;for(const [x,y]of positions){for(let j=0;j<19;j++){const radius=j===0?0:j<7?.32:.62;const angle=j===0?0:j<7?(j-1)*TAU/6:(j-7)*TAU/12;dummy.position.set(x+radius*Math.cos(angle),y+radius*Math.sin(angle),6.2);dummy.updateMatrix();fibers.setMatrixAt(fi++,dummy.matrix)}}bristles.add(fibers);
+addPart('bristles','植入式刷毛束',bristles,'每束 19 根圆丝植入基座；与金属轴、内衬、刷颈同相往复摆动，不模拟刷牙接触。','23 束 · 长 5 mm · 估算','#87c4bb');
+
+
+/* 装配台（旧壳里的 plate）：静态托板，不属于任何模块 */
+{
+  const plate = new THREE.Mesh(
+    new THREE.BoxGeometry(116, 2, 56),
+    new THREE.MeshStandardMaterial({ color: 0xd3e1f5, roughness: 0.8 })
+  );
+  plate.position.set(12, -4, 0);
+  plate.receiveShadow = true;
+  world.add(plate);
+}
+
+/* ====== 运动：theta 为当前摆角（弧度） ====== */
+function applyMotionAt(theta, state, view) {
+  rotor.rotation.y = theta;
+  shaft.rotation.y = theta;
+  const headAngle = state.headOff ? view.detachedAngle : theta;
+  coupler.rotation.y = headAngle;
+  brush.rotation.y = headAngle;
+  bristles.rotation.y = headAngle;
+  deformSpring(theta);
+}
+
+/* ====== 包围盒 ====== */
+function moduleBounds(keys) {
+  const b = new THREE.Box3();
+  for (const k of keys) {
+    const p = byKey.get(k);
+    if (p) b.union(new THREE.Box3().setFromObject(p.g));
+  }
+  return b;
+}
+
+/* ====== 对外接口 ====== */
+const MODEL = {
+  world,
+  byKey,
+  PARTS: parts,
+  moduleBounds,
+  applyMotion: (view, state) => {
+    // 未装入的刷头跟着「旋转对齐」一起转，让 D 形平面看得出来
+    const rot = state.selected === 'head' && !state.placed.includes('head') ? (state.rotation || 0) * Math.PI / 2 : 0;
+    for (const k of ['coupler', 'brush', 'bristles']) byKey.get(k).g.rotation.y = rot;
+    applyMotionAt(view.angle || 0, state, view);
+  },
+};
+
+/* ==== electric-toothbrush/manifest.mjs ==== */
+/* 电动牙刷 · 插槽填充（纯数据 + 少量回调）
+ * 参考：通用电磁摆动轴式结构，160 × 20 × 22 mm，除 AAA 电池外均为教学估算。
+ */
+const MANIFEST = {
+  slug: 'electric-toothbrush',
+  brand: {
+    title: '牙刷装配实验室',
+    subtitle: '把原理，一块一块拼出来 · 10 模块 · 3 关',
+    mark: { a: '#3d9c80', b: '#315efb' },
+  },
+
+  chapters: [
+    {
+      title: '搭起动力核心', subtitle: '先认识支承与复位，再给电机通电。', badge: '复位观察员',
+      exp: '手拨一下',
+      expText: '给金属轴一个小偏角，观察它往复几次后回到中间。没有通电，弹簧只释放手拨时储存的能量。',
+      q: '手拨金属轴后，什么让它回到中间位置？',
+      options: ['扭转复位弹簧', '电池', '固定线圈'],
+      a: 0,
+      why: '扭簧一端连骨架、一端连轴。手拨使它储存弹性能，松开后推动轴回中；尚未接电的线圈不会持续驱动轴。',
+    },
+    {
+      title: '接通能量回路', subtitle: '从电池直流，到线圈的交变励磁。', badge: '电磁探索员',
+      exp: '接电试运行',
+      expText: '在装配台上接通供电，观察转子与金属轴持续往复。铜线圈固定，只有磁场随驱动电流改变。',
+      q: '电池输出直流，金属轴为什么能持续往复？',
+      options: ['电池自行改变正负极', '驱动板交替改变线圈电流方向', '外壳带动电机旋转'],
+      a: 1,
+      why: '驱动板让线圈交变励磁，推动永磁转子往复；转子与金属轴同步，线圈和机壳保持固定。',
+    },
+    {
+      title: '让刷头接住摆动', subtitle: '对齐 D 形连接，完成从电机到刷毛的传动。', badge: '装配小工程师',
+      exp: '整机试运行',
+      expText: '观察金属轴、内衬、刷颈和刷毛同相摆动，机壳保持固定。通关后还能停机拔下刷头，查看连接关系。',
+      q: '拔下刷头后，金属输出轴会一起被拔出吗？',
+      options: ['不会，轴留在手柄，内衬随刷头离开', '会，轴和刷头是同一个零件', '会，金属轴藏在刷毛里面'],
+      a: 0,
+      why: '金属轴仍受机内轴套支撑，D 形内衬随刷头拔出。装回并对齐平面后，轴的摆动才能传给刷头。',
+    },
+  ],
+
+  stage: {
+    title: '拼一支会动的牙刷',
+    hint: '选一块模块，把它放到蓝色轮廓里。',
+  },
+
+  readout: [
+    { key: 'angle', label: '输出摆角', big: true },
+    { key: 'mode', label: '状态' },
+  ],
+
+  tray: { title: '第一盒 · 动力核心', hint: '点选模块，再拖到蓝色位置' },
+
+  modules: [
+    { id: 'frame', chapter: 0, name: '装配骨架', parts: ['chassis'], color: '#40577b', icon: 'housing',
+      tip: '把骨架放进装配台，其他模块都由它支撑。',
+      learn: '骨架固定电机、轴套和电路板。装机壳前，装配台暂时托住整个机构。' },
+    { id: 'core', chapter: 0, name: '预装动力芯', parts: ['rotor', 'shaft', 'spring', 'bearings'], color: '#e6a52d', icon: 'shaft',
+      tip: '把带金属轴的动力芯放进骨架。轴套和扭簧已预装。',
+      learn: '永磁转子与金属轴一起摆动；轴套支撑轴，扭转弹簧一端连轴、一端连骨架，负责回中。压装工序已预装，吸附只表示模块归位。' },
+    { id: 'field', chapter: 0, name: '固定线圈', parts: ['stator'], color: '#d97545', icon: 'coil',
+      tip: '把线圈和磁轭装在动力芯外侧。',
+      learn: '线圈与磁轭固定在骨架上，与转子留有气隙。线圈不跟着轴摆动；现在尚未通电，只能手拨观察。' },
+    { id: 'driver', chapter: 1, name: '交变驱动板', parts: ['pcb'], color: '#2b9a87', icon: 'plate',
+      tip: '把驱动板卡进骨架下方的槽位。',
+      learn: '电池输出直流。驱动板交替改变线圈电流方向，让磁场推动永磁转子往复摆动。电路参数在本模型中简化。' },
+    { id: 'battery', chapter: 1, name: 'AAA 电池', parts: ['battery'], color: '#4b83c0', icon: 'battery',
+      tip: '把电池装进电池仓，凸起的正极朝向驱动板。',
+      learn: '电池提供能量，自己不会转动。这里使用标准 Ø10.5 × 44.5 mm 的 AAA 电池，正负触片接通后才能形成供电回路。' },
+    { id: 'power', chapter: 1, name: '预装供电座', parts: ['contacts', 'cap', 'seal'], color: '#d4a332', icon: 'screw',
+      tip: '把带触片、弹簧与密封圈的供电座合到底部。',
+      learn: '底部弹簧接触电池负极，上触片接触正极；底盖托住弹簧。此模块把触片和底盖预装在一起，密封圈只展示位置，不代表防水验证。' },
+    { id: 'seal', chapter: 2, name: '输出轴唇封', parts: ['neckseal'], color: '#60716c', icon: 'disc',
+      tip: '把唇封套到输出轴根部；合壳后外缘固定在壳口。',
+      learn: '唇封内唇接触金属轴，外缘固定在机壳口，允许轴小角度往复。橡胶压缩和装配拉伸没有模拟。' },
+    { id: 'head', chapter: 2, name: '空心刷头', parts: ['coupler', 'brush', 'bristles'], color: '#65ab97', icon: 'piston',
+      tip: '先旋转刷头，让 D 形内孔的平面与金属轴对齐，再插到轴肩上。',
+      learn: '空心刷颈内有 D 形内衬和夹持弹片。平面对齐后，金属轴把摆动传给刷头；轴肩限位，刷头与机壳之间保留 1.7 mm 间隙。' },
+    { id: 'button', chapter: 2, name: '电源按键', parts: ['button'], color: '#d87481', icon: 'bolt',
+      tip: '把按键对准驱动板开关，随后合壳固定。',
+      learn: '按键顶杆触发板上的开关，硅胶唇缘由前壳固定。按键控制供电，不是传动件。' },
+    { id: 'shell', chapter: 2, name: '前后机壳', parts: ['front', 'rear'], color: '#99adbe', icon: 'shell',
+      tip: '合拢前后机壳，固定按键、骨架和轴封。',
+      learn: '机壳保护并固定内部组件。运行时机壳、线圈和轴套保持固定；转子、金属轴、刷头和刷毛同步小角度往复。' },
+  ],
+
+  notes: [
+    '1 unit = 1 mm。通用声波式教学结构，整机约 160 × 20 × 22 mm；除 AAA 电池（标准 Ø10.5 × 44.5 mm）外，几何与性能参数均为估算，不对应某一品牌整机。',
+    '简化项：橡胶密封压缩与装配拉伸未模拟；电路与线圈接线只示意；卡扣弹性省略；刷毛与牙齿接触未建模。',
+    '<b>摆动从哪来：</b>电池供直流 → 驱动板交变励磁 → 固定线圈推动永磁转子 → 转子与金属轴一起往复（±3°）→ D 形内衬把摆动传给空心刷颈与刷毛。机壳、线圈、轴套全程不动，所以只有刷头在摆。',
+  ],
+
+  scene: {
+    bench: false,
+    spawnFor: (id, info) => [42, 72 - info.center.y, 0],
+    camera: { defaultFocus: 'all', fov: 34, near: 0.1, far: 1500 },
+    orbit: { minDistance: 22, maxDistance: 800 },
+    renderer: { exposure: 1.1, pixelRatio: 2 },
+    env: 0.65,
+    lights: {
+      hemi: [0xffffff, 0xb1c4de, 1.8],
+      key: { color: 0xffffff, intensity: 2.5, pos: [-80, 160, 150] },
+      rim: { color: 0xd8e9ff, intensity: 1.4, pos: [80, 100, -90] },
+    },
+    focus: {
+      all: { dir: [14.6, 5.6], fit: 1.08, box: (s) => (s.chapter < 2 ? [[13, 63, 0], [102, 132, 50]] : [[13, s.headOff ? 92 : 82, 0], [102, s.headOff ? 196 : 176, 50]]) },
+      drive: { dir: [14.6, 5.6], fit: 1.75, box: () => [[0, 94, 0], [38, 55, 30]] },
+      head: { dir: [14.6, 5.6], fit: 1.75, box: (s) => (s.headOff ? [[10, 135, 0], [62, 92, 30]] : [[0, 120, 0], [35, 65, 30]]) },
+    },
+    inset: {
+      fov: 36,
+      visible: (s) => s.phase !== 'build' && s.placed.includes('core'),
+      target: (s) => ({
+        part: 'shaft',
+        local: [0, s.chapter === 2 ? 117 : 92, 0],
+        offset: s.chapter === 2 ? [10, 5, 44] : [15, 7, 61],
+        title: s.chapter === 2 ? '金属轴与空心刷头' : '固定线圈与摆动轴',
+      }),
+    },
+    // 剖开时隐藏后半壳等被切掉的网格（由 model.mjs 里的 userData.cutaway 标记）
+    hiddenPart: (key, s) => false,
+  },
+};
+
+/* ==== electric-toothbrush/logic.mjs ==== */
+/* ============================================================================
+ * 电动牙刷 · 装配与实验逻辑（纯逻辑，无 DOM、无三维）
+ * 每个动作自己校验前置条件；失败不动业务状态。
+ * ==========================================================================*/
+
+/* 模块表与关卡文案的唯一来源是 manifest.mjs */
+const MODULES = MANIFEST.modules;
+const CHAPTERS = MANIFEST.chapters;
+function createGame(){
+  const initial=()=>({chapter:0,phase:'build',placed:[],selected:null,rotation:0,completed:[false,false,false],running:false,headOff:false});
+  const state=initial();
+  const fail=message=>({ok:false,message});
+  function current(){return state.phase==='build'?MODULES.find(m=>m.chapter===state.chapter&&!state.placed.includes(m.id))||null:null;}
+  function select(id){
+    if(state.phase!=='build')return fail('先完成本章实验与挑战，再继续装配。');
+    const module=MODULES.find(m=>m.id===id);
+    if(!module)return fail('没有这块模块，请从零件盘选择。');
+    if(state.placed.includes(id))return fail('这块模块已经装好了。');
+    state.selected=id;state.rotation=id==='head'?1:0;
+    return {ok:true,message:module.tip};
+  }
+  function turn(){
+    if(state.phase!=='build'||state.selected!=='head')return fail('先选中空心刷头，才能调整 D 形内孔方向。');
+    state.rotation=(state.rotation+1)%4;
+    return {ok:true,message:state.rotation===0?'D 形平面已对齐，可以装上刷头。':'刷头已转过 90°，继续对齐 D 形平面。'};
+  }
+  function place(onTarget=true){
+    if(state.phase!=='build')return fail('本章装配已完成，请进行实验与挑战。');
+    if(!state.selected)return fail('先从零件盘选一块模块。');
+    if(onTarget!==true)return fail('还没对准装配位置，拖到轮廓内再松手。');
+    const module=current();
+    if(!module||state.selected!==module.id)return fail('这一步需要'+(module?.name||'当前模块')+'。先完成支承和连接，再装后面的零件。');
+    if(module.id==='head'&&state.rotation!==0)return fail('D 形平面还没对齐。旋转刷头，让内孔与金属轴的平面一致。');
+    state.placed.push(module.id);state.selected=null;state.rotation=0;
+    if(!MODULES.some(m=>m.chapter===state.chapter&&!state.placed.includes(m.id)))state.phase='experiment';
+    return {ok:true,message:module.name+'已归位。',learn:module.learn,kind:'placed'};
+  }
+  function undo(){
+    if(state.phase==='lab')return fail('整机已通关；想重新装配，请点击重新开始。');
+    const last=state.placed.at(-1),module=MODULES.find(m=>m.id===last);
+    if(!module||module.chapter!==state.chapter)return fail('本章还没有装入的模块。');
+    state.placed.pop();state.phase='build';state.selected=null;state.rotation=0;state.running=false;state.headOff=false;state.completed[state.chapter]=false;
+    return {ok:true,message:'已撤回'+module.name+'，可以重新装配。',kind:'undo'};
+  }
+  function experiment(){
+    if(state.phase!=='experiment')return fail('先把本章模块全部装好，再进行实验。');
+    state.phase='quiz';state.running=state.chapter>0;
+    return {ok:true,message:CHAPTERS[state.chapter].expText,kind:state.chapter===0?'manual':'power'};
+  }
+  function answer(index){
+    if(state.phase!=='quiz')return fail('先亲手完成本章实验，再回答问题。');
+    const chapter=CHAPTERS[state.chapter];
+    if(!Number.isInteger(index)||index<0||index>=chapter.options.length)return fail('请选择一个有效答案。');
+    if(index!==chapter.a)return {ok:false,message:'再观察一下。'+chapter.why,learn:chapter.why,kind:'wrong'};
+    state.running=false;state.completed[state.chapter]=true;state.phase='checkpoint';
+    return {ok:true,message:'答对了！获得「'+chapter.badge+'」。',learn:chapter.why,kind:'correct'};
+  }
+  function next(){
+    if(state.phase!=='checkpoint'||!state.completed[state.chapter])return fail('先完成本章实验与挑战。');
+    state.running=false;state.selected=null;state.rotation=0;
+    if(state.chapter<CHAPTERS.length-1){state.chapter++;state.phase='build';return {ok:true,message:CHAPTERS[state.chapter].subtitle,kind:'chapter'};}
+    state.phase='lab';return {ok:true,message:'装配完成！现在可以自由运行、剖开观察，或停机拔下刷头。',kind:'complete'};
+  }
+  function power(){
+    if(state.phase!=='lab')return fail('先完成三章挑战，再进入自由实验。');
+    state.running=!state.running;
+    return {ok:true,message:state.running?(state.headOff?'空载观察：金属轴摆动，移开的刷头保持不动。':'整机运行：金属轴与刷头同步往复，机壳固定。'):'已停机，可以检查或拆装刷头。',kind:state.running?'power':'stop'};
+  }
+  function head(){
+    if(state.phase!=='lab')return fail('完成装配挑战后，才能拆下刷头进行对比。');
+    if(state.running)return fail('请先停机，再拔下或装回刷头。');
+    state.headOff=!state.headOff;
+    return {ok:true,message:state.headOff?'刷头已拔下，内衬随刷头离开，金属轴留在手柄。可点击运行进行空载观察。':'刷头已装回，D 形内衬重新与金属轴连接。',kind:state.headOff?'headOff':'headOn'};
+  }
+  function restart(){Object.assign(state,initial());return {ok:true,message:'新的装配开始了，先把骨架放到装配台。',kind:'restart'};}
+  // 直接看成品：整机装好 + 三关完成 + 已通电
+  function demo(){
+    Object.assign(state,initial());
+    state.placed=MODULES.map(m=>m.id);state.completed=[true,true,true];
+    state.chapter=CHAPTERS.length-1;state.phase='lab';state.running=true;
+    return {ok:true,message:'整机已装好并通电。看它摆，再拔下刷头做空载对照。',kind:'demo'};
+  }
+  return {state,current,select,turn,place,undo,experiment,answer,next,power,head,restart,demo};
+}
+
+/* ==== electric-toothbrush/main.mjs ==== */
+/* 电动牙刷 · 接线（规则在 logic.mjs，几何在 model.mjs，文案在 manifest.mjs） */
+const game = createGame();
+const state = game.state;
+const CH = MANIFEST.chapters;
+const MODS = MANIFEST.modules;
+const CYCLE = Math.PI * 2;
+const DRIVE = THREE.MathUtils.degToRad(3);
+const $ = (s) => document.querySelector(s);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const lab = mountLab(MANIFEST);
+const stage = createStage({
+  host: document.getElementById('viewport'),
+  stageEl: document.getElementById('stage'),
+  world: MODEL.world,
+  modules: MODS,
+  model: MODEL,
+  config: MANIFEST.scene,
+  getState: () => state,
+  nextModule: () => game.current(),
+  canDrag: () => state.phase === 'build' && !!state.selected,
+  targetAlways: () => true,
+  onDrop: (id, onTarget) => act('place', onTarget),
+  onPickKey: (key) => {
+    if (!state.placed.includes('core')) return;
+    if (['shaft', 'rotor', 'stator', 'spring', 'bearings'].includes(key)) stage.fitCamera('drive');
+    else if (['coupler', 'brush', 'bristles', 'neckseal'].includes(key)) stage.fitCamera('head');
+    else stage.fitCamera('all');
+  },
+  tick: (dt) => tick(dt),
+});
+lab.attached3d = true;
+lab.stage = stage;
+const view = stage.view;
+view.cut = true;
+let clock = 0;
+
+/* ---------- 运动 ---------- */
+function motionAngle() {
+  if (state.running) return DRIVE * Math.sin(clock * CYCLE * 2 * view.speed);
+  if (view.manualStart !== null) {
+    const t = clock - view.manualStart;
+    if (t < 2.6) return DRIVE * Math.exp(-2 * t) * Math.cos(CYCLE * 2 * t);
+  }
+  return 0;
+}
+
+/* ---------- 读数 ---------- */
+function setRd(key, value) {
+  const el = document.querySelector(`[data-rd="${key}"]`);
+  if (el && el.textContent !== value) el.textContent = value;
+}
+function updateReadout() {
+  const deg = (view.angle * 180) / Math.PI;
+  const has = state.placed.includes('core');
+  setRd('angle', has ? (deg >= 0 ? '+' : '') + deg.toFixed(1) + '° / ±3°' : '—');
+  setRd('mode', !has ? '动力芯未装' : state.running ? '通电往复' : state.phase === 'quiz' && state.chapter === 0 ? '手拨回中' : '停机');
+}
+
+/* ---------- 教练面板 ---------- */
+lab.task(({ chapter: ch, chapterIndex: i, phase }) => {
+  const next = game.current();
+  const sel = MODS.find((m) => m.id === state.selected);
+
+  if (phase === 'build') {
+    const turnBox =
+      state.selected === 'head'
+        ? `<button class="action" id="turn">旋转刷头 ${state.rotation * 90}°</button>
+           <p class="note">${state.rotation === 0 ? 'D 形平面已对齐，可以装上刷头。' : '继续转到 0°，让内孔平面与金属轴对齐。'}</p>`
+        : '';
+    return {
+      html: `<p class="label">现在要装</p><h3>${next ? next.name : ''}</h3><p>${next ? next.tip : ''}</p>
+        <div class="note">${sel ? '已拿起：' + sel.name : '从下方零件盘选择一块模块'}</div>
+        <button class="primary action" id="place" ${sel ? '' : 'disabled'}>装入当前模块</button>
+        ${turnBox}
+        <div class="sub"><button id="undo" ${MODS.find((m) => m.id === state.placed.at(-1))?.chapter === state.chapter ? '' : 'disabled'}>撤回一步</button></div>`,
+      bind(root) {
+        root.querySelector('#place').onclick = () => act('place');
+        root.querySelector('#undo').onclick = () => act('undo');
+        const t = root.querySelector('#turn');
+        if (t) t.onclick = () => act('turn');
+      },
+    };
+  }
+
+  if (phase === 'experiment') {
+    const again =
+      state.chapter === 0
+        ? '<button class="action" id="manual-again">再手拨一次</button>'
+        : '';
+    return {
+      html: `<p class="label">模块已归位，现在验证</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+        <button class="primary action" id="experiment">${ch.exp}</button>${again}
+        <div class="sub"><button id="undo">撤回最后一块</button></div>`,
+      bind(root) {
+        root.querySelector('#experiment').onclick = () => act('experiment');
+        const a = root.querySelector('#manual-again');
+        if (a) a.onclick = () => act('experiment');
+        root.querySelector('#undo').onclick = () => act('undo');
+      },
+    };
+  }
+
+  if (phase === 'quiz') {
+    return {
+      html: `<p class="label">看一看，想一想</p><h3>${ch.q}</h3>
+        <div class="options">${ch.options.map((o, k) => `<button data-a="${k}"><b>${String.fromCharCode(65 + k)}</b>${o}</button>`).join('')}</div>
+        ${state.chapter === 0 ? '<div class="sub"><button id="manual-again">再手拨一次</button></div>' : ''}
+        <p class="note" style="margin-top:10px">答错不会清空进度，观察会帮你找到原因。</p>`,
+      bind(root) {
+        root.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => act('answer', Number(b.dataset.a))));
+        const a = root.querySelector('#manual-again');
+        if (a) a.onclick = () => act('experiment');
+      },
+    };
+  }
+
+  if (phase === 'checkpoint') {
+    return {
+      html: `<div class="badge" aria-hidden="true">✓</div><p class="label">新徽章</p><h3>${ch.badge}</h3>
+        <p>${ch.why}</p>
+        <button class="primary action" id="next">${i === CH.length - 1 ? '进入自由实验' : '继续第 ' + (i + 2) + ' 关'}</button>`,
+      bind(root) {
+        root.querySelector('#next').onclick = () => act('next');
+      },
+    };
+  }
+
+  return {
+    html: `<div class="labgrid">
+        <button class="primary" id="power">${state.running ? '停机' : '接通供电'}</button>
+        <button id="head">${state.headOff ? '装回刷头' : '拔下刷头'}</button>
+        <button id="focus-all">看整机</button>
+        <button id="focus-drive">看动力芯</button>
+        <button id="focus-head">看刷头</button>
+      </div>
+      <label class="speed" for="speed">摆动速度 <output id="speed-out">${view.speed.toFixed(2)}×</output>
+        <input id="speed" type="range" min="0.25" max="3" step="0.25" value="${view.speed}"></label>
+      <div class="flow ${state.running ? 'on' : ''}"><span>电池</span><i>›</i><span>驱动板</span><i>›</i><span>线圈</span><i>›</i><span class="${state.headOff ? 'off' : ''}">刷头</span></div>
+      <p class="note">${state.headOff ? '刷头已拔下：金属轴空载摆动，内衬随刷头离开。' : '先接通供电，再拔下刷头做空载对照。'}</p>
+      <div class="earned">${CH.map((c) => `<span>✓ ${c.badge}</span>`).join('')}</div>`,
+    bind(root) {
+      root.querySelector('#power').onclick = () => act('power');
+      root.querySelector('#head').onclick = () => act('head');
+      root.querySelector('#focus-all').onclick = () => stage.fitCamera('all');
+      root.querySelector('#focus-drive').onclick = () => stage.fitCamera('drive');
+      root.querySelector('#focus-head').onclick = () => stage.fitCamera('head');
+      const sp = root.querySelector('#speed');
+      sp.oninput = () => {
+        view.speed = Number(sp.value);
+        root.querySelector('#speed-out').textContent = view.speed.toFixed(2).replace(/0$/, '') + '×';
+      };
+    },
+  };
+});
+
+/* ---------- 刷新 ---------- */
+const BOX = ['第一盒 · 动力核心', '第二盒 · 能量回路', '第三盒 · 刷头连接'];
+function refresh() {
+  const labPhase = state.phase === 'lab';
+  const s = lab.state;
+  s.chapter = state.chapter;
+  s.phase = state.phase;
+  s.placed = state.placed;
+  s.selected = state.selected;
+  s.completed = state.completed;
+  s.badges = state.completed.map((ok, k) => (ok ? CH[k].badge : null)).filter(Boolean);
+  s.progress = { done: state.placed.length, total: MODS.length };
+  s.cardsLocked = state.phase !== 'build';
+  s.visible.readout = true;
+  s.coach = labPhase
+    ? { tag: '三个原理，全部验证', title: '你的牙刷，摆起来了', intro: '自由实验：通断供电、拔刷头做空载对照、剖开看内部。' }
+    : null;
+  s.trayTitle = labPhase ? '你的装配记录' : BOX[state.chapter];
+  s.trayHint = labPhase ? '10 块模块全部到位' : '点选模块，再拖到蓝色位置';
+  s.stageHint = labPhase
+    ? '通断供电、拔刷头、剖开，验证你刚刚发现的因果。'
+    : state.phase === 'build'
+    ? '选一块模块，把它放到蓝色轮廓里。'
+    : state.phase === 'experiment'
+    ? '先做实验，再回答挑战。'
+    : '这一段装好了，去验证你的发现。';
+  lab.render();
+  $('[data-tool="cut"]').setAttribute('aria-pressed', String(view.cut));
+}
+
+/* ---------- 动作 ---------- */
+function act(name, ...args) {
+  const beforeChapter = state.chapter;
+  const res = game[name](...args);
+  lab.state.feedback = res.message || '';
+  lab.state.feedbackKind = res.ok ? 'success' : 'error';
+  if (res.ok && res.learn) lab.setDiscovery(res.learn);
+  if (res.ok) {
+    if (res.kind === 'restart' || res.kind === 'demo') lab.setDiscovery('');
+    if (res.kind === 'manual') view.manualStart = clock;
+    if (res.kind === 'headOff') view.detachedAngle = view.angle;
+    if (res.kind === 'restart') {
+      view.offsets.clear();
+      view.manualStart = null;
+      view.detachedAngle = 0;
+      view.cut = true;
+    }
+    if (res.kind === 'chapter' && state.chapter !== beforeChapter) stage.fitCamera('all');
+    if (res.kind === 'complete') {
+      lab.celebrate();
+      stage.fitCamera('all');
+    }
+  }
+  refresh();
+  return res;
+}
+
+/* ---------- 循环 ---------- */
+function tick(dt) {
+  clock += dt;
+  view.angle = motionAngle();
+  updateReadout();
+}
+
+/* ---------- 事件 ---------- */
+lab.on('select', (id) => act('select', id));
+lab.on('place', () => act('place'));
+lab.on('undo', () => act('undo'));
+lab.on('answer', (i) => act('answer', i));
+lab.on('next', () => act('next'));
+lab.on('restart', () => act('restart'));
+lab.on('free', () => {
+  act('demo');
+  stage.fitCamera('all');
+});
+lab.on('tool', (id) => {
+  if (id === 'cut') view.cut = $('[data-tool="cut"]').getAttribute('aria-pressed') === 'true';
+  if (id === 'home') stage.fitCamera('all');
+  if (id === 'rotate' || id === 'pan') stage.setNavigation(id);
+  refresh();
+});
+
+refresh();
+stage.start();
+
+</script>
+</body>
+</html>

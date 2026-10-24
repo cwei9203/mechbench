@@ -67,6 +67,7 @@ export function mountLab(item) {
       trayTitle: '',
       trayHint: '',
       cardsLocked: false,
+      discovery: '',
     },
     handlers: {},
     on(name, fn) {
@@ -85,6 +86,39 @@ export function mountLab(item) {
     /** 物品自定义教练面板：fn({chapter, phase, state, lab}) => {html, bind(root)} */
     task(fn) {
       lab.taskRenderer = fn;
+      return lab;
+    },
+    /** 发现卡：放一段“刚刚发现”的观察，传空串隐藏 */
+    setDiscovery(text) {
+      lab.state.discovery = text || '';
+      const box = q('#discovery');
+      if (!box) return lab;
+      box.hidden = !text;
+      if (text) q('#discovery-text').textContent = text;
+      return lab;
+    },
+    /** 通关撒花：纯装饰，reduced-motion 下静默 */
+    celebrate() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return lab;
+      const el = q('#celebration');
+      if (!el) return lab;
+      el.replaceChildren();
+      const colors = ['#c2452d', '#b8862f', '#2f6f9f', '#2f7d5c'];
+      for (let i = 0; i < 28; i++) {
+        const bit = document.createElement('i');
+        bit.style.background = colors[i % 4];
+        const angle = (i / 28) * Math.PI * 2;
+        bit.style.setProperty('--x', Math.cos(angle) * (95 + (i % 5) * 27) + 'px');
+        bit.style.setProperty('--y', Math.sin(angle) * 130 + 130 + 'px');
+        bit.style.setProperty('--r', i * 47 + 'deg');
+        el.appendChild(bit);
+      }
+      setTimeout(() => el.replaceChildren(), 1500);
+      return lab;
+    },
+    setInsetTitle(text) {
+      const el = q('#inset-title');
+      if (el) el.textContent = text;
       return lab;
     },
     render,
@@ -277,6 +311,8 @@ export function mountLab(item) {
   });
 
   render();
+  // 调试钩子：?debug=1 时把 lab（含 lab.stage）挂到 window，方便控制台/验收排查
+  if (new URLSearchParams(location.search).has('debug')) window.__lab = lab;
   return lab;
 }
 

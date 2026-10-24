@@ -28,6 +28,7 @@ const stage = createStage({
   tick: (dt) => tick(dt),
 });
 lab.attached3d = true;
+lab.stage = stage;
 const view = stage.view;
 
 /* ---------- 读数 ---------- */

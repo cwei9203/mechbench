@@ -85,6 +85,22 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
   font-variant-numeric:tabular-nums;line-height:1.75}
 .readout .row b{color:var(--ink);font-weight:700}
 .readout .big{font-size:12px;color:var(--steel);font-weight:800}
+#inset{position:absolute;right:16px;bottom:56px;z-index:5;width:192px;height:188px;border:1px solid #c3ccd5;border-radius:10px;
+  background:#ffffffd9;overflow:hidden;box-shadow:0 4px 16px #1d222814}
+#inset[hidden]{display:none}
+#inset .top{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;font-size:10px;
+  color:var(--muted);border-bottom:1px solid var(--line);background:#f7f9fa}
+#inset .top span:last-child{letter-spacing:.12em;font-size:8.5px}
+.discovery{margin-top:12px;border-left:3px solid var(--gold);background:#fdf8ea;border-radius:8px;
+  padding:9px 11px;font-size:11px;line-height:1.75;color:#7a5c1e}
+.discovery[hidden]{display:none}
+.discovery b{display:block;font-size:10.5px;margin-bottom:3px;color:#8a6a1c}
+#celebration{position:fixed;inset:0;pointer-events:none;z-index:40;display:grid;place-items:center}
+#celebration i{position:absolute;width:9px;height:9px;border-radius:2px;opacity:0;
+  animation:confetti 1.1s ease-out forwards}
+@keyframes confetti{
+  0%{opacity:1;transform:translate(0,0) rotate(0)}
+  100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r))}}
 #fault{position:absolute;inset:34% 12%;z-index:20;background:#fff;padding:18px;border:2px solid #e0b088;
   border-radius:10px;color:#7c4a22;display:none;font-size:13px}
 
@@ -176,6 +192,7 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
   .card{grid-template-columns:32px minmax(0,1fr);text-align:left;min-height:62px}
   .card svg{display:block;width:28px;height:28px}
   .coach{border-left:0;border-top:1px solid var(--line);padding:20px}
+  #inset{right:12px;bottom:12px;width:132px}
   .readout{min-width:0;padding:6px 9px}
   .readout .row{font-size:9.5px;gap:8px}
   .scene-footer>span{max-width:150px;font-size:8.5px}
@@ -224,6 +241,7 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
       <span data-slot="stage.gestures"></span>
       <div class="readout" id="readout" data-slot="stage.readout"></div>
     </div>
+    <div id="inset" hidden><div class="top"><span id="inset-title">局部放大</span><span>DETAIL VIEW</span></div></div>
     <div id="fault" role="alert"></div>
   </section>
 
@@ -235,6 +253,7 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
     <div class="plabel"><span id="plabel"></span><span id="bcount"></span></div>
     <div class="task" id="task"></div>
     <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="discovery" id="discovery" hidden><b>刚刚发现</b><span id="discovery-text"></span></div>
     <div class="hintbox"><b data-slot="coach.hintLabel"></b><span id="hinttext"></span></div>
     <div data-slot="coach.extras"></div>
     <details class="technical" id="notes">
@@ -250,6 +269,7 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
 </main>
 <script>window.__mechbench={slug:'double-cylinder-engine',built:true}</script>
 
+<div id="celebration" aria-hidden="true"></div>
 <pre id="debug"></pre>
 
 <script>
@@ -360,6 +380,7 @@ function mountLab(item) {
       trayTitle: '',
       trayHint: '',
       cardsLocked: false,
+      discovery: '',
     },
     handlers: {},
     on(name, fn) {
@@ -378,6 +399,39 @@ function mountLab(item) {
     /** 物品自定义教练面板：fn({chapter, phase, state, lab}) => {html, bind(root)} */
     task(fn) {
       lab.taskRenderer = fn;
+      return lab;
+    },
+    /** 发现卡：放一段“刚刚发现”的观察，传空串隐藏 */
+    setDiscovery(text) {
+      lab.state.discovery = text || '';
+      const box = q('#discovery');
+      if (!box) return lab;
+      box.hidden = !text;
+      if (text) q('#discovery-text').textContent = text;
+      return lab;
+    },
+    /** 通关撒花：纯装饰，reduced-motion 下静默 */
+    celebrate() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return lab;
+      const el = q('#celebration');
+      if (!el) return lab;
+      el.replaceChildren();
+      const colors = ['#c2452d', '#b8862f', '#2f6f9f', '#2f7d5c'];
+      for (let i = 0; i < 28; i++) {
+        const bit = document.createElement('i');
+        bit.style.background = colors[i % 4];
+        const angle = (i / 28) * Math.PI * 2;
+        bit.style.setProperty('--x', Math.cos(angle) * (95 + (i % 5) * 27) + 'px');
+        bit.style.setProperty('--y', Math.sin(angle) * 130 + 130 + 'px');
+        bit.style.setProperty('--r', i * 47 + 'deg');
+        el.appendChild(bit);
+      }
+      setTimeout(() => el.replaceChildren(), 1500);
+      return lab;
+    },
+    setInsetTitle(text) {
+      const el = q('#inset-title');
+      if (el) el.textContent = text;
       return lab;
     },
     render,
@@ -667,6 +721,7 @@ function createStage(opts) {
     scene.add(dir);
   }
 
+  if (cfg.bench !== false) {
   const bench = new THREE.Mesh(
     new THREE.PlaneGeometry(cfg.bench.size, cfg.bench.size),
     new THREE.MeshStandardMaterial({ color: cfg.bench.color, roughness: 0.97, metalness: 0 })
@@ -674,6 +729,7 @@ function createStage(opts) {
   bench.rotation.x = -Math.PI / 2;
   bench.position.y = cfg.bench.y;
   scene.add(bench);
+  }
 
   /* ---------- 剖切 ---------- */
   const CUT = new THREE.Plane(vec(...cfg.cut.normal), cfg.cut.constant);
@@ -711,7 +767,14 @@ function createStage(opts) {
   const state = () => (opts.getState ? opts.getState() : {});
 
   /* ---------- 摆位与材质 ---------- */
-  const moduleOffsetTarget = (id) => (state().placed?.includes(id) ? vec() : SPAWN.clone());
+  const moduleOffsetTarget = (id) => {
+    if (state().placed?.includes(id)) return vec();
+    if (typeof cfg.spawnFor === 'function') {
+      const v = cfg.spawnFor(id, info.get(id), state(), view);
+      if (v) return v.isVector3 ? v.clone() : vec(...v);
+    }
+    return SPAWN.clone();
+  };
 
   function render(dt = 1) {
     const s = state();
@@ -738,15 +801,17 @@ function createStage(opts) {
         materials(p, installed || view.solid);
       }
     }
-    model.applyMotion(view.crankDeg, view.camDeg);
+    model.applyMotion(view, s);
     worldGroup.updateMatrixWorld(true);
   }
 
-  // 外壳在剖开模式下换成剖切玻璃；正在拖动的模块保持实体，否则会被切成半个
+  // 剖开：外壳换玻璃；带 userData.cutaway 的网格（被切掉的那半）直接隐藏
   function materials(p, showSolid) {
-    const ghost = showSolid && view.cut && p.shell && !(view.focus !== 'all' && view.focus === p.key);
+    const cutting = showSolid && view.cut;
     p.g.traverse((o) => {
       if (!o.isMesh) return;
+      if (o.userData.cutaway) o.visible = !cutting;
+      const ghost = cutting && (p.shell || o.userData.socketCover) && !(view.focus !== 'all' && view.focus === p.key);
       if (ghost) {
         if (!p.ghostMat) {
           p.ghostMat = GHOST.clone();
@@ -797,7 +862,10 @@ function createStage(opts) {
   function focusSpec(name) {
     const f = cfg.focus[name] || {};
     const dir = f.dir || [0, 18];
-    if (f.box) return { center: vec(...f.box[0]), size: vec(...f.box[1]), dir, fit: f.fit || 1 };
+    if (f.box) {
+      const b = typeof f.box === 'function' ? f.box(state(), view) : f.box;
+      return { center: vec(...b[0]), size: vec(...b[1]), dir, fit: f.fit || 1 };
+    }
     if (name === cfg.camera.defaultFocus || !name) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
     const p = byKey.get(name);
     if (!p) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
@@ -974,6 +1042,39 @@ function createStage(opts) {
     if (k && opts.onPickKey) opts.onPickKey(k, view.focus === k);
   });
 
+  /* ---------- 局部放大窗（同一个 canvas 里用 scissor 画第二视角） ---------- */
+  const insetEl = document.getElementById('inset');
+  const insetCam = new THREE.PerspectiveCamera(cfg.inset?.fov || 36, 1, cfg.inset?.near || 0.1, cfg.inset?.far || 500);
+  function drawInset() {
+    if (!insetEl || !cfg.inset) return;
+    const s = state();
+    const ic = cfg.inset;
+    const fits = stageEl.clientWidth > (ic.minWidth || 760) && stageEl.clientHeight > (ic.minHeight || 430);
+    const spec = fits && ic.visible?.(s, view) ? ic.target?.(s, view) : null;
+    const part = spec && byKey.get(spec.part);
+    insetEl.hidden = !part;
+    if (!part) return;
+    const title = insetEl.querySelector('#inset-title');
+    if (title && spec.title) title.textContent = spec.title;
+    const target = part.g.localToWorld(vec(...(spec.local || [0, 0, 0])));
+    insetCam.position.copy(target).add(vec(...spec.offset));
+    insetCam.lookAt(target);
+    const r = insetEl.getBoundingClientRect(), base = stageEl.getBoundingClientRect();
+    if (r.width < 10 || r.height < 10) return;
+    insetCam.aspect = r.width / r.height;
+    insetCam.updateProjectionMatrix();
+    const x = r.left - base.left, y = stageEl.clientHeight - (r.bottom - base.top);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+    renderer.setScissor(x, y, r.width, r.height);
+    renderer.setViewport(x, y, r.width, r.height);
+    renderer.setScissorTest(true);
+    renderer.clearDepth();
+    renderer.render(scene, insetCam);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+  }
+
   /* ---------- 尺寸与循环 ---------- */
   function resize() {
     const w = stageEl.clientWidth, h = stageEl.clientHeight;
@@ -995,6 +1096,7 @@ function createStage(opts) {
       controls.update();
       overlay();
       renderer.render(scene, camera);
+      drawInset();
     });
   }
 
@@ -1845,8 +1947,10 @@ function moduleBounds(keys){
 
 /* ====== 对外接口（kit/scene.mjs 用） ====== */
 const MODEL = {
-  world, byKey, moduleBounds, moduleCenter, applyMotion,
+  world, byKey, moduleBounds, moduleCenter,
   PARTS: parts, MECH, D, pistonPinY, valveState, sparkState, strokeOf,
+  // kit 传整个 view；发动机只关心两个角
+  applyMotion: (view) => applyMotion(view.crankDeg, view.camDeg),
 };
 
 /* ==== double-cylinder-engine/manifest.mjs ==== */

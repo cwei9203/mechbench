@@ -832,6 +832,8 @@ function moduleBounds(keys){
 
 /* ====== 对外接口（kit/scene.mjs 用） ====== */
 export const MODEL = {
-  world, byKey, moduleBounds, moduleCenter, applyMotion,
+  world, byKey, moduleBounds, moduleCenter,
   PARTS: parts, MECH, D, pistonPinY, valveState, sparkState, strokeOf,
+  // kit 传整个 view；发动机只关心两个角
+  applyMotion: (view) => applyMotion(view.crankDeg, view.camDeg),
 };
