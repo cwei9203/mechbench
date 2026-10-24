@@ -43,7 +43,10 @@ dist/           构建产物 + 验收报告 + 截图
 | 示例物品 `items/_template`（无三维） | ✅ 25 项检查通过 |
 | `kit/scene.mjs` 三维舞台 | ✅ |
 | `items/double-cylinder-engine` 迁移 | ✅ 41 项检查 × 3 宽度 + 离线单文件 |
-| `items/electric-toothbrush` 迁移（验证插槽够用） | ⬜ 下一步 |
+| `items/electric-toothbrush` 迁移 | ✅ 26+13 项检查 × 3 宽度 |
+| `kit` 局部放大窗 / 通关撒花 / 发现卡 | ✅ 由牙刷迁移带出 |
+| `items/nail-gun-lab` 迁移 | ⬜ 待做（还需：存档、物理状态同步） |
+| `items/hand-crank-flashlight` 迁移 | ⬜ 待做 |
 
 ## 项目内 skill
 

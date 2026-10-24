@@ -624,6 +624,8 @@ function mountLab(item) {
   });
 
   render();
+  // 调试钩子：?debug=1 时把 lab（含 lab.stage）挂到 window，方便控制台/验收排查
+  if (new URLSearchParams(location.search).has('debug')) window.__lab = lab;
   return lab;
 }
 
@@ -2231,6 +2233,7 @@ const stage = createStage({
   tick: (dt) => tick(dt),
 });
 lab.attached3d = true;
+lab.stage = stage;
 const view = stage.view;
 
 /* ---------- 读数 ---------- */
