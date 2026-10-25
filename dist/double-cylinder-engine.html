@@ -435,6 +435,18 @@ function mountLab(item) {
       if (el) el.textContent = text;
       return lab;
     },
+    /** 按 {key: 显示值} 批量写读数，内部 diff（可以每帧调，不碰 DOM）。
+     * 读数的格式化留在物品侧（那里才知道 model/view/game）；这里只管写。 */
+    paint(values) {
+      for (const k of Object.keys(values || {})) {
+        const el = rdEls.get(k);
+        if (!el) continue;
+        const text = values[k] == null ? '—' : String(values[k]);
+        if (el.textContent !== text) el.textContent = text;
+        lab.state.readout[k] = text;
+      }
+      return lab;
+    },
     render,
   };
 
@@ -467,6 +479,8 @@ function mountLab(item) {
   q('#readout').innerHTML = readout
     .map((r) => `<div class="row"><span>${esc(r.label)}</span><b data-rd="${r.key}"${r.big ? ' class="big"' : ''}>—</b></div>`)
     .join('');
+  const rdEls = new Map();
+  for (const r of readout) rdEls.set(r.key, q(`[data-rd="${r.key}"]`));
 
   q('[data-slot="coach.extras"]').innerHTML = (item.experiments || [])
     .map((x) => {
@@ -576,7 +590,7 @@ function mountLab(item) {
     ro.classList.toggle('on', !!s.visible.readout);
     for (const b of ro.querySelectorAll('[data-rd]')) {
       const v = s.readout[b.dataset.rd];
-      if (v != null) b.textContent = v;
+      if (v != null && b.textContent !== String(v)) b.textContent = v;
     }
     // 有三维时 socket 的显隐与位置由 kit/scene.mjs 负责
     if (!lab.attached3d) q('#socket').hidden = !(s.selected && s.phase === 'build');
@@ -1595,7 +1609,7 @@ for (let i = 0; i < 2; i++){
 {
   const g = new THREE.Group();
   for (const x of CYL_X){
-    const m = new THREE.Mesh(ringY(D.DECK - .5, 1.4, D.BORE / 2 - .3, D.BORE / 2 + 7, 56), M.gasket);
+    const m = new THREE.Mesh(ringY(D.DECK + .75, 1.4, D.BORE / 2 - .3, D.BORE / 2 + 7, 56), M.gasket);
     m.position.x = x; g.add(m);
   }
   addPart('gasket', '气缸垫 ×2', g, M.gasket);
@@ -1619,7 +1633,7 @@ for (let i = 0; i < 2; i++){
   }
   // 缸体底法兰（压在箱体顶面上）
   const flange = prismXZ(rectPts(-92, 92, -80, 80, 10),
-    [circlePts(CYL_X[0], 0, D.BORE / 2, 56, false), circlePts(CYL_X[1], 0, D.BORE / 2, 56, false)], D.BARREL_Y0 - 4, D.BARREL_Y0 + 7);
+    [circlePts(CYL_X[0], 0, D.BORE / 2, 56, false), circlePts(CYL_X[1], 0, D.BORE / 2, 56, false)], D.BARREL_Y0 - .1, D.BARREL_Y0 + 11);
   g.add(new THREE.Mesh(mergeGeos([body, flange, ...fins]), M.barrel));
   for (const sx of [-86, 80]) for (const sz of [-40, 40]){
     g.add(new THREE.Mesh(cylY(D.BARREL_Y0 - 1, D.DECK + 1, 5, 12).translate(sx, 0, sz), M.steelDark));
@@ -1633,7 +1647,7 @@ for (let i = 0; i < 2; i++){
   const outer = rectPts(-94, 86, -58, 58, 10);
   const chambers = [circlePts(CYL_X[0], 0, D.BORE / 2, 56, false), circlePts(CYL_X[1], 0, D.BORE / 2, 56, false)];
   // 底板：燃烧室开通
-  const deck = prismXZ(outer, chambers, D.DECK - 1, 217);
+  const deck = prismXZ(outer, chambers, D.DECK + 1.3, 217);
   // 侧壁：内腔 x -103..70 / z ±44（避开底板外壁 0.6 mm）
   const cav = rectPts(-88, 70, -48, 48, 10).reverse();
   const walls = prismXZ(rectPts(-93.4, 85.4, -57.4, 57.4, 10), [cav], 216, D.HEAD_Y1);
@@ -1684,7 +1698,7 @@ for (let i = 0; i < 2; i++) for (const kind of ['im', 'ex']){
   const side = kind === 'im' ? -1 : 1, x = valveX(i, kind), z = side * D.VZ;
   const g = new THREE.Group(), node = new THREE.Group();
   node.position.set(x, 0, z);
-  const geos = [cylY(D.TAPPET_TOP - 20, D.TAPPET_TOP, D.TAPPET_R, 28)];
+  const geos = [cylY(D.TAPPET_TOP - 18.05, D.TAPPET_TOP, D.TAPPET_R, 28)];
   geos.push(cylY(D.TAPPET_TOP - 4, D.TAPPET_TOP, D.TAPPET_R - 1.2, 28));   // 顶面硬化片
   node.add(new THREE.Mesh(mergeGeos(geos), M.steel));
   g.add(node);
@@ -2277,23 +2291,21 @@ lab.stage = stage;
 const view = stage.view;
 
 /* ---------- 读数 ---------- */
-function setRd(key, value) {
-  const el = document.querySelector(`[data-rd="${key}"]`);
-  if (el && el.textContent !== value) el.textContent = value;
-}
 function updateReadout() {
   const has = (id) => state.placed.includes(id);
   const c = (((view.crankDeg % 720) + 720) % 720);
-  setRd('crank', has('crank') ? c.toFixed(0) + '°' : '—');
-  setRd('cam', has('cam') ? ((((view.camDeg % 360) + 360) % 360).toFixed(0) + '°') : '—');
+  const r = {};
+  r.crank = has('crank') ? c.toFixed(0) + '°' : '—';
+  r.cam = has('cam') ? ((((view.camDeg % 360) + 360) % 360).toFixed(0) + '°') : '—';
   const pinY = MODEL.pistonPinY(view.crankDeg * RAD);
-  setRd('piston', has('piston') ? (pinY - (MODEL.D.ROD - MODEL.D.R)).toFixed(0) + ' / 74 mm' : '—');
+  r.piston = has('piston') ? (pinY - (MODEL.D.ROD - MODEL.D.R)).toFixed(0) + ' / 74 mm' : '—';
   const vs = MODEL.valveState(view.crankDeg, view.camDeg);
   const vi = vs.find((v) => v.i === 0 && v.kind === 'im');
   const ve = vs.find((v) => v.i === 0 && v.kind === 'ex');
-  setRd('valve', has('valve') ? vi.valveLift.toFixed(1) + ' / ' + ve.valveLift.toFixed(1) + ' mm' : '—');
+  r.valve = has('valve') ? vi.valveLift.toFixed(1) + ' / ' + ve.valveLift.toFixed(1) + ' mm' : '—';
   const sp = MODEL.sparkState(view.crankDeg).filter((s) => s.on).map((s) => '缸' + (s.i + 1));
-  setRd('spark', has('ignition') ? (sp.length ? sp.join(' ') + ' 跳火' : '—') : '—');
+  r.spark = has('ignition') ? (sp.length ? sp.join(' ') + ' 跳火' : '—') : '—';
+  lab.paint(r);
 }
 
 /* ---------- 手动摇曲轴 ---------- */
@@ -2519,6 +2531,7 @@ lab.on('tool', (id) => {
 lab.state.feedback = '从下方选中「曲轴箱」，开始第一步。';
 lab.state.hint = '选中模块后可以拖到机身上，也可以按「装入当前模块」。位置不对时，已有的进度不会丢。';
 refresh();
+updateReadout();   // 首帧前先把读数填上（tick 之前是一屏占位）
 stage.start();
 
 </script>

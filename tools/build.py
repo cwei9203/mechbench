@@ -23,6 +23,32 @@ MARKERS = {
     "<!--ITEM:JS-->": ("item", "*"),
 }
 
+# 纯逻辑三件套：不含 DOM、不含场景，node 可以直接 import
+LOGIC_ORDER = ["model.mjs", "manifest.mjs", "logic.mjs"]
+EXPORT_DECL_RE = re.compile(
+    r"^\s*export\s+(?:async\s+function|const|let|var|function|class)\s+([A-Za-z_$][\w$]*)", re.M)
+
+# node 里跑 geometry/logic 断言时的最小 DOM 桩（model.mjs 会用 canvas 生成贴图纹理）
+DOM_SHIM = """/* node 环境最小 DOM 桩：model.mjs 里的 canvas 贴图纹理需要 */
+const __stubGradient = () => ({ addColorStop() {} });
+const __stubCtx = () => ({
+  fillStyle: '', strokeStyle: '', font: '', textAlign: '', textBaseline: '', lineWidth: 1, globalAlpha: 1,
+  fillRect() {}, strokeRect() {}, clearRect() {}, save() {}, restore() {},
+  translate() {}, rotate() {}, scale() {}, setTransform() {}, transform() {},
+  fillText() {}, strokeText() {}, measureText: () => ({ width: 10 }),
+  beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {}, rect() {},
+  bezierCurveTo() {}, quadraticCurveTo() {}, stroke() {}, fill() {}, clip() {},
+  drawImage() {}, createLinearGradient: __stubGradient, createRadialGradient: __stubGradient,
+  createPattern: () => null, getImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 }),
+  putImageData() {},
+});
+if (!globalThis.document) {
+  globalThis.document = {
+    createElement: () => ({ width: 1, height: 1, style: {}, getContext: __stubCtx }),
+    createElementNS: () => ({ width: 1, height: 1, style: {}, getContext: __stubCtx }),
+  };
+}"""
+
 IMPORT_RE = re.compile(r"^\s*(?:import|export\s+\*)\s.*$", re.M)
 THREE_IMPORT_RE = re.compile(r"^\s*import\s+[^;]*?from\s+['\"](three[^'\"]*)['\"];?\s*$", re.M)
 EXPORT_RE = re.compile(r"^\s*export\s+", re.M)
@@ -32,12 +58,15 @@ IMPORTMAP = ('<script type="importmap">{"imports":{"three":"./vendor/three.modul
              '"three/addons/":"./vendor/addons/"}}</script>')
 
 
-def inline(paths, imports):
+def inline(paths, imports, names=None):
     """把若干模块拼进同一作用域：three 的 import 提到顶部，其余 import/export 去掉。
-    拼在同一作用域，所以顶层标识符不能重名；由 check_syntax() 把关。"""
+    拼在同一作用域，所以顶层标识符不能重名；由 check_syntax() 把关。
+    传 names 列表时顺便收集各文件的导出名（用于生成 .logic.mjs 的 export 列表）。"""
     out = []
     for p in paths:
         src = p.read_text(encoding="utf-8")
+        if names is not None:
+            names.extend(EXPORT_DECL_RE.findall(src))
         for m in THREE_IMPORT_RE.finditer(src):
             line = m.group(0).strip()
             if line not in imports:
@@ -67,13 +96,66 @@ def pathlib_tempfile():
     return Path(tempfile.mkstemp(suffix=".mjs")[1])
 
 
+def check_syntax_file(path):
+    r = subprocess.run(["node", "--check", str(path)], capture_output=True, text=True)
+    if r.returncode:
+        sys.exit(f"语法/重名错误：{path}\n" + r.stderr.strip())
+
+
+def vendor_path(line):
+    """把 three 的裸模块名改写成相对 vendor 的路径（node 里没有 importmap）。"""
+    line = line.replace("from 'three/addons/", "from '../vendor/addons/")
+    line = line.replace("from \"three/addons/", "from '../vendor/addons/")
+    line = line.replace("from 'three'", "from '../vendor/three.module.js'")
+    line = line.replace('from "three"', "from '../vendor/three.module.js'")
+    return line
+
+
+def run_static_verify(slug):
+    """构建期把关：manifest × model 的交叉一致性（零件归属、读数 key、取景名…）。
+    规则写错不该等到打开浏览器才发现。"""
+    r = subprocess.run(["node", str(ROOT / "tools" / "verify.mjs"), slug, "--static"],
+                       capture_output=True, text=True)
+    if r.returncode:
+        sys.exit(f"静态断言未通过（{slug}）：\n" + (r.stdout or r.stderr).strip())
+
+
+def build_logic(slug):
+    """产出 dist/<slug>.logic.mjs：model + manifest + logic 三个纯模块，node 可直接 import。
+    用途：无浏览器跑装配/剂量/传动比断言 —— node tools/verify.mjs <slug>"""
+    item_dir = ROOT / "items" / slug
+    files = [item_dir / n for n in LOGIC_ORDER if (item_dir / n).is_file()]
+    if not files:
+        return None
+    names, imports = [], []
+    body = inline(files, imports, names)
+    uniq = list(dict.fromkeys(names))
+    if any(re.match(r"import\s+\*\s+as\s+THREE\b", i) for i in imports):
+        uniq.append("THREE")   # 几何自检要量 Box3 / 打射线，复用同一份 three 实例
+    head = "\n".join(vendor_path(i) for i in imports)
+    out = (
+        f"/* mechbench · 生成物，勿手改\n"
+        f" * 源：items/{slug}/{{{','.join(p.name for p in files)}}}\n"
+        f" * 重新生成：python3 tools/build.py {slug}\n"
+        f" * 用途：无浏览器断言 → node tools/verify.mjs {slug}\n"
+        f" */\n"
+        f"{DOM_SHIM}\n{head}\n{body}"
+        f"\nexport {{ {', '.join(uniq)} }};\n"
+    )
+    path = ROOT / "dist" / f"{slug}.logic.mjs"
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(out, encoding="utf-8")
+    check_syntax_file(path)
+    return path
+
+
 def collect(base, names):
     if names == "*":
         return [base / n for n in (KIT_ORDER if base.name == "kit" else ITEM_ORDER) if (base / n).is_file()]
     return [base / names]
 
 
-def build(slug, single=False):
+def build(slug, single=False, verify=True):
     item_dir = ROOT / "items" / slug
     if not (item_dir / "manifest.mjs").is_file():
         sys.exit(f"物品缺少 manifest.mjs：{item_dir}")
@@ -93,6 +175,7 @@ def build(slug, single=False):
         kit_files = [f for f in kit_files if f.name != "scene.mjs"]
     js_kit = inline(kit_files, imports)
     js_item = inline(item_files, imports)
+    logic = build_logic(slug)
 
     html = shell.replace("<!--KIT:CSS-->", css_kit)
     html = html.replace("<!--ITEM:CSS-->", css_item.read_text(encoding="utf-8") if css_item.is_file() else "")
@@ -114,6 +197,10 @@ def build(slug, single=False):
     out.write_text(html, encoding="utf-8")
     check_syntax(html)
     print(f"→ {out.relative_to(ROOT)}  ({len(html)//1024} KB)")
+    if logic:
+        print(f"→ {logic.relative_to(ROOT)}  ({logic.stat().st_size//1024} KB · node 可直接 import)")
+        if verify:
+            run_static_verify(slug)
 
     if single:
         builder = Path.home() / ".pi/agent/skills/real-device-game/assets/build.py"
@@ -141,7 +228,7 @@ def build_index():
     for it in items:
         slug = it["slug"]
         thumb = ""
-        for name in (f"{slug}-card.png", f"{slug}-1440-after.png", f"{slug}-1440.png"):
+        for name in (f"{slug}-card.jpg", f"{slug}-card.png", f"{slug}-1440-after.png", f"{slug}-1440.png"):
             rel = Path("accept") / slug / name
             if (ROOT / "dist" / rel).is_file():
                 thumb = f'<img class="thumb" src="./{rel.as_posix()}" alt="" loading="lazy">'
@@ -169,7 +256,9 @@ def main():
     ap = argparse.ArgumentParser(description="mechbench 构建")
     ap.add_argument("slug", help="物品目录名，或 all")
     ap.add_argument("--single", action="store_true", help="额外产出离线单文件")
+    ap.add_argument("--skip-verify", action="store_true", help="跳过构建期的静态断言（不建议）")
     a = ap.parse_args()
+    verify = not a.skip_verify
 
     if a.slug == "all":
         items = sorted(p.name for p in (ROOT / "items").iterdir()
@@ -177,9 +266,9 @@ def main():
         if not items:
             sys.exit("items/ 下还没有物品")
         for s in items:
-            build(s, a.single)
+            build(s, a.single, verify)
     else:
-        build(a.slug, a.single)
+        build(a.slug, a.single, verify)
     build_index()
 
 

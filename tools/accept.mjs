@@ -76,6 +76,8 @@ const PAGE_CHECK = `(async () => {
   need(text('#plabel') === label0, '撤回后进度还原');
 
   return { ok, bad, meta: { title: document.title, cards: qa('.card').length, buttons: btns.length,
+    // 读数快照：读数错了不会让上面任何一条断言变红，所以把它记进验收报告里好比对
+    readouts: Object.fromEntries(qa('[data-rd]').map(b => [b.dataset.rd, b.textContent.trim()])),
     stage: [Math.round(q('.stage').getBoundingClientRect().width), Math.round(q('.stage').getBoundingClientRect().height)],
     scrollW: de.scrollWidth, innerW: window.innerWidth } };
 })()`;
@@ -271,26 +273,99 @@ async function main() {
       const shot2 = await S('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       writeFileSync(join(outDir, `${slug}-${w}-after.png`), Buffer.from(shot2.data, 'base64'));
 
-      // 目录页缩略图：只截三维舞台，并临时藏掉覆盖层
+      // 目录页缩略图：藏掉全部 DOM 覆盖层，按模型屏幕包围盒裁 16:10，输出 640px JPEG
+      // #inset 必须 display:none：它是在同一个 canvas 里用 scissor 画的第二视角，
+      // 只设 visibility:hidden 的话画面上仍然留着那块特写，目录缩略图会多出一个白框。
       const box = await S('Runtime.evaluate', {
-        expression: `(() => { const r = document.querySelector('.stage').getBoundingClientRect();
-          return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+        expression: `(() => {
+          const r = document.querySelector('.stage').getBoundingClientRect();
+          const out = { x: r.x, y: r.y, width: r.width, height: r.height, framed: false };
+          const st = window.__lab && window.__lab.stage;
+          if (!st || !st.scene || !st.project || !st.camera) return out;
+          const seen = o => { for (let n = o; n; n = n.parent) if (n.visible === false) return false; return true; };
+          // 只要零件（挂 userData.key 的组）：台面/背板是舞台背景，不能参与取景
+          const isPart = o => { for (let n = o; n; n = n.parent) if (n.userData && n.userData.key) return true; return false; };
+          let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+          st.scene.updateMatrixWorld(true);
+          st.scene.traverse(o => {
+            if (!o.isMesh || !o.geometry || !seen(o) || !isPart(o)) return;
+            if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+            const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+            lo = [Math.min(lo[0], b.min.x), Math.min(lo[1], b.min.y), Math.min(lo[2], b.min.z)];
+            hi = [Math.max(hi[0], b.max.x), Math.max(hi[1], b.max.y), Math.max(hi[2], b.max.z)];
+          });
+          if (!isFinite(lo[0])) return out;
+          const tmp = st.camera.position.clone();
+          let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+          for (const x of [lo[0], hi[0]]) for (const y of [lo[1], hi[1]]) for (const z of [lo[2], hi[2]]) {
+            const p = st.project(tmp.set(x, y, z));
+            x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
+            y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+          }
+          let cw = Math.max((x1 - x0) * 1.16, 80);
+          let ch = Math.max((y1 - y0) * 1.16, 80);
+          if (cw / ch < 1.6) cw = ch * 1.6; else ch = cw / 1.6;
+          cw = Math.min(cw, r.width); ch = cw / 1.6;
+          if (ch > r.height) { ch = r.height; cw = ch * 1.6; }
+          const cx = Math.min(Math.max((x0 + x1) / 2, cw / 2), r.width - cw / 2);
+          const cy = Math.min(Math.max((y0 + y1) / 2, ch / 2), r.height - ch / 2);
+          out.x = r.x + cx - cw / 2; out.y = r.y + cy - ch / 2;
+          out.width = cw; out.height = ch; out.framed = true;
+          return out;
+        })()`,
         returnByValue: true,
       });
       const b = box.result?.value;
       if (w === widths[0] && b && b.width > 10 && b.height > 10) {
-        const hide = `document.querySelectorAll('.stage-title,.toolbar,.readout,.scene-footer,.socket,.preview-label')
-          .forEach(e => e.style.visibility = 'hidden')`;
-        await S('Runtime.evaluate', { expression: hide });
-        const card = await S('Page.captureScreenshot', {
-          format: 'png', captureBeyondViewport: false,
-          clip: { x: b.x, y: b.y, width: b.width, height: b.height, scale: 1 },
-        });
-        writeFileSync(join(outDir, `${slug}-card.png`), Buffer.from(card.data, 'base64'));
         await S('Runtime.evaluate', {
-          expression: `document.querySelectorAll('.stage-title,.toolbar,.readout,.scene-footer,.socket,.preview-label')
-            .forEach(e => e.style.visibility = '')`,
+          expression: `(() => {
+            const stage = document.querySelector('.stage');
+            window.__thumbStyles = [...stage.children].filter(e =>
+              e.tagName !== 'CANVAS' && !e.querySelector('canvas') &&
+              ['absolute', 'fixed'].includes(getComputedStyle(e).position)
+            ).map(e => [e, e.style.cssText]);
+            const ins = document.getElementById('inset');
+            if (ins && !window.__thumbStyles.some(([e]) => e === ins)) window.__thumbStyles.push([ins, ins.style.cssText]);
+            for (const [e] of window.__thumbStyles) e.style.setProperty('display', 'none', 'important');
+            return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          })()`, awaitPromise: true,
         });
+        const card = await S('Page.captureScreenshot', {
+          format: 'jpeg', quality: 84, captureBeyondViewport: false,
+          clip: { x: b.x, y: b.y, width: b.width, height: b.height,
+                  scale: 640 / (b.width * 2) },
+        });
+        writeFileSync(join(outDir, `${slug}-card.jpg`), Buffer.from(card.data, 'base64'));
+        const decoded = await S('Runtime.evaluate', {
+          expression: `(() => {
+            const img = new Image();
+            return new Promise((resolve, reject) => {
+              img.onload = () => {
+                for (const [e, css] of window.__thumbStyles) e.style.cssText = css;
+                delete window.__thumbStyles;
+                const probe = document.createElement('canvas');
+                probe.width = 80; probe.height = 50;
+                const ctx = probe.getContext('2d');
+                ctx.drawImage(img, 0, 0, 80, 50);
+                const rgba = ctx.getImageData(0, 0, 80, 50).data;
+                const colors = new Set();
+                for (let i = 0; i < rgba.length; i += 4) colors.add((rgba[i] >> 4) + ',' + (rgba[i + 1] >> 4) + ',' + (rgba[i + 2] >> 4));
+                resolve({width: img.naturalWidth, height: img.naturalHeight, colors: colors.size});
+              };
+              img.onerror = () => reject(new Error('缩略图 JPEG 解码失败'));
+              img.src = 'data:image/jpeg;base64,${card.data}';
+            });
+          })()`, awaitPromise: true, returnByValue: true,
+        });
+        const pixels = decoded.result?.value;
+        if (!pixels || Math.abs(pixels.width - 640) > 1 || Math.abs(pixels.width / pixels.height - 1.6) > 0.01) {
+          v.bad.push('缩略图尺寸错误：需要约 640×400 设备像素');
+        } else {
+          v.ok.push('缩略图 JPEG 尺寸与 16:10 比例正确');
+          (pixels.colors >= 8 ? v.ok : v.bad).push('缩略图包含模型色彩，非空白背景');
+        }
+        report.thumb = { framed: !!b.framed, ...pixels, unit: 'device-pixel',
+          crop: { width: b.width, height: b.height, unit: 'css-pixel' } };
       }
 
       const errs = cdp.events

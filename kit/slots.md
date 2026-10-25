@@ -13,7 +13,8 @@
 | `kit/scene.mjs` | kit | three.js 舞台：相机/灯光/地面/剖切/目标轮廓/拾取/拖放/取景/循环 |
 | `items/<slug>/model.mjs` | 物品 | 几何 + 运动（唯一真源），导出 `MODEL = { world, PARTS, byKey, applyMotion, moduleBounds, ... }` |
 | `items/<slug>/manifest.mjs` | 物品 | **全部插槽填充**：`export const MANIFEST = {...}`（含 `scene` 三维数值） |
-| `items/<slug>/logic.mjs` | 物品 | 业务规则（纯逻辑、无 DOM、无三维）；顶层可以读 `MANIFEST` |
+| `items/<slug>/logic.mjs` | 物品 | 业务规则（纯逻辑、无 DOM、无三维）；顶层可以读 `MANIFEST`；**必须 `export function createGame()`**，`dist/<slug>.logic.mjs` 靠这个名字把游戏拿出来 |
+| `items/<slug>/logic.spec.mjs` | 物品 | 可选，无浏览器断言：`export default (t, { createGame, MANIFEST, MODEL }) => {}`，用 `t.ok/t.eq/t.near`。被 `node tools/verify.mjs <slug>` 执行 |
 | `items/<slug>/main.mjs` | 物品 | 接线：`mountLab(MANIFEST)` + 业务规则 + 事件处理 |
 | `items/<slug>/lab.css` | 物品 | 可选，个别视觉覆盖 |
 | `items/<slug>/accept.mjs` | 物品 | 可选，浏览器验收的额外断言：页面内 async 函数体，`return {ok:[], bad:[]}`；只能用 DOM 驱动（页面模块作用域不可见） |
@@ -33,6 +34,7 @@
 | `stage.hint` | 舞台左上小字 | — | 首次操作提示 |
 | `stage.gestures` | 舞台左下脚注 | — | 默认已写好鼠标/触屏手势 |
 | `tools[]` | 舞台右上 | — | 默认 旋转/平移/剖开看/复位。`{id,label,pressed?}`；`id` 为 `rotate/pan/cut/home` 时骨架内置行为 |
+| `envParts[]` | —（不进 DOM） | — | 环境件：安装在基准件上、不属于任何可装模块的零件 key（如门锁的门与门框）。不声明的话 `verify.mjs` 会报「零件未被认领」 |
 | `readout[]` | 舞台右下读数 | ✅ | `{key,label,big?}`，`big` 给主读数。行数由物品决定（发动机 5 行，手电筒 2 行） |
 | `tray.title` | 零件盒标题 | — | 默认 `零件盒` |
 | `tray.hint` | 零件盒右侧小字 | — | 拖放提示 |
@@ -76,6 +78,7 @@ rect 是相对舞台左上角的 CSS 像素；内部排队到渲染帧内 `readP
 | `undo` | — | 点「撤回一步」 |
 | `next` / `replay` | — | 点「进入下一关」/「再看一遍」 |
 | `answer` | `optionIndex` | 点测验选项 |
+| `experiment` | `{id, value}` | 动滑块 / 点开关（`experiments[].id` 必须在这里被处理，否则控件是死的） |
 | `experiment` | `{id, value}` | 动滑块 / 点开关 |
 | `tool` | `toolId` | 点工具栏按钮（`home` 之外 kit 只切 `aria-pressed`） |
 | `free` / `restart` | — | 点顶栏「自由实验」/「重新开始」 |
@@ -102,6 +105,16 @@ lab.state = {
 
 `lab.render()` 是幂等的，物品每次改完状态调一次即可。
 
+### 读数只能走 `lab.paint()`
+
+```js
+lab.paint({ dose: s.windMg.toFixed(2) + ' mg', clicks: Math.round(s.windMg / MODEL.PEN.clickMg) + ' 格' });
+```
+
+按 `{key: 显示值}` 批量写入 `[data-rd]`，内部做 diff（每帧调也不会碰 DOM）。值给 `null` 就写 `—`。
+
+**不要在物品里直写 `[data-rd]`**：`kit/lab.mjs` 的 `render()` 也会写同一批节点，两边各写一份就会互相覆盖。读数的格式化留在物品侧（只有那里知道 model/view/game），kit 只管写。
+
 ## 命名与顺序（拼在同一作用域）
 
 所有 kit 与物品文件被拼进同一个 `<script type="module">`，因此：
@@ -112,9 +125,10 @@ lab.state = {
 
 ## 校验
 
-1. `python3 tools/build.py <slug>` — 骨架占位标记齐全、manifest 存在、产物过 `node --check`。
-2. `node tools/accept.mjs <slug>` — 3 个宽度下检查：区域可见、插槽非空、读数已赋值、按钮有文字、无横向溢出、无控制台报错、选中→装上→撤回全链路、截图存档。
-3. 物品自定义断言写进 `items/<slug>/accept.mjs`，被第 2 步自动执行。
+1. `python3 tools/build.py <slug>` — 骨架占位标记齐全、manifest 存在、产物过 `node --check`、**并跑 `verify.mjs --static` 的静态契约**（零件归属、读数 key、取景名、applyMotion 不产 NaN）。
+2. `node tools/verify.mjs <slug>` — 无浏览器断言：静态契约 + `logic.spec.mjs` 行为断言。毫秒级，改一行跑一次。
+3. `node tools/accept.mjs <slug>` — 3 个宽度下检查：区域可见、插槽非空、读数已赋值、按钮有文字、无横向溢出、无控制台报错、选中→装上→撤回全链路、截图存档。
+4. 物品自定义断言写进 `items/<slug>/accept.mjs`，被第 3 步自动执行——**只留浏览器才能证明的东西**（布局、DOM 交互、像素）。
 
 ## 新物品
 
@@ -123,5 +137,5 @@ python3 tools/make-item.py <slug>      # 生成骨架文件
 # 改 manifest.mjs（文案/关卡/模块/读数）
 # 改 model.mjs（几何/运动）
 # 改 main.mjs（规则接线）
-python3 tools/build.py <slug> && node tools/accept.mjs <slug>
+python3 tools/build.py <slug> && node tools/verify.mjs <slug> && node tools/accept.mjs <slug>
 ```

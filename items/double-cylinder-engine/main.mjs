@@ -32,23 +32,21 @@ lab.stage = stage;
 const view = stage.view;
 
 /* ---------- 读数 ---------- */
-function setRd(key, value) {
-  const el = document.querySelector(`[data-rd="${key}"]`);
-  if (el && el.textContent !== value) el.textContent = value;
-}
 function updateReadout() {
   const has = (id) => state.placed.includes(id);
   const c = (((view.crankDeg % 720) + 720) % 720);
-  setRd('crank', has('crank') ? c.toFixed(0) + '°' : '—');
-  setRd('cam', has('cam') ? ((((view.camDeg % 360) + 360) % 360).toFixed(0) + '°') : '—');
+  const r = {};
+  r.crank = has('crank') ? c.toFixed(0) + '°' : '—';
+  r.cam = has('cam') ? ((((view.camDeg % 360) + 360) % 360).toFixed(0) + '°') : '—';
   const pinY = MODEL.pistonPinY(view.crankDeg * RAD);
-  setRd('piston', has('piston') ? (pinY - (MODEL.D.ROD - MODEL.D.R)).toFixed(0) + ' / 74 mm' : '—');
+  r.piston = has('piston') ? (pinY - (MODEL.D.ROD - MODEL.D.R)).toFixed(0) + ' / 74 mm' : '—';
   const vs = MODEL.valveState(view.crankDeg, view.camDeg);
   const vi = vs.find((v) => v.i === 0 && v.kind === 'im');
   const ve = vs.find((v) => v.i === 0 && v.kind === 'ex');
-  setRd('valve', has('valve') ? vi.valveLift.toFixed(1) + ' / ' + ve.valveLift.toFixed(1) + ' mm' : '—');
+  r.valve = has('valve') ? vi.valveLift.toFixed(1) + ' / ' + ve.valveLift.toFixed(1) + ' mm' : '—';
   const sp = MODEL.sparkState(view.crankDeg).filter((s) => s.on).map((s) => '缸' + (s.i + 1));
-  setRd('spark', has('ignition') ? (sp.length ? sp.join(' ') + ' 跳火' : '—') : '—');
+  r.spark = has('ignition') ? (sp.length ? sp.join(' ') + ' 跳火' : '—') : '—';
+  lab.paint(r);
 }
 
 /* ---------- 手动摇曲轴 ---------- */
@@ -274,4 +272,5 @@ lab.on('tool', (id) => {
 lab.state.feedback = '从下方选中「曲轴箱」，开始第一步。';
 lab.state.hint = '选中模块后可以拖到机身上，也可以按「装入当前模块」。位置不对时，已有的进度不会丢。';
 refresh();
+updateReadout();   // 首帧前先把读数填上（tick 之前是一屏占位）
 stage.start();

@@ -1,0 +1,2346 @@
+<!doctype html>
+<!-- mechbench · 固定页面骨架。物品不许改这个文件；个性化一律走插槽（kit/slots.md）。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>装配实验室</title>
+<style>/* mechbench · 固定布局层
+ * 只放"所有物品共用"的东西：区域、断点、控件外观、无障碍焦点。
+ * 物品自己的视觉微调写在 items/<slug>/lab.css。
+ */
+
+:root{
+  --ink:#1d2228; --muted:#63707d; --line:#cfd6dc; --stage:#e7ebee; --paper:#f8fafb;
+  --accent:#c2452d; --accent-dark:#93301e;
+  --steel:#4d5966; --blue:#2f6f9f; --green:#2f7d5c; --gold:#b8862f;
+  --topbar-h:70px; --coach-w:344px; --tray-h:182px; --radius:9px;
+}
+
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:#dfe4e8;color:var(--ink);
+  font:14px/1.5 "Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button,input{font:inherit}
+button{cursor:pointer;color:inherit;border:1px solid var(--line);background:#fff;
+  border-radius:var(--radius);padding:8px 13px;font-weight:600;transition:background .14s,transform .1s}
+button:hover:not(:disabled){background:#f4f7f9}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:default}
+:focus-visible{outline:3px solid #d99b2b;outline-offset:2px}
+button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 0 var(--accent-dark)}
+.primary:hover:not(:disabled){background:#b03c26}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- 顶栏 ---------- */
+.topbar{height:var(--topbar-h);display:flex;align-items:center;gap:22px;padding:0 24px;
+  border-bottom:1px solid var(--line);background:#f7f9fa}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.mark{width:34px;height:34px;border-radius:8px;background:var(--steel);position:relative;overflow:hidden;flex:none}
+.mark svg{display:block;width:100%;height:100%}
+.brand strong{display:block;font-size:16px;letter-spacing:-.2px}
+.brand small{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.journey{list-style:none;display:flex;gap:6px;margin:0 auto;padding:0}
+.journey li{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8b98a4;white-space:nowrap}
+.journey b{width:23px;height:23px;display:grid;place-items:center;border:1px solid #cbd4dc;border-radius:50%;font-size:11px}
+.journey .active{color:var(--accent);font-weight:700}
+.journey .active b{background:var(--accent);color:#fff;border-color:var(--accent)}
+.journey .done{color:var(--green)}
+.journey .done b{background:#e3f1ea;border-color:#a9cdbc}
+.topacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex:none}
+.topacts .ghost{font-size:11px;padding:6px 10px;border-radius:999px;background:#fff}
+.topacts .ghost:hover{border-color:var(--accent);color:var(--accent)}
+.topacts .bare{font-size:11px;background:transparent;border-color:transparent;padding:6px}
+
+/* ---------- 主网格 ---------- */
+.lab{display:grid;grid-template-columns:minmax(0,1fr) var(--coach-w);
+  grid-template-rows:minmax(420px,1fr) var(--tray-h);
+  grid-template-areas:"stage coach" "tray coach";
+  height:calc(100dvh - var(--topbar-h));min-height:640px}
+.stage{grid-area:stage;position:relative;overflow:hidden;min-width:0;background-color:var(--stage);
+  background-image:radial-gradient(#c6cfd7 1px,transparent 1px);background-size:24px 24px}
+#viewport{position:absolute;inset:0}
+#viewport canvas{display:block;touch-action:none}
+.stage-title{position:absolute;top:18px;left:22px;pointer-events:none;max-width:360px}
+.stage-title h1{font-size:27px;line-height:1.2;margin:0 0 5px;letter-spacing:-.6px;font-weight:800}
+.stage-title p{margin:0;font-size:11px;color:var(--muted)}
+.toolbar{position:absolute;top:18px;right:16px;display:flex;flex-wrap:wrap;gap:5px;max-width:250px;justify-content:flex-end}
+.toolbar button{font-size:10.5px;padding:6px 10px;background:#fffefbe8}
+.toolbar button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.socket{position:absolute;z-index:4;transform:translate(-50%,-50%);background:var(--accent);color:#fff;
+  border:2px solid #fff;border-radius:20px;box-shadow:0 2px 0 #8f2d1b,0 3px 12px #c2452d30;
+  white-space:nowrap;font-size:11px;padding:6px 12px}
+.socket.near{background:var(--green);box-shadow:0 0 0 8px #2f7d5c22}
+.preview-label{position:absolute;pointer-events:none;transform:translate(-50%,0);background:#fff6ec;
+  border:1px solid #e2b393;border-radius:6px;padding:3px 8px;font-size:10px;color:#96562f;white-space:nowrap}
+.scene-footer{position:absolute;bottom:12px;left:20px;right:20px;display:flex;align-items:flex-end;
+  justify-content:space-between;gap:12px;pointer-events:none}
+.scene-footer>span{font-size:9.5px;color:#7d8b98;line-height:1.6;max-width:44%}
+.readout{display:none;background:#ffffffef;border:1px solid #ccd6de;border-radius:var(--radius);
+  padding:8px 12px;min-width:196px;pointer-events:auto}
+.readout.on{display:block}
+.readout .row{display:flex;justify-content:space-between;gap:12px;font-size:10.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums;line-height:1.75}
+.readout .row b{color:var(--ink);font-weight:700}
+.readout .big{font-size:12px;color:var(--steel);font-weight:800}
+#inset{position:absolute;left:22px;bottom:91px;z-index:5;width:192px;height:188px;border:1px solid #c3ccd5;
+  border-radius:12px;overflow:hidden;pointer-events:none;box-shadow:0 4px 16px #1d22281a}
+#inset[hidden]{display:none}
+#inset .top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;gap:10px;
+  padding:7px 10px;font-size:10px;color:var(--muted);background:#f5f9ffeb;
+  border-bottom:1px solid var(--line)}
+#inset .top span:last-child{letter-spacing:.12em;font-size:8.5px}
+.discovery{margin-top:12px;border-left:3px solid var(--gold);background:#fdf8ea;border-radius:8px;
+  padding:9px 11px;font-size:11px;line-height:1.75;color:#7a5c1e}
+.discovery[hidden]{display:none}
+.discovery b{display:block;font-size:10.5px;margin-bottom:3px;color:#8a6a1c}
+#celebration{position:fixed;inset:0;pointer-events:none;z-index:40;display:grid;place-items:center}
+#celebration i{position:absolute;width:9px;height:9px;border-radius:2px;opacity:0;
+  animation:confetti 1.1s ease-out forwards}
+@keyframes confetti{
+  0%{opacity:1;transform:translate(0,0) rotate(0)}
+  100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r))}}
+#fault{position:absolute;inset:34% 12%;z-index:20;background:#fff;padding:18px;border:2px solid #e0b088;
+  border-radius:10px;color:#7c4a22;display:none;font-size:13px}
+
+/* ---------- 教练面板 ---------- */
+.coach{grid-area:coach;background:var(--paper);border-left:1px solid var(--line);padding:22px 22px 26px;overflow:auto}
+.coach .ctag{color:var(--accent);font-weight:700;font-size:11px;margin-bottom:6px}
+.coach h2{font-size:21px;line-height:1.28;margin:0 0 8px;letter-spacing:-.4px;font-weight:800}
+.coach .intro{font-size:12px;line-height:1.8;color:var(--muted);margin:0 0 16px}
+.progress{height:6px;border-radius:6px;background:#e0e7ec;overflow:hidden;margin:6px 0 4px}
+.progress i{display:block;background:var(--accent);height:100%;width:0;transition:width .3s}
+.plabel{font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+.task{margin-top:18px}
+.task .label{font-size:10px;color:var(--muted);margin:0 0 4px}
+.task h3{font-size:17px;line-height:1.4;margin:0 0 8px;font-weight:750}
+.task p{font-size:12px;line-height:1.8;margin:0 0 10px}
+.task .action{width:100%;margin-top:6px}
+.sub{display:flex;gap:6px;margin-top:10px}
+.sub button{font-size:11px;padding:7px 9px;flex:1}
+.feedback{min-height:40px;padding:9px 11px;background:#e9eef3;border-radius:8px;font-size:11px;
+  line-height:1.7;margin:16px 0 0;border-left:3px solid #8fa4b8}
+.feedback.error{background:#fdf0e8;border-color:#d59a6c;color:#7c4a22}
+.feedback.success{background:#e8f3ed;border-color:#77b295;color:#2f6b52}
+.hintbox{border-top:1px solid var(--line);padding-top:14px;margin-top:16px;font-size:11px;line-height:1.8;color:var(--muted)}
+.hintbox b{display:block;font-size:11px;color:#8a6a1c;margin-bottom:4px}
+.options{display:grid;gap:7px;margin-top:12px}
+.options button{text-align:left;font-size:12px;font-weight:500;padding:10px 11px;line-height:1.6}
+.options button b{display:inline-block;color:var(--accent);margin-right:7px}
+.badge{display:grid;place-items:center;width:66px;height:66px;background:var(--gold);color:#fff;
+  border:5px solid #e4c98c;border-radius:50%;margin:10px 0;font-size:28px;font-weight:800}
+.earned{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px}
+.earned span{border:1px solid #ddc98d;background:#fbf5e3;color:#8a6a1c;font-size:9px;padding:3px 6px;border-radius:5px}
+.technical{font-size:10px;color:var(--muted);line-height:1.8;border-top:1px solid var(--line);margin-top:18px;padding-top:11px}
+.technical summary{cursor:pointer;font-weight:600}
+.technical p{margin:8px 0 0}
+.note{font-size:10.5px!important;color:var(--muted)}
+
+/* ---------- 实验台控件（experiments 插槽） ---------- */
+.labctl{margin-top:12px;font-size:11px}
+.labctl output{float:right;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.labctl input[type=range]{width:100%;accent-color:var(--blue);margin:8px 0 0}
+.labctl.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.labgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+.labgrid .primary{grid-column:1/-1}
+.labgrid button{font-size:11px;padding:8px 6px}
+
+/* ---------- 零件盒 ---------- */
+.tray{grid-area:tray;border-top:2px solid #c3ccd5;padding:12px 22px 14px;background:#dae1e7;min-width:0;overflow:auto}
+.tray-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;font-size:12px;font-weight:700;gap:12px}
+.tray-head small{font-size:10px;color:#7c8a96;font-weight:400;text-align:right}
+.mlist{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.card{position:relative;border:1px solid #c3ccd5;border-bottom:4px solid #b2bec8;background:#fbfcfd;
+  border-radius:10px;display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:6px;
+  text-align:left;padding:10px 9px;min-height:74px;--pc:#5b6470}
+.card svg{width:34px;height:34px;stroke:var(--pc);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.card strong{font-size:11.5px;display:block;line-height:1.3}
+.card small{font-size:9.5px;color:var(--muted);font-weight:400;display:block;margin-top:3px}
+.card[aria-pressed=true]{border-color:#d99878;border-bottom-color:var(--accent);background:#fdf1ea;color:var(--ink)}
+.card[data-installed=true]{background:#e9f2ec;border-color:#b2cec0;border-bottom-color:#9dbfae}
+.card[data-installed=true] small{color:var(--green)}
+.empty{font-size:12px;color:#5f7488;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0}
+.empty strong{display:block;color:#2f4c63;margin-bottom:4px}
+.empty .primary{flex:none}
+
+#debug{display:none;position:fixed;left:0;bottom:0;background:#fff;font-size:10px;z-index:30;padding:2px}
+
+/* ---------- 断点 ---------- */
+@media(max-width:1180px){
+  .lab{grid-template-columns:minmax(0,1fr) 306px}
+  .coach{padding:20px 16px}
+  .card{grid-template-columns:1fr;text-align:center;padding:9px 6px}
+  .card svg{display:none}
+  .mlist{gap:6px}
+}
+@media(max-width:780px){
+  .topbar{height:auto;min-height:96px;padding:12px 14px 8px;flex-wrap:wrap;gap:8px}
+  .brand{min-width:0;flex:1}
+  .brand strong{font-size:13.5px}
+  .brand small{font-size:9px}
+  .journey{order:3;width:100%;justify-content:space-between;margin:0;gap:2px}
+  .journey li{font-size:9.5px;gap:5px;min-width:0}
+  .journey b{width:19px;height:19px;font-size:9.5px}
+  .tray-head small{max-width:130px;font-size:9px}
+  .lab{grid-template-columns:1fr;grid-template-areas:"stage" "tray" "coach";
+    grid-template-rows:minmax(360px,56dvh) auto auto;height:auto;min-height:0}
+  .stage-title h1{font-size:21px}
+  .stage-title{max-width:calc(100% - 172px)}
+  .toolbar{top:14px;max-width:150px}
+  .mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .card{grid-template-columns:32px minmax(0,1fr);text-align:left;min-height:62px}
+  .card svg{display:block;width:28px;height:28px}
+  .coach{border-left:0;border-top:1px solid var(--line);padding:20px}
+  #inset{left:12px;bottom:12px;width:132px;height:150px}
+  .readout{min-width:0;padding:6px 9px}
+  .readout .row{font-size:9.5px;gap:8px}
+  .scene-footer>span{max-width:150px;font-size:8.5px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
+<style>/* 气钉枪：标题比通用文案长，窄屏下让出工具栏宽度 */
+@media (max-width: 780px) {
+  .stage-title { max-width: calc(100% - 196px); }
+  .stage-title h1 { font-size: 19px; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="mark" data-slot="brand.mark" aria-hidden="true"></div>
+    <div><strong data-slot="brand.title"></strong><small data-slot="brand.subtitle"></small></div>
+  </div>
+  <ol class="journey" data-slot="journey" aria-label="关卡进度"></ol>
+  <div class="topacts">
+    <button class="ghost" id="free-lab">自由实验</button>
+    <button class="bare" id="restart">重新开始</button>
+  </div>
+</header>
+
+<main class="lab">
+  <section class="stage" id="stage" aria-label="三维装配工作台">
+    <div id="viewport"></div>
+    <div class="stage-title">
+      <h1 data-slot="stage.title"></h1>
+      <p data-slot="stage.hint"></p>
+    </div>
+    <div class="toolbar" data-slot="stage.tools" aria-label="观察工具"></div>
+    <button class="socket" id="socket" hidden>装到这里</button>
+    <div class="preview-label" id="preview-label" hidden>拖动这块</div>
+    <div class="scene-footer">
+      <span data-slot="stage.gestures"></span>
+      <div class="readout" id="readout" data-slot="stage.readout"></div>
+    </div>
+    <div id="inset" hidden><div class="top"><span id="inset-title">局部放大</span><span>DETAIL VIEW</span></div></div>
+    <div id="fault" role="alert"></div>
+  </section>
+
+  <aside class="coach">
+    <div class="ctag" data-slot="coach.tag"></div>
+    <h2 data-slot="coach.title"></h2>
+    <p class="intro" data-slot="coach.intro"></p>
+    <div class="progress" role="progressbar" aria-label="装配进度" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" id="progress"><i id="pfill"></i></div>
+    <div class="plabel"><span id="plabel"></span><span id="bcount"></span></div>
+    <div class="task" id="task"></div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="discovery" id="discovery" hidden><b>刚刚发现</b><span id="discovery-text"></span></div>
+    <div class="hintbox"><b data-slot="coach.hintLabel"></b><span id="hinttext"></span></div>
+    <div data-slot="coach.extras"></div>
+    <details class="technical" id="notes">
+      <summary data-slot="coach.notesLabel"></summary>
+      <div data-slot="coach.notes"></div>
+    </details>
+  </aside>
+
+  <section class="tray" aria-label="零件盒">
+    <div class="tray-head"><span id="tray-title"></span><small id="tray-hint"></small></div>
+    <div class="mlist" id="mlist"></div>
+  </section>
+</main>
+<script>window.__mechbench={slug:'nail-gun-lab',built:true}</script>
+
+<div id="celebration" aria-hidden="true"></div>
+<pre id="debug"></pre>
+
+<script>
+window.addEventListener('error', e => {
+  const el = document.getElementById('fault');
+  el.style.display = 'block';
+  el.textContent = '工作台未能加载：' + e.message;
+});
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ==== kit/icons.mjs ==== */
+/* mechbench · 通用零件图标（24×24，描边）
+ * 物品在 manifest 里写 icon:'gear' 即可；要自定义就写 icon:'<path d="..."/>' 原样 SVG。
+ */
+const ICONS = {
+  box:'<rect x="4" y="8" width="16" height="11" rx="1.5"/><path d="M4 12h16M9 8V5h6v3"/>',
+  shell:'<path d="M4 9l8-4 8 4v7l-8 4-8-4z"/><path d="M4 9l8 4 8-4M12 13v7"/>',
+  shaft:'<path d="M3 12h18"/><path d="M6 9v6M18 9v6"/>',
+  gear:'<circle cx="12" cy="12" r="5"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3M6.5 6.5l2 2M15.5 15.5l2 2M17.5 6.5l-2 2M8.5 15.5l-2 2"/>',
+  spring:'<path d="M8 4h8M8 20h8"/><path d="M8 6l8 3-8 3 8 3-8 3"/>',
+  screw:'<path d="M9 4h6l-1 3H10z"/><path d="M10 7v10l2 3 2-3V7"/><path d="M10 11h4M10 14h4"/>',
+  plate:'<path d="M4 14l8-4 8 4-8 4z"/><path d="M7 13l3 1.5"/>',
+  disc:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/>',
+  piston:'<path d="M7 5h10v7H7z"/><path d="M10 12v6M14 12v6"/><path d="M7 8h10"/>',
+  valve:'<path d="M12 4v9"/><path d="M8 16h8l-4 4z"/><path d="M9 4h6"/>',
+  coil:'<circle cx="12" cy="12" r="6"/><path d="M12 6v12M9 6.8v10.4M15 6.8v10.4"/>',
+  battery:'<rect x="3" y="8" width="15" height="8" rx="1.5"/><path d="M21 11v2"/><path d="M7 10v4M11 10v4"/>',
+  bolt:'<path d="M12 4l5 3v6l-5 3-5-3V7z"/><circle cx="12" cy="10" r="2"/>',
+  lever:'<path d="M4 18h16"/><path d="M8 18l6-10"/><circle cx="15" cy="7" r="2"/>',
+  housing:'<rect x="4" y="6" width="16" height="13" rx="2"/><path d="M8 6V4h8v2M4 12h16"/>',
+  pin:'<path d="M5 12h14"/><path d="M8 9v6M16 9v6"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/>',
+};
+function iconSvg(name, color) {
+  const body = ICONS[name] || ICONS.box;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"${color ? ` style="--pc:${color}"` : ''}>${body}</svg>`;
+}
+
+/* ==== kit/lab.mjs ==== */
+/* mechbench · 布局渲染层
+ * 把 manifest 的插槽填进固定骨架，并把玩家操作转成事件。
+ * 不做三维（kit/scene.mjs）、不做业务规则（物品的 logic.mjs / main.mjs）。
+ */
+
+const COPY = {
+  brand: { title: '装配实验室', subtitle: '', mark: { a: '#c2452d', b: '#9aa6b2' } },
+  stage: {
+    title: '装一台能动的机器',
+    hint: '从下方零件盒选一块模块，拖到机身高亮处。',
+    gestures: '拖动空白处旋转 · 右键平移 · 滚轮缩放<br>触屏双指平移 / 缩放',
+  },
+  tray: { title: '零件盒', hint: '点选模块，再拖到高亮位置' },
+  coach: { tag: '第 {n} 关 / {total}', hintLabel: '工作台提示', notesLabel: '这是怎样的一套模型？' },
+  tools: [
+    { id: 'rotate', label: '旋转', pressed: true },
+    { id: 'pan', label: '平移' },
+    { id: 'cut', label: '剖开看' },
+    { id: 'home', label: '复位' },
+  ],
+  labels: {
+    exp: '本关要观察的', quiz: '判断一下', done: '本关完成',
+    installed: '✓ 已归位', picked: '拿起这块', preloaded: '{n} 组零件预装',
+  },
+};
+
+const q = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function pick(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? pick(base[k] || {}, v) : v;
+  }
+  return out;
+}
+function mountLab(item) {
+  const copy = pick(COPY, item.copy);
+  const chapters = item.chapters || [];
+  const modules = item.modules || [];
+  const tasks = item.tasks || [];
+  const readout = item.readout || [];
+  const tools = item.tools || copy.tools;
+
+  const lab = {
+    item,
+    chapters,
+    modules,
+    attached3d: false,
+    taskRenderer: null,
+    state: {
+      chapter: 0,
+      placed: [],
+      selected: null,
+      phase: 'build',
+      completed: [],
+      badges: [],
+      progress: null, // {done,total} 覆盖默认的「本关模块数」
+      readout: {},
+      visible: {},
+      hint: '',
+      feedback: '',
+      feedbackKind: '',
+      stageHint: '',
+      trayTitle: '',
+      trayHint: '',
+      cardsLocked: false,
+      discovery: '',
+    },
+    handlers: {},
+    on(name, fn) {
+      (lab.handlers[name] ||= []).push(fn);
+      return lab;
+    },
+    emit(name, payload) {
+      for (const fn of lab.handlers[name] || []) fn(payload);
+    },
+    moduleOf(id) {
+      return modules.find((m) => m.id === id);
+    },
+    chapterModules(i = lab.state.chapter) {
+      return modules.filter((m) => m.chapter === i);
+    },
+    /** 物品自定义教练面板：fn({chapter, phase, state, lab}) => {html, bind(root)} */
+    task(fn) {
+      lab.taskRenderer = fn;
+      return lab;
+    },
+    /** 发现卡：放一段“刚刚发现”的观察，传空串隐藏 */
+    setDiscovery(text) {
+      lab.state.discovery = text || '';
+      const box = q('#discovery');
+      if (!box) return lab;
+      box.hidden = !text;
+      if (text) q('#discovery-text').textContent = text;
+      return lab;
+    },
+    /** 通关撒花：纯装饰，reduced-motion 下静默 */
+    celebrate() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return lab;
+      const el = q('#celebration');
+      if (!el) return lab;
+      el.replaceChildren();
+      const colors = ['#c2452d', '#b8862f', '#2f6f9f', '#2f7d5c'];
+      for (let i = 0; i < 28; i++) {
+        const bit = document.createElement('i');
+        bit.style.background = colors[i % 4];
+        const angle = (i / 28) * Math.PI * 2;
+        bit.style.setProperty('--x', Math.cos(angle) * (95 + (i % 5) * 27) + 'px');
+        bit.style.setProperty('--y', Math.sin(angle) * 130 + 130 + 'px');
+        bit.style.setProperty('--r', i * 47 + 'deg');
+        el.appendChild(bit);
+      }
+      setTimeout(() => el.replaceChildren(), 1500);
+      return lab;
+    },
+    setInsetTitle(text) {
+      const el = q('#inset-title');
+      if (el) el.textContent = text;
+      return lab;
+    },
+    /** 按 {key: 显示值} 批量写读数，内部 diff（可以每帧调，不碰 DOM）。
+     * 读数的格式化留在物品侧（那里才知道 model/view/game）；这里只管写。 */
+    paint(values) {
+      for (const k of Object.keys(values || {})) {
+        const el = rdEls.get(k);
+        if (!el) continue;
+        const text = values[k] == null ? '—' : String(values[k]);
+        if (el.textContent !== text) el.textContent = text;
+        lab.state.readout[k] = text;
+      }
+      return lab;
+    },
+    render,
+  };
+
+  /* ---------- 静态插槽：挂载时填一次 ---------- */
+  document.title = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.title"]').textContent = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.subtitle"]').textContent = item.brand?.subtitle || copy.brand.subtitle;
+  const mark = item.brand?.mark || copy.brand.mark;
+  q('[data-slot="brand.mark"]').innerHTML = mark.svg
+    ? mark.svg
+    : `<span style="position:absolute;left:6px;top:9px;width:9px;height:16px;border-radius:2px;background:${mark.a || '#c2452d'}"></span>
+       <span style="position:absolute;left:19px;top:6px;width:9px;height:16px;border-radius:2px;background:${mark.b || '#9aa6b2'}"></span>`;
+
+  q('[data-slot="stage.title"]').textContent = item.stage?.title || copy.stage.title;
+  q('[data-slot="stage.hint"]').textContent = item.stage?.hint || copy.stage.hint;
+  q('[data-slot="stage.gestures"]').innerHTML = item.stage?.gestures || copy.stage.gestures;
+  q('[data-slot="coach.hintLabel"]').textContent = copy.coach.hintLabel;
+  q('[data-slot="coach.notesLabel"]').textContent = copy.coach.notesLabel;
+  q('[data-slot="coach.notes"]').innerHTML = (item.notes || []).map((p) => `<p>${p}</p>`).join('');
+  q('#notes').hidden = !(item.notes || []).length;
+
+  q('[data-slot="journey"]').innerHTML = chapters
+    .map((c, i) => `<li data-chapter="${i}"><b>${i + 1}</b>${esc(c.title)}</li>`)
+    .join('');
+
+  q('[data-slot="stage.tools"]').innerHTML = tools
+    .map((t) => `<button data-tool="${t.id}" aria-pressed="${t.pressed ? 'true' : 'false'}">${esc(t.label)}</button>`)
+    .join('');
+
+  q('#readout').innerHTML = readout
+    .map((r) => `<div class="row"><span>${esc(r.label)}</span><b data-rd="${r.key}"${r.big ? ' class="big"' : ''}>—</b></div>`)
+    .join('');
+  const rdEls = new Map();
+  for (const r of readout) rdEls.set(r.key, q(`[data-rd="${r.key}"]`));
+
+  q('[data-slot="coach.extras"]').innerHTML = (item.experiments || [])
+    .map((x) => {
+      if (x.control === 'toggle') {
+        return `<div class="labctl toggle"><span>${esc(x.label)}</span>
+          <button data-exp="${x.id}" aria-pressed="${x.value ? 'true' : 'false'}">${x.value ? '开' : '关'}</button></div>`;
+      }
+      if (x.control === 'button') return `<div class="labgrid"><button data-exp="${x.id}">${esc(x.label)}</button></div>`;
+      return `<label class="labctl">${esc(x.label)}<output data-exp-out="${x.id}">${x.value ?? ''}${x.unit || ''}</output>
+        <input type="range" data-exp="${x.id}" min="${x.min}" max="${x.max}" step="${x.step || 1}" value="${x.value ?? x.min}"></label>`;
+    })
+    .join('');
+
+  /* ---------- 动态插槽 ---------- */
+  function renderCards() {
+    const list = q('#mlist');
+    const chMods = lab.chapterModules();
+    if (!chMods.length) {
+      list.innerHTML = '<div class="empty"><div><strong>这一关没有模块</strong>检查 manifest 的 modules[].chapter。</div></div>';
+      return;
+    }
+    list.innerHTML = chMods
+      .map((m) => {
+        const installed = lab.state.placed.includes(m.id);
+        const sub = installed
+          ? copy.labels.installed
+          : m.sub || (m.parts?.length > 1 ? copy.labels.preloaded.replace('{n}', m.parts.length) : copy.labels.picked);
+        return `<button class="card" data-id="${m.id}" data-installed="${installed}" style="--pc:${m.color || '#5b6470'}"
+          aria-pressed="${lab.state.selected === m.id}"${installed || lab.state.cardsLocked ? ' disabled' : ''}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">${m.icon && m.icon.startsWith('<') ? m.icon : iconBody(m.icon || 'box')}</svg>
+          <span><strong>${esc(m.name)}</strong><small>${esc(sub)}</small></span></button>`;
+      })
+      .join('');
+  }
+
+  function renderTask() {
+    const ch = chapters[lab.state.chapter] || {};
+    if (lab.taskRenderer) {
+      const out = lab.taskRenderer({ chapter: ch, chapterIndex: lab.state.chapter, phase: lab.state.phase, state: lab.state, lab }) || {};
+      q('#task').innerHTML = out.html || '';
+      out.bind?.(q('#task'));
+      return;
+    }
+    const task = tasks[lab.state.chapter] || {};
+    const s = lab.state;
+    const head = `<p class="label">${esc(copy.labels.exp)}</p><h3>${esc(task.exp || ch.title || '')}</h3>
+      <p>${esc(task.expText || ch.subtitle || '')}</p>`;
+    if (s.phase === 'check' && task.options) {
+      q('#task').innerHTML =
+        head +
+        `<p class="label">${esc(copy.labels.quiz)}</p><div class="options">${task.options
+          .map((o, i) => `<button data-opt="${i}"><b>${'ABCD'[i]}</b>${esc(o)}</button>`)
+          .join('')}</div>`;
+      return;
+    }
+    if (s.phase === 'done') {
+      q('#task').innerHTML =
+        head +
+        `<div class="badge">${esc(ch.badge || '✓')}</div><p>${esc(task.why || '')}</p>
+         <div class="sub">${
+           s.chapter < chapters.length - 1 ? '<button class="primary" data-act="next">进入下一关</button>' : ''
+         }<button data-act="replay">再看一遍</button></div>`;
+      return;
+    }
+    q('#task').innerHTML =
+      head +
+      `<div class="sub"><button class="primary" data-act="place"${s.selected ? '' : ' disabled'}>装到这里</button>
+       <button data-act="undo"${s.placed.length ? '' : ' disabled'}>撤回一步</button></div>`;
+  }
+
+  function render() {
+    const s = lab.state;
+    for (const li of document.querySelectorAll('.journey li')) {
+      const i = Number(li.dataset.chapter);
+      li.className = s.completed?.[i] ? 'done' : i === s.chapter ? 'active' : '';
+      li.querySelector('b').textContent = s.completed?.[i] ? '✓' : i + 1;
+    }
+    const ch = chapters[s.chapter] || {};
+    const co = s.coach || {};
+    q('[data-slot="coach.tag"]').textContent =
+      co.tag ?? (copy.coach.tag || '').replace('{n}', s.chapter + 1).replace('{total}', chapters.length);
+    q('[data-slot="coach.title"]').textContent = co.title ?? ch.title ?? '';
+    q('[data-slot="coach.intro"]').textContent = co.intro ?? ch.subtitle ?? '';
+    q('[data-slot="stage.hint"]').textContent = s.stageHint || item.stage?.hint || copy.stage.hint;
+
+    const chMods = lab.chapterModules();
+    const p = s.progress || { done: chMods.filter((m) => s.placed.includes(m.id)).length, total: chMods.length };
+    const bar = q('#progress');
+    bar.setAttribute('aria-valuemax', String(p.total || 1));
+    bar.setAttribute('aria-valuenow', String(p.done));
+    q('#pfill').style.width = (p.total ? (p.done / p.total) * 100 : 0) + '%';
+    q('#plabel').textContent = `${p.done} / ${p.total} 块模块`;
+    q('#bcount').textContent = `${(s.badges || []).length} 个徽章`;
+
+    q('#tray-title').textContent = s.trayTitle || item.tray?.title || copy.tray.title;
+    q('#tray-hint').textContent = s.trayHint || item.tray?.hint || copy.tray.hint;
+
+    renderTask();
+    renderCards();
+
+    const fb = q('#feedback');
+    fb.className = 'feedback' + (s.feedbackKind ? ' ' + s.feedbackKind : '');
+    if (s.feedback) fb.textContent = s.feedback;
+    q('#hinttext').textContent = s.hint || '';
+
+    const ro = q('#readout');
+    ro.classList.toggle('on', !!s.visible.readout);
+    for (const b of ro.querySelectorAll('[data-rd]')) {
+      const v = s.readout[b.dataset.rd];
+      if (v != null && b.textContent !== String(v)) b.textContent = v;
+    }
+    // 有三维时 socket 的显隐与位置由 kit/scene.mjs 负责
+    if (!lab.attached3d) q('#socket').hidden = !(s.selected && s.phase === 'build');
+  }
+
+  /* ---------- 交互：只发事件 ---------- */
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (card && !card.disabled) return lab.emit('select', card.dataset.id);
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act) return lab.emit(act);
+    const tool = e.target.closest('[data-tool]')?.dataset.tool;
+    if (tool) {
+      if (tool === 'cut') {
+        const b = e.target.closest('[data-tool]');
+        b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+      }
+      return lab.emit('tool', tool);
+    }
+    if (e.target.id === 'free-lab') return lab.emit('free');
+    if (e.target.id === 'restart') return lab.emit('restart');
+    if (e.target.id === 'socket') return lab.emit('place');
+    const opt = e.target.closest('[data-opt]');
+    if (opt) return lab.emit('answer', Number(opt.dataset.opt));
+    const exp = e.target.closest('[data-exp]');
+    if (exp) {
+      const id = exp.dataset.exp;
+      const spec = (item.experiments || []).find((x) => x.id === id) || {};
+      const value =
+        exp.tagName === 'BUTTON'
+          ? spec.control === 'toggle'
+            ? exp.getAttribute('aria-pressed') !== 'true'
+            : null
+          : Number(exp.value);
+      return lab.emit('experiment', { id, value });
+    }
+  });
+
+  document.addEventListener('input', (e) => {
+    const id = e.target.dataset?.exp;
+    if (!id) return;
+    const out = document.querySelector(`[data-exp-out="${id}"]`);
+    const exp = (item.experiments || []).find((x) => x.id === id);
+    if (out) out.textContent = e.target.value + (exp?.unit || '');
+    lab.emit('experiment', { id, value: Number(e.target.value) });
+  });
+
+  render();
+  // 调试钩子：?debug=1 时把 lab（含 lab.stage）挂到 window，方便控制台/验收排查
+  if (new URLSearchParams(location.search).has('debug')) window.__lab = lab;
+  return lab;
+}
+
+function iconBody(name) {
+  const set = typeof ICONS === 'undefined' ? {} : ICONS;
+  return set[name] || set.box || '<rect x="4" y="8" width="16" height="11" rx="1.5"/>';
+}
+
+/* ==== kit/scene.mjs ==== */
+/* mechbench · 三维舞台（kit）
+ * 相机/灯光/地面/剖切/目标轮廓/拾取/拖放/取景/循环 —— 所有物品共用。
+ * 物品只给几何（model.mjs）、数值（manifest.scene）、回调。
+ */
+
+
+
+const vec = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+
+const DEFAULT = {
+  spawn: [255, 26, 155],
+  renderer: { exposure: 0.94, pixelRatio: 1.5 },
+  camera: { fov: 32, near: 2, far: 6000, defaultFocus: 'engine' },
+  orbit: { minDistance: 190, maxDistance: 1800, minPolar: 0.06, maxPolar: 0.54 },
+  bench: { y: -110, color: 0xdfe5ea, size: 4000 },
+  env: 0.48,
+  lights: {
+    hemi: [0xffffff, 0x9aa7b3, 0.62],
+    key: { color: 0xfff6ec, intensity: 2.0, pos: [-190, 300, 240] },
+    fill: { color: 0xdce8f4, intensity: 0.85, pos: [280, 90, 240] },
+    rim: { color: 0xcfe0f0, intensity: 0.8, pos: [160, 200, -300] },
+  },
+  cut: { normal: [0, 0, -1], constant: 0 },
+  ghost: { color: 0x9aa4ad, opacity: 0.62 },
+  target: { color: 0x2f6f9f, opacity: 0.17 },
+  focus: {},
+  nearRadius: { wide: 52, narrow: 66 },
+};
+
+function merge(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? merge(base[k] || {}, v) : v;
+  }
+  return out;
+}
+function createStage(opts) {
+  const cfg = merge(DEFAULT, opts.config);
+  const host = opts.host;
+  const stageEl = opts.stageEl;
+  const worldGroup = opts.world;
+  const modules = opts.modules || [];
+  const model = opts.model || {};
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 渲染器 / 场景 ---------- */
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, cfg.renderer.pixelRatio));
+  renderer.setSize(stageEl.clientWidth, stageEl.clientHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = cfg.renderer.exposure;
+  renderer.localClippingEnabled = true;
+  renderer.domElement.setAttribute('aria-label', '三维装配台：选中模块后拖到安装位置，也可用「装到这里」按钮');
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.add(worldGroup);
+  const camera = new THREE.PerspectiveCamera(cfg.camera.fov, stageEl.clientWidth / stageEl.clientHeight, cfg.camera.near, cfg.camera.far);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.085;
+  controls.enablePan = true;
+  controls.screenSpacePanning = true;
+  controls.rotateSpeed = 0.62;
+  controls.zoomSpeed = 0.8;
+  controls.panSpeed = 0.8;
+  controls.minDistance = cfg.orbit.minDistance;
+  controls.maxDistance = cfg.orbit.maxDistance;
+  controls.minPolarAngle = Math.PI * cfg.orbit.minPolar;
+  controls.maxPolarAngle = Math.PI * cfg.orbit.maxPolar;
+  controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  scene.environmentIntensity = cfg.env;
+
+  const [hs, hg, hi] = cfg.lights.hemi;
+  scene.add(new THREE.HemisphereLight(hs, hg, hi));
+  for (const k of ['key', 'fill', 'rim']) {
+    const l = cfg.lights[k];
+    if (!l) continue;
+    const dir = new THREE.DirectionalLight(l.color, l.intensity);
+    dir.position.set(...l.pos);
+    scene.add(dir);
+  }
+
+  if (cfg.bench !== false) {
+  const bench = new THREE.Mesh(
+    new THREE.PlaneGeometry(cfg.bench.size, cfg.bench.size),
+    new THREE.MeshStandardMaterial({ color: cfg.bench.color, roughness: 0.97, metalness: 0 })
+  );
+  bench.rotation.x = -Math.PI / 2;
+  bench.position.y = cfg.bench.y;
+  scene.add(bench);
+  }
+
+  /* ---------- 剖切 ---------- */
+  const CUT = new THREE.Plane(vec(...cfg.cut.normal), cfg.cut.constant);
+  const GHOST = new THREE.MeshStandardMaterial({
+    color: cfg.ghost.color, roughness: 0.9, metalness: 0,
+    transparent: true, opacity: cfg.ghost.opacity, depthWrite: false,
+    side: THREE.DoubleSide, clippingPlanes: [CUT],
+  });
+  const TARGET = new THREE.MeshBasicMaterial({
+    color: cfg.target.color, transparent: true, opacity: cfg.target.opacity,
+    depthWrite: false, side: THREE.DoubleSide,
+  });
+  const ghostGroup = new THREE.Group();
+  scene.add(ghostGroup);
+  let targetKey = null;
+
+  /* ---------- 视图状态 ---------- */
+  const view = {
+    crankDeg: 0, camDeg: 0, speed: 1, running: false, cut: false, solid: false,
+    navigation: 'rotate', selected: null, offsets: new Map(), drag: null, focus: cfg.camera.defaultFocus,
+    hintOn: false,
+  };
+  const SPAWN = vec(...cfg.spawn);
+
+  const byKey = model.byKey;
+  const info = new Map(
+    modules.map((m) => {
+      const b = model.moduleBounds(m.parts);
+      return [m.id, { ...m, bounds: b, center: b.getCenter(vec()), size: b.getSize(vec()) }];
+    })
+  );
+
+  const socketEl = document.getElementById('socket');
+  const previewEl = document.getElementById('preview-label');
+  const state = () => (opts.getState ? opts.getState() : {});
+
+  /* ---------- 摆位与材质 ---------- */
+  const moduleOffsetTarget = (id) => {
+    if (state().placed?.includes(id)) return vec();
+    if (typeof cfg.spawnFor === 'function') {
+      const v = cfg.spawnFor(id, info.get(id), state(), view);
+      if (v) return v.isVector3 ? v.clone() : vec(...v);
+    }
+    return SPAWN.clone();
+  };
+
+  function render(dt = 1) {
+    const s = state();
+    for (const m of modules) {
+      const installed = s.placed?.includes(m.id);
+      const selected = s.selected === m.id;
+      const visible = installed || selected;
+      let off = view.offsets.get(m.id);
+      if (!off) {
+        off = moduleOffsetTarget(m.id).clone();
+        view.offsets.set(m.id, off);
+      }
+      if (view.drag?.id !== m.id) {
+        const want = moduleOffsetTarget(m.id);
+        if (reduced || dt === 1) off.copy(want);
+        else off.lerp(want, Math.min(1, dt * 12));
+      }
+      for (const key of m.parts) {
+        const p = byKey.get(key);
+        if (!p) continue;
+        p.g.visible =
+          visible && !(cfg.hiddenPart && cfg.hiddenPart(key, s));
+        p.g.position.copy(off);
+        materials(p, installed || view.solid);
+      }
+    }
+    model.applyMotion(view, s);
+    worldGroup.updateMatrixWorld(true);
+  }
+
+  // 剖开：外壳换玻璃；带 userData.cutaway 的网格（被切掉的那半）直接隐藏
+  function materials(p, showSolid) {
+    const cutting = showSolid && view.cut;
+    p.g.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.userData.cutaway) o.visible = !cutting;
+      const ghost = cutting && (p.shell || o.userData.socketCover) && !(view.focus !== 'all' && view.focus === p.key);
+      if (ghost) {
+        if (!p.ghostMat) {
+          p.ghostMat = GHOST.clone();
+          p.ghostMat.opacity = 0.58 + 0.06 * Math.min(p.layer || 0, 2);
+        }
+        o.material = p.ghostMat;
+        o.renderOrder = 3;
+      } else if (o.material !== o.userData.omat) {
+        o.material = o.userData.omat;
+        o.renderOrder = 0;
+      }
+    });
+  }
+
+  /* ---------- 目标轮廓 ---------- */
+  function setTarget(keys) {
+    const want = keys ? keys.join('|') : null;
+    const always = typeof opts.targetAlways === 'function' ? opts.targetAlways() : !!opts.targetAlways;
+    const show = !!keys && keys.length && (view.hintOn || always);
+    if (want === targetKey && !show) {
+      ghostGroup.visible = show;
+      return;
+    }
+    for (const c of [...ghostGroup.children]) ghostGroup.remove(c);
+    targetKey = want;
+    if (!show) {
+      ghostGroup.visible = false;
+      return;
+    }
+    for (const key of keys) {
+      const p = byKey.get(key);
+      if (!p) continue;
+      const clone = p.obj.clone(true);
+      clone.traverse((o) => {
+        if (o.isMesh) o.material = TARGET;
+      });
+      ghostGroup.add(clone);
+    }
+    ghostGroup.visible = true;
+  }
+
+  /* ---------- 相机 ---------- */
+  const box = new THREE.Box3();
+  for (const p of model.PARTS || []) box.union(new THREE.Box3().setFromObject(p.g));
+  const MODEL_CENTER = box.getCenter(vec());
+  const MODEL_SIZE = box.getSize(vec());
+
+  function focusSpec(name) {
+    const f = cfg.focus[name] || {};
+    const dir = f.dir || [0, 18];
+    if (f.box) {
+      const b = typeof f.box === 'function' ? f.box(state(), view) : f.box;
+      return { center: vec(...b[0]), size: vec(...b[1]), dir, fit: f.fit || 1 };
+    }
+    if (name === cfg.camera.defaultFocus || !name) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
+    const p = byKey.get(name);
+    if (!p) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
+    const b = new THREE.Box3().setFromObject(p.g);
+    const size = b.getSize(vec());
+    size.set(Math.max(size.x, 30), Math.max(size.y, 30), Math.max(size.z, 30));
+    return { center: b.getCenter(vec()), size, dir, fit: f.fit || 1.75 };
+  }
+
+  function fitCamera(name = cfg.camera.defaultFocus) {
+    view.focus = name;
+    const { center, size, dir, fit } = focusSpec(name);
+    const f = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const narrow = stageEl.clientWidth < 620;
+    const usableW = stageEl.clientWidth - (narrow ? 40 : 90);
+    const usableH = stageEl.clientHeight - (narrow ? 150 : 40);
+    const dist =
+      Math.max(
+        (size.y / (2 * f)) * (stageEl.clientHeight / usableH),
+        (size.x / (2 * f * camera.aspect)) * (stageEl.clientWidth / usableW)
+      ) * fit + 40;
+    const [yaw, pitch] = dir.map((d) => (d * Math.PI) / 180);
+    camera.position.copy(center).add(vec(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).multiplyScalar(dist));
+    controls.target.copy(center);
+    controls.update();
+  }
+
+  let userNavigated = false;
+  controls.addEventListener('start', () => {
+    userNavigated = true;
+  });
+
+  /* ---------- 导航 ---------- */
+  function setNavigation(mode) {
+    view.navigation = mode;
+    controls.mouseButtons.LEFT = mode === 'pan' ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.touches.ONE = mode === 'pan' ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+    for (const b of document.querySelectorAll('[data-tool]')) {
+      if (b.dataset.tool === 'rotate' || b.dataset.tool === 'pan') b.setAttribute('aria-pressed', String(b.dataset.tool === mode));
+    }
+    renderer.domElement.style.cursor = mode === 'pan' ? 'move' : 'grab';
+  }
+
+  /* ---------- 屏幕坐标 ---------- */
+  function project(v) {
+    const p = v.clone().project(camera);
+    return { x: (p.x * 0.5 + 0.5) * stageEl.clientWidth, y: (-0.5 * p.y + 0.5) * stageEl.clientHeight };
+  }
+
+  function nearTarget(id) {
+    const next = opts.nextModule ? opts.nextModule() : null;
+    if (!next || !info.get(id)) return false;
+    const a = project(info.get(id).center.clone().add(view.offsets.get(id) || vec()));
+    const b = project(info.get(next.id).center);
+    const r = stageEl.clientWidth < 620 ? cfg.nearRadius.narrow : cfg.nearRadius.wide;
+    return Math.hypot(a.x - b.x, a.y - b.y) < r;
+  }
+
+  function overlay() {
+    const s = state();
+    const next = opts.nextModule ? opts.nextModule() : null;
+    const showSocket = !!next && s.phase === 'build' && !s.lab;
+    if (socketEl) {
+      socketEl.hidden = !showSocket;
+      if (showSocket) {
+        const md = info.get(next.id);
+        const p = project(vec(md.center.x, md.bounds.max.y + 16, md.center.z));
+        socketEl.style.left = p.x + 'px';
+        socketEl.style.top = p.y + 'px';
+        socketEl.disabled = !s.selected;
+        socketEl.classList.toggle('near', !!s.selected && nearTarget(s.selected));
+      }
+    }
+    const sel = s.selected && info.get(s.selected);
+    if (previewEl) {
+      previewEl.hidden = !sel || s.phase !== 'build';
+      if (sel) {
+        const c = sel.center.clone().add(view.offsets.get(sel.id) || vec());
+        const p = project(vec(c.x, c.y + sel.size.y / 2 + 14, c.z));
+        previewEl.style.left = p.x + 'px';
+        previewEl.style.top = p.y + 'px';
+      }
+    }
+    if (next) setTarget(next.parts);
+    else setTarget(null);
+  }
+
+  /* ---------- 拾取与拖放 ---------- */
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const clickables = [];
+  for (const p of model.PARTS || []) p.g.traverse((o) => o.isMesh && clickables.push(o));
+
+  function rayAt(e) {
+    const r = renderer.domElement.getBoundingClientRect();
+    pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, 1 - ((e.clientY - r.top) / r.height) * 2);
+    raycaster.setFromCamera(pointer, camera);
+  }
+  const visibleIn = (o) => {
+    for (let x = o; x; x = x.parent) if (!x.visible) return false;
+    return true;
+  };
+  function pickKey(e) {
+    rayAt(e);
+    const hit = raycaster.intersectObjects(clickables.filter(visibleIn), false)[0];
+    if (!hit) return null;
+    let o = hit.object;
+    while (o && !o.userData.key) o = o.parent;
+    return o ? o.userData.key : null;
+  }
+
+  const canDrag = () => (opts.canDrag ? opts.canDrag() : true) && view.navigation !== 'pan';
+  let downPt = null;
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    downPt = { x: e.clientX, y: e.clientY };
+  }, { capture: true });
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !canDrag()) return;
+    const s = state();
+    const m = info.get(s.selected);
+    if (!m) return;
+    rayAt(e);
+    const objs = m.parts.map((k) => byKey.get(k).g).filter(Boolean);
+    const hit = raycaster.intersectObjects(objs, true).find((h) => visibleIn(h.object));
+    if (!hit) return;
+    const off = view.offsets.get(m.id) || vec();
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(vec()), m.center.clone().add(off));
+    const point = raycaster.ray.intersectPlane(plane, vec());
+    if (!point) return;
+    view.drag = { id: m.id, pointerId: e.pointerId, plane, start: point.clone(), offset: off.clone() };
+    controls.enabled = false;
+    renderer.domElement.setPointerCapture?.(e.pointerId);
+    renderer.domElement.style.cursor = 'grabbing';
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!view.drag || view.drag.pointerId !== e.pointerId) return;
+    rayAt(e);
+    const p = raycaster.ray.intersectPlane(view.drag.plane, vec());
+    if (p) {
+      if (!view.offsets.has(view.drag.id)) view.offsets.set(view.drag.id, vec());
+      view.offsets.get(view.drag.id).copy(view.drag.offset).add(p.sub(view.drag.start));
+    }
+    socketEl?.classList.toggle('near', nearTarget(view.drag.id));
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  function releaseDrag(e, cancel) {
+    if (!view.drag || view.drag.pointerId !== e.pointerId) return;
+    const id = view.drag.id;
+    const onTarget = !cancel && nearTarget(id);
+    view.drag = null;
+    controls.enabled = true;
+    renderer.domElement.releasePointerCapture?.(e.pointerId);
+    setNavigation(view.navigation);
+    socketEl?.classList.remove('near');
+    if (!cancel && onTarget) opts.onDrop?.(id, true);
+    else if (!cancel) opts.onDrop?.(id, false);
+    e.stopImmediatePropagation();
+  }
+  renderer.domElement.addEventListener('pointerup', (e) => releaseDrag(e, false), { capture: true });
+  renderer.domElement.addEventListener('pointercancel', (e) => releaseDrag(e, true), { capture: true });
+
+  renderer.domElement.addEventListener('click', (e) => {
+    // 旋转/平移后松手也会派发 click：位移 > 5px 就不算点击
+    if (downPt && Math.hypot(e.clientX - downPt.x, e.clientY - downPt.y) > 5) return;
+    if (view.drag) return;
+    const k = pickKey(e);
+    if (k && opts.onPickKey) opts.onPickKey(k, view.focus === k);
+  });
+
+  /* ---------- 局部放大窗（同一个 canvas 里用 scissor 画第二视角） ---------- */
+  const insetEl = document.getElementById('inset');
+  const insetCam = new THREE.PerspectiveCamera(cfg.inset?.fov || 36, 1, cfg.inset?.near || 0.1, cfg.inset?.far || 500);
+  function drawInset() {
+    if (!insetEl || !cfg.inset) return;
+    const s = state();
+    const ic = cfg.inset;
+    const fits = stageEl.clientWidth > (ic.minWidth || 760) && stageEl.clientHeight > (ic.minHeight || 430);
+    const spec = fits && ic.visible?.(s, view) ? ic.target?.(s, view) : null;
+    const part = spec && byKey.get(spec.part);
+    insetEl.hidden = !part;
+    if (!part) return;
+    const title = insetEl.querySelector('#inset-title');
+    if (title && spec.title) title.textContent = spec.title;
+    const target = part.g.localToWorld(vec(...(spec.local || [0, 0, 0])));
+    insetCam.position.copy(target).add(vec(...spec.offset));
+    insetCam.lookAt(target);
+    const r = insetEl.getBoundingClientRect(), base = stageEl.getBoundingClientRect();
+    if (r.width < 10 || r.height < 10) return;
+    insetCam.aspect = r.width / r.height;
+    insetCam.updateProjectionMatrix();
+    const x = r.left - base.left, y = stageEl.clientHeight - (r.bottom - base.top);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+    renderer.setScissor(x, y, r.width, r.height);
+    renderer.setViewport(x, y, r.width, r.height);
+    renderer.setScissorTest(true);
+    renderer.clearDepth();
+    renderer.render(scene, insetCam);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+  }
+
+  /* ---------- 像素探针：给验收用，肉眼看不到的"空"要能被机器测出来 ---------- */
+  // 必须在渲染循环里紧接着 render() 读，否则默认帧缓冲内容已经丢弃（读到全 0）
+  const pendingProbes = [];
+  function probe(rect) {
+    return new Promise((res) => pendingProbes.push({ rect, res }));
+  }
+  function runProbes() {
+    if (!pendingProbes.length) return;
+    const gl = renderer.getContext();
+    const pr = renderer.getPixelRatio();
+    const H = renderer.domElement.height;
+    for (const { rect, res } of pendingProbes.splice(0)) {
+      const x = Math.max(0, Math.round(rect.x * pr));
+      const y = Math.max(0, Math.round(H - (rect.y + rect.height) * pr));
+      const w = Math.max(1, Math.round(rect.width * pr));
+      const h = Math.max(1, Math.round(rect.height * pr));
+      const buf = new Uint8Array(w * h * 4);
+      gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      const colors = new Set();
+      const rows = new Array(h).fill(0);
+      const cols = new Array(w).fill(0);
+      let lit = 0;
+      for (let j = 0; j < h; j++) {
+        for (let i = 0; i < w; i++) {
+          const k = ((h - 1 - j) * w + i) * 4;
+          const r = buf[k], g = buf[k + 1], b = buf[k + 2], a = buf[k + 3];
+          // 画布是 alpha:true 的清屏，舞台底色是 CSS 背景 → alpha 就是最干净的"有没有物体"判据
+          if (a < 8) continue;
+          colors.add((r >> 3) * 1024 + (g >> 3) * 32 + (b >> 3));
+          rows[j]++;
+          cols[i]++;
+          lit++;
+        }
+      }
+      res({ colors: colors.size, lit, rows, cols, w, h });
+    }
+  }
+
+  /* ---------- 尺寸与循环 ---------- */
+  function resize() {
+    const w = stageEl.clientWidth, h = stageEl.clientHeight;
+    if (!w || !h) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    if (!userNavigated) fitCamera(view.focus);
+  }
+  new ResizeObserver(resize).observe(stageEl);
+
+  function start() {
+    let prev = performance.now();
+    renderer.setAnimationLoop((now) => {
+      const dt = Math.min(0.05, Math.max(0, (now - prev) / 1000));
+      prev = now;
+      opts.tick?.(dt);
+      render(dt);
+      controls.update();
+      overlay();
+      renderer.render(scene, camera);
+      drawInset();
+      runProbes();
+    });
+  }
+
+  resize();
+  render(1);
+  fitCamera(view.focus);
+
+  return {
+    view, renderer, scene, camera, controls, info, spawn: SPAWN, fitCamera, setNavigation, project,
+    nearTarget, overlay, render, start, setTarget, resize, probe,
+    get solidScreen() {
+      return renderer.domElement;
+    },
+  };
+}
+
+
+/* ==== nail-gun-lab/model.mjs ==== */
+
+/* 气钉枪 · 几何与运动（重做版）
+ * 基准 1 unit = 1 mm。外形包络按 DeWalt DWFP12233 18Ga 直钉枪（长≈287、高≈241、宽≈81 mm，
+ * 70–120 psi，1/4" NPT，100 支弹匣，F15–F50 直钉）；内部气路与阀件为教学估算。
+ * 结构：后握把、前鼻框、缸孔在下、头阀在上；弹匣在握把前方、缸体下方，钉条竖挂。
+ * 击发轴 x=190；活塞行程 41.7；钉条 80 支、钉距 1.5（真机 100 支、钉距≈1.4，模型受弹匣梁长度限制）。
+ */
+const world = new THREE.Group();
+
+const M = {
+  alu:     new THREE.MeshPhysicalMaterial({ color:0xb9bec6, metalness:.72, roughness:.44, clearcoat:.28, clearcoatRoughness:.5 }),
+  aluDark: new THREE.MeshStandardMaterial({ color:0x848b93, metalness:.7, roughness:.5 }),
+  steel:   new THREE.MeshStandardMaterial({ color:0xb3bbc2, metalness:.95, roughness:.26 }),
+  steelDark:new THREE.MeshStandardMaterial({ color:0x6c737b, metalness:.9, roughness:.4 }),
+  rubber:  new THREE.MeshStandardMaterial({ color:0x2b2e33, roughness:.94 }),
+  plastic: new THREE.MeshStandardMaterial({ color:0x3a3d44, roughness:.62 }),
+  yellow:  new THREE.MeshStandardMaterial({ color:0xe3ae37, roughness:.52 }),
+  brass:   new THREE.MeshStandardMaterial({ color:0xc19a4e, metalness:.88, roughness:.33 }),
+  wood:    new THREE.MeshStandardMaterial({ color:0xc8a06c, roughness:.86 }),
+  nail:    new THREE.MeshStandardMaterial({ color:0xb6bcc2, metalness:.95, roughness:.3 }),
+  glue:    new THREE.MeshStandardMaterial({ color:0xd8c98f, roughness:.7 }),
+  red:     new THREE.MeshStandardMaterial({ color:0xc2452d, roughness:.5 }),
+  air:     new THREE.MeshBasicMaterial({ color:0x5fa8d8, transparent:true, opacity:.95, depthTest:false }),
+  puff:    new THREE.MeshBasicMaterial({ color:0xd8dee6, transparent:true, opacity:.5, depthWrite:false }),
+  clamp:   new THREE.MeshStandardMaterial({ color:0x58514a, roughness:.85 }),
+};
+
+const TAU = Math.PI * 2;
+const V = (x=0,y=0,z=0) => new THREE.Vector3(x,y,z);
+function group(){ return new THREE.Group(); }
+function mesh(g, m, parent, pos){ const o = new THREE.Mesh(g, m); if (pos) o.position.copy(pos); if (parent) parent.add(o); return o; }
+function box(w,h,d, m, parent, pos){ return mesh(new THREE.BoxGeometry(w,h,d), m, parent, pos); }
+function latheY(profile, seg=48, start=0, len=TAU){
+  const g = new THREE.LatheGeometry(profile.map(([y,r]) => new THREE.Vector2(Math.max(r,1e-3), y)), seg, start, len);
+  g.computeVertexNormals(); return g;
+}
+function ringY(y0,y1,ro,ri, m, parent, cx=0, cz=0){ return mesh(latheY([[y0,ri],[y0,ro],[y1,ro],[y1,ri],[y0,ri]]), m, parent, V(cx,0,cz)); }
+function cylY(r,h, m, parent, pos, seg=40){ return mesh(new THREE.CylinderGeometry(r,r,h,seg), m, parent, pos); }
+function cylZ(r,h, m, parent, pos, seg=32){ const o = cylY(r,h,m,parent,pos,seg); o.rotation.x = Math.PI/2; return o; }
+function cylX(r,h, m, parent, pos, seg=32){ const o = cylY(r,h,m,parent,pos,seg); o.rotation.z = Math.PI/2; return o; }
+function wire(pts, r, m, parent){
+  return mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>V(...p))), Math.max(24,pts.length*6), r, 8, false), m, parent);
+}
+function helixY(y0,y1,radius,wireR,turns,m,parent){
+  const pts=[]; for(let i=0;i<=turns*32;i++){ const t=i/(turns*32), a=t*turns*TAU;
+    pts.push([radius*Math.cos(a), y0+(y1-y0)*t, radius*Math.sin(a)]); }
+  return wire(pts,wireR,m,parent);
+}
+function helixX(x0,x1,radius,wireR,turns,m,parent){
+  const pts=[]; for(let i=0;i<=turns*32;i++){ const t=i/(turns*32), a=t*turns*TAU;
+    pts.push([x0+(x1-x0)*t, radius*Math.cos(a), radius*Math.sin(a)]); }
+  return wire(pts,wireR,m,parent);
+}
+// 18Ga 直钉的钉头是 "D 头"：沿钉条方向的窄边 1.4，横向 2.0。
+// 圆形 Ø1.9 头放不进 1.5 的钉距——刀尖要从相邻两钉头之间穿过。
+function dHead(parent, pos){ return box(1.4,.8,2.0, M.nail, parent, pos); }
+function torusY(r,wireR,m,parent,pos){ const o=mesh(new THREE.TorusGeometry(r,wireR,10,48),m,parent,pos); o.rotation.x=Math.PI/2; return o; }
+// x-y 平面上的圆角矩形（沿 z 挤出）
+function rrect(x0,y0,x1,y1,r){
+  const s = new THREE.Shape();
+  s.moveTo(x0+r,y0); s.lineTo(x1-r,y0); s.quadraticCurveTo(x1,y0,x1,y0+r);
+  s.lineTo(x1,y1-r); s.quadraticCurveTo(x1,y1,x1-r,y1);
+  s.lineTo(x0+r,y1); s.quadraticCurveTo(x0,y1,x0,y1-r);
+  s.lineTo(x0,y0+r); s.quadraticCurveTo(x0,y0,x0+r,y0);
+  return s;
+}
+function extrudeXY(shape, half, m, parent, bevel=1){
+  const g = new THREE.ExtrudeGeometry(shape, { depth:half*2, bevelEnabled:bevel>0, bevelSize:bevel, bevelThickness:bevel, bevelSegments:2, curveSegments:24 });
+  g.translate(0,0,-half);
+  return mesh(g, m, parent);
+}
+// 带圆孔的平板：x0..x1 × z0..z1，厚 thick，顶面 y0
+function plateHole(x0,x1,z0,z1,y0,thick,holeR,hx,hz,m,parent){
+  const s=new THREE.Shape(); s.moveTo(x0,z0); s.lineTo(x1,z0); s.lineTo(x1,z1); s.lineTo(x0,z1); s.closePath();
+  if(holeR>0){ const h=new THREE.Path(); h.absarc(hx,hz,holeR,0,TAU,true); s.holes.push(h); }
+  const g=new THREE.ExtrudeGeometry(s,{depth:thick,bevelEnabled:false});
+  g.rotateX(-Math.PI/2); g.translate(0,y0,0); return mesh(g,m,parent);
+}
+function printLabel(text,w,h,parent,pos,rotY=Math.PI){
+  const c=document.createElement('canvas'); c.width=512; c.height=Math.round(512*h/w);
+  const ctx=c.getContext('2d'); ctx.fillStyle='#7d776c'; ctx.font=`700 ${Math.floor(c.height*.5)}px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(text,c.width/2,c.height/2);
+  const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=8;
+  const o=mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}), parent, pos);
+  o.rotation.y=rotY; o.userData.label=true; o.userData.keepMat=true; return o;
+}
+
+/* ---------- 关键坐标 ---------- */
+const NX = 190;                       // 击发 / 缸孔 / 钉道轴线
+const STROKE = 41.7;
+const BLADE_TIP_REST = -11, BLADE_TIP_FIRED = BLADE_TIP_REST - STROKE;
+const PITCH = 1.5, NAILS = 80;
+const FOLLOWER_FRONT0 = NX - (NAILS-1)*PITCH - 1.4;   // 71.6
+const BOARD_TOP = -54;
+
+/* ---------- 零件注册 ---------- */
+const parts = [], byKey = new Map(), PIV = {};
+function addPart(key, name, obj, mat, opt = {}){
+  obj.traverse(o => {
+    if (!o.isMesh) return;
+    if (!o.userData.keepMat) o.material = (o.userData.mat || mat).clone();
+    o.userData.omat = o.material;
+    o.userData.key = key;
+  });
+  const g = new THREE.Group();
+  g.add(obj); g.userData.key = key;
+  world.add(g);
+  const p = { key, name, g, obj, anim:new THREE.Vector3(), shell:!!opt.shell };
+  parts.push(p); byKey.set(key, p);
+  return p;
+}
+
+/* ---------- 01 主机体：上梁 + 前鼻筒 + 握把座 + 弹匣梁 ---------- */
+{
+  const g = group();
+  // 上梁（压铸壳体）
+  extrudeXY(rrect(-34,4,238,54,10), 22, M.alu, g, 1.3);
+  // 头盖座
+  ringY(52,58,28,13,M.alu,g,NX,0);
+  // 握把座
+  extrudeXY(rrect(-44,-8,24,6,4), 23, M.alu, g, .9);
+  // 前鼻筒：侧面开一个大窗，不剖开也能看见缸底、回程孔和击针
+  mesh(latheY([[-44,17.5],[-44,21],[2,21],[6,19],[6,17],[-44,17.5]], 56, Math.PI*.70, Math.PI*1.60), M.aluDark, g, V(NX,0,0));
+  box(12,50,40, M.aluDark, g, V(216,-19,0));      // 前柱
+  box(52,4,40, M.aluDark, g, V(198,-46,0));        // 鼻筒底环
+  // 回程环腔（缸壁外的环形空间，剖开时可见）
+  ringY(-22,-2,24,19.5,M.aluDark,g,NX,0);
+  for (const s2 of [-1,1]) box(6,4,10,M.aluDark,g,V(NX+s2*21,-12,0));
+  // 弹匣梁：顶板 + 远侧壁 + 近侧窗 + 底轨 + 尾端盖
+  box(134,4,20, M.aluDark, g, V(123,-10,0));                   // 顶板 x 56..190
+  box(134,40,3, M.aluDark, g, V(123,-32,-8.6));                // 远侧壁
+  box(134,18,3, M.aluDark, g, V(123,-43,8.6));                 // 近侧下壁
+  box(134,2.6,2.6, M.aluDark, g, V(123,-12.3,8.6));            // 近侧挂轨
+  for (const s2 of [-1,1]) box(134,4,2.4, M.aluDark, g, V(123,-50,s2*8.6));  // 底轨
+  box(6,5,20, M.aluDark, g, V(58,-9.5,0));                     // 尾端上桥
+  box(6,5,20, M.aluDark, g, V(58,-49.5,0));                    // 尾端下桥
+  box(10,34,24, M.aluDark, g, V(158,-30,0));                   // 弹匣前段过渡
+  // 观察窗：薄透明板 + 中肋（旧版整面敞开，看着像缺了一块）
+  for (const rx of [100,155]) box(3,22,3, M.aluDark, g, V(rx,-24,9.2));
+  // 侧面压铸细节：凹槽 + 品牌条
+  for (const s2 of [-1,1]){
+    box(150,7,.5, M.aluDark, g, V(96,34,s2*22.2));
+    box(96,1.6,.5, M.yellow, g, V(96,40,s2*22.2));
+  }
+  // 标牌
+  printLabel('18 GA · 70–120 PSI', 54, 5.4, g, V(96,20,-22.4));
+  addPart('body', '主机体', g, M.alu, { shell:true });
+}
+
+/* ---------- 02 头盖 + 03 排气导板 + 04 头阀塞 + 05 阀弹簧 ---------- */
+{
+  const cap = group();
+  // 圆顶 + 底法兰；内腔由阀腔衬套表达
+  mesh(latheY([[50,12],[50,27],[53,29],[58,30],[66,28.5],[74,25],[80,19],[84,11],[85,3],[85,0],[50,0]],48), M.alu, cap, V(NX,0,0));
+  ringY(50,84,12,9.5,M.aluDark,cap,NX,0);           // 阀腔
+  ringY(80,84,9.5,4,M.aluDark,cap,NX,0);            // 气室顶
+  for (const [dx,dz] of [[-21,-9],[21,-9],[-21,9],[21,9]]){
+    cylY(2.4,3, M.aluDark, cap, V(NX+dx,53,dz), 8);
+    cylY(1.1,4.6, M.steelDark, cap, V(NX+dx,54,dz), 6);
+  }
+  addPart('headcap', '头盖', cap, M.alu, { shell:true });
+
+  const defl = group();
+  const hood = group(); hood.position.set(NX+26, 79, 0);
+  const arc = new THREE.Shape();
+  arc.absarc(0, 0, 13, Math.PI*.10, Math.PI*.90, false);
+  const dg = new THREE.ExtrudeGeometry(arc, { depth:24, bevelEnabled:false, curveSegments:24 });
+  dg.translate(0, 0, -12);
+  mesh(dg, M.plastic, hood);
+  cylX(3.2, 10, M.plastic, hood, V(0, 12, 0));
+  box(6, 9, 3, M.yellow, hood, V(4, 16, 0));
+  defl.add(hood); PIV.defl = hood;
+  addPart('deflector', '排气导板', defl, M.plastic);
+
+  const plug = group();
+  ringY(51,70,9.9,4.2,M.steel,plug,NX,0);
+  ringY(69.5,70.4,9.9,4.2,M.steel,plug,NX,0);
+  ringY(51,51.9,9.9,4.2,M.steel,plug,NX,0);
+  ringY(51,70,4.8,4,M.steelDark,plug,NX,0);        // 中央回气孔
+  torusY(9.4,1.05,M.rubber,plug,V(NX,55,0));
+  torusY(9.4,1.05,M.rubber,plug,V(NX,66,0));
+  addPart('plunger', '头阀塞', plug, M.steel);
+
+  const vs = group();
+  helixY(70.5,76.5,5.4,.42,4.5,M.steel,vs).position.x = NX;
+  addPart('vspring', '阀弹簧', vs, M.steel);
+}
+
+/* ---------- 06 气缸 + 07 缓冲垫（模块：动力缸芯） ---------- */
+{
+  const cyl = group();
+  for (const [y0,y1] of [[48,26],[24,-18],[-20,-22]]) ringY(y1, y0, 17, 14, M.alu, cyl, NX, 0);
+  // 两圈真实回程孔（窗）
+  for (const y of [4,-8])
+    for (let k=0;k<4;k++){
+      const a0 = k*Math.PI/2+.16, a1 = (k+1)*Math.PI/2-.16;
+      mesh(latheY([[y-1.4,14],[y-1.4,17],[y+1.4,17],[y+1.4,14],[y-1.4,14]], 10, a0, a1-a0), M.alu, cyl, V(NX,0,0));
+      const o = cylY(1.55,4.6,M.steelDark,cyl,V(NX+Math.cos((a0+a1)/2)*15.5,y,Math.sin((a0+a1)/2)*15.5));
+      o.quaternion.setFromUnitVectors(V(0,1,0), V(Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)));
+    }
+  addPart('cylinder', '气缸', cyl, M.alu);
+
+  const bump = group();
+  ringY(-22,-14,13.7,4.5,M.rubber,bump,NX,0);
+  addPart('bumper', '缓冲垫', bump, M.rubber);
+}
+
+/* ---------- 08 活塞击针（模块：活塞击针） ---------- */
+{
+  const g = group();
+  ringY(28,44,13.5,11.8,M.aluDark,g,NX,0);
+  torusY(13.2,1.15,M.rubber,g,V(NX,36,0));
+  ringY(43.2,44,12,10,M.aluDark,g,NX,0);
+  box(3.2,6,6,M.steel,g,V(NX,25,0));          // 活塞到击针的过渡
+  box(1.2,35,2.6,M.steel,g,V(NX,7.5,0));      // 击针（薄，避免撞相邻钉头）
+  box(1.4,1.4,1.9,M.steelDark,g,V(NX,-10.3,0)); // 刀尖 1.4 宽，停在钉头上方 0.3
+  addPart('piston', '活塞击针', g, M.aluDark);
+}
+
+/* ---------- 09 握把壳（模块：握把壳） ---------- */
+{
+  const g = group();
+  const s2 = new THREE.Shape();
+  s2.moveTo(-40,6); s2.lineTo(38,6);
+  s2.quadraticCurveTo(42,-24, 22,-92);
+  s2.quadraticCurveTo(12,-108, 4,-120);
+  s2.lineTo(-46,-120);
+  s2.quadraticCurveTo(-54,-100, -44,-60);
+  s2.quadraticCurveTo(-42,-26, -40,6);
+  const geo = new THREE.ExtrudeGeometry(s2, { depth:30, bevelEnabled:true, bevelSize:2.2, bevelThickness:1.8, bevelSegments:3, curveSegments:20 });
+  geo.translate(0,0,-15);
+  mesh(geo, M.plastic, g);
+  const s3 = new THREE.Shape();
+  s3.moveTo(-34,-58); s3.lineTo(24,-58);
+  s3.quadraticCurveTo(18,-96, 4,-120); s3.lineTo(-46,-120);
+  s3.quadraticCurveTo(-46,-92, -40,-58); s3.closePath();
+  for (const sign of [-1,1]){
+    const r = new THREE.ExtrudeGeometry(s3, { depth:1.6, bevelEnabled:true, bevelSize:1.2, bevelThickness:.9, bevelSegments:2, curveSegments:16 });
+    r.translate(0,0,sign>0?14.2:-15.8);
+    mesh(r, M.rubber, g);
+  }
+  for (const sign of [-1,1]) box(28,2.4,.6,M.yellow,g,V(-10,-52,sign*16.2));
+  box(48,10,26,M.plastic,g,V(-20,-124,0));      // 底盖
+  printLabel('MAX 120 PSI', 26, 4, g, V(-12,-78,17), Math.PI);
+  addPart('grip', '握把壳', g, M.plastic, { shell:true });
+}
+
+/* ---------- 10 触发阀组件 + 11 气源接头（模块：触发阀与接头） ---------- */
+{
+  const tv = group();
+  ringY(-36,-6,7,5.4,M.plastic,tv,4,0);
+  ringY(-26,-22,7.4,5.4,M.brass,tv,4,0);
+  ringY(-15,-11,7.4,5.4,M.brass,tv,4,0);
+  const stem = group();
+  cylY(2.6,22,M.steel,stem,V(4,-17,0));
+  cylY(4.4,1.6,M.steelDark,stem,V(4,-34,0));  // 滚轮座
+  torusY(2.55,.7,M.rubber,stem,V(4,-24,0));
+  torusY(2.55,.7,M.rubber,stem,V(4,-12,0));
+  tv.add(stem); PIV.tstem = stem;
+  helixY(-36,-31,4.2,.5,3,M.steel,tv).position.x = 4;
+  addPart('tvalve', '触发阀组件', tv, M.plastic);
+
+  const inp = group();
+  cylY(10,22,M.brass,inp,V(-14,-140,0));
+  cylY(11.4,4,M.brass,inp,V(-14,-132,0),6);
+  cylY(9.2,3,M.rubber,inp,V(-14,-151,0));
+  cylY(5.5,14,M.brass,inp,V(-14,-159,0));
+  cylY(7.5,4.5,M.brass,inp,V(-14,-166,0));
+  addPart('inlet', '气源接头', inp, M.brass);
+}
+
+/* ---------- 12 控制气管（模块：控制气管） ---------- */
+{
+  const g = group();
+  wire([[0,-10,8],[14,0,18],[58,12,23],[120,22,23],[166,40,20],[176,52,8]], 1.3, M.plastic, g);
+  for (const p2 of [[58,12,23],[120,22,23]]) cylX(1.9,3.6,M.plastic,g,V(p2[0],p2[1],p2[2])).rotation.z = Math.PI/2;
+  addPart('tube', '控制气管', g, M.plastic);
+}
+
+/* ---------- 13 扳机联动（模块：扳机联动） ---------- */
+{
+  const g = group();
+  const lever = group(); lever.position.set(38,-8,0);
+  const sh = new THREE.Shape();
+  sh.moveTo(-4,0); sh.lineTo(7,0);
+  sh.quadraticCurveTo(11,-20, 5,-44);
+  sh.quadraticCurveTo(1,-52, -7,-48);
+  sh.quadraticCurveTo(-2,-22, -4,0);
+  const lg = new THREE.ExtrudeGeometry(sh, { depth:10, bevelEnabled:true, bevelSize:1.3, bevelThickness:1.1, bevelSegments:2, curveSegments:12 });
+  lg.translate(0,0,-5);
+  mesh(lg, M.aluDark, lever);
+  box(9,5,9,M.yellow,lever,V(1,-46,0));        // 黄色扳机面
+  cylZ(1.6,11,M.steelDark,lever,V(0,0,0));
+  const pawl = group(); pawl.position.set(-16,6,0);
+  box(4,20,4,M.steelDark,pawl,V(0,-7,0));
+  box(5,2.4,5,M.steelDark,pawl,V(-1,3,0));     // 保险挂钩
+  lever.add(pawl); PIV.pawl = pawl;
+  g.add(lever); PIV.trig = lever;
+  box(26,3,3,M.steelDark,g,V(22,-36,0));       // 扳机→阀杆的连杆
+  helixY(-4,8,3.2,.5,3.5,M.steel,g).position.set(28,0,5);
+  addPart('trig', '扳机联动', g, M.aluDark);
+}
+
+/* ---------- 14 保险触压板（模块：保险触压板） ---------- */
+{
+  const g = group();
+  // U 形触压板：出钉口在中间，钉条从后方通过
+  box(30,9,28, M.aluDark, g, V(212,-48.5,0));                 // 前唇
+  for (const s of [-1,1]) box(26,9,4, M.aluDark, g, V(186,-48.5,s*12));
+  box(30,2,28, M.yellow, g, V(212,-53.5,0));                  // 防滑垫
+  plateHole(198,226,-3.4,3.4,-54.5,1,1.7,NX,0,M.alu, g);      // 出钉孔导板
+  box(3,5,3,M.steelDark,g,V(NX,-45,8.4));                     // 深度滑块接口
+  for (const s of [-1,1]) helixY(-44,-38,1.8,.45,2.5,M.steel,g).position.set(196,0,s*8.5);
+  addPart('trip', '保险触压板', g, M.aluDark);
+}
+
+/* ---------- 15 深度调节轮（模块：深度调节轮） ---------- */
+{
+  const g = group();
+  const wheel = group(); wheel.position.set(204,-38,25.5);
+  const kn = cylY(11,5, M.yellow, wheel); kn.rotation.x = Math.PI/2;
+  const pts = [];
+  for (let i=0;i<36;i++){ const a=i*TAU/36;
+    pts.push(new THREE.Vector2(Math.cos(a)*11, Math.sin(a)*11),
+             new THREE.Vector2(Math.cos(a+TAU/72)*12.2, Math.sin(a+TAU/72)*12.2)); }
+  const s = new THREE.Shape(pts); const h = new THREE.Path(); h.absarc(0,0,4,0,TAU,true); s.holes.push(h);
+  const ring = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth:5, bevelEnabled:false }), M.yellow);
+  ring.rotation.y = Math.PI/2; ring.position.z = -2.5; wheel.add(ring);
+  box(2.4,5,2.4, M.red, wheel, V(0,10.6,0));
+  g.add(wheel); PIV.dwheel = wheel;
+  cylZ(4,12, M.steelDark, g, V(204,-38,19));
+  box(6,3,5, M.steelDark, g, V(204,-38,15));
+  addPart('dwheel', '深度调节轮', g, M.yellow);
+}
+
+/* ---------- 16 卡扣门（模块：卡扣门） ---------- */
+{
+  const g = group();
+  const door = group(); door.position.set(204,-30,-22.5);
+  box(26,26,2.2, M.aluDark, door, V(-13,0,0));
+  box(6,9,3, M.yellow, door, V(-22,-8,-1));
+  cylY(1.4,28, M.steelDark, door, V(0,0,1)).rotation.z = Math.PI/2;
+  g.add(door); PIV.latch = door;
+  box(4,4,3, M.steelDark, g, V(186,-16,-23));
+  addPart('latch', '卡扣门', g, M.aluDark);
+}
+
+/* ---------- 弯钉（卡钉演示，场景件） ---------- */
+{
+  const jam = group(); jam.position.set(188,-22,0); jam.rotation.z = .5;
+  cylY(.6,34, M.nail, jam, V(0,-16,0), 8);
+  dHead(jam, V(0,.4,0));
+  jam.visible = false; world.add(jam); PIV.jamnail = jam;
+}
+
+/* ---------- 17 推钉组件（模块：推钉组件） ---------- */
+{
+  const g = group();
+  box(6.6,3.6,3.2, M.plastic, g, V(FOLLOWER_FRONT0-3.3, -13, 0));     // 顶住钉头
+  box(6.6,34,3.2, M.plastic, g, V(FOLLOWER_FRONT0-3.3, -31, 0));
+  helixX(FOLLOWER_FRONT0-15, FOLLOWER_FRONT0-4, 4.6, .55, 7, M.steel, g).position.y = -30;
+  box(12,8,10, M.plastic, g, V(FOLLOWER_FRONT0-15, -28, 0));
+  box(5,5,3, M.yellow, g, V(FOLLOWER_FRONT0-20, -28, 0));
+  addPart('follower', '推钉组件', g, M.plastic);
+}
+
+/* ---------- 18 钉条（模块：钉条） ---------- */
+{
+  const g = group(); const nailMeshes = [];
+  for (let k=0;k<NAILS;k++){
+    const n = group(); n.position.x = NX - k*PITCH;
+    cylY(.6, 36, M.nail, n, V(0, -30.6, 0), 8);
+    cylY(.5, 1.5, M.nail, n, V(0, -49.3, 0), 8);
+    dHead(n, V(0, -11.7, 0));
+    g.add(n); nailMeshes.push(n);
+  }
+  g.userData.nailMeshes = nailMeshes;
+  box((NAILS-1)*PITCH+2, .5, 1.2, M.glue, g, V(NX-(NAILS-1)*PITCH/2, -12.3, 0));
+  box((NAILS-1)*PITCH+2, .5, 1.2, M.glue, g, V(NX-(NAILS-1)*PITCH/2, -40, 0));
+  addPart('nails', '钉条', g, M.nail);
+}
+
+/* ---------- 机构状态与位姿 ---------- */
+const MECH = {
+  air:false, pressure:0,
+  trip:0, trigger:0, valve:0,
+  plunger:0, piston:0,
+  fired:0, nails:NAILS,
+  jam:false, latch:0,
+  depth:0, deflect:0,
+  cycle:false, cycleT:0, lockout:false, pending:false, puffT:1,
+  speed:60, now:0, pressT:null,
+};
+const CYCLE = { stem:.08, lift:.18, fire:.42, bottom:.55, seat:.62, back:.86, done:1 };
+const smooth = t => { t = Math.min(1, Math.max(0, t)); return t*t*(3-2*t); };
+const seg = (t,a,b) => smooth((t-a)/(b-a));
+
+/* ---------- 钉进木板的钉子（由 state.fired 派生） ---------- */
+const drivenGroup = group(); world.add(drivenGroup);
+function addDrivenNail(proud){
+  const g = group();
+  cylY(.6, Math.max(.5, proud+1.2), M.nail, g, V(NX, BOARD_TOP-(proud+1.2)/2, 0), 8);
+  dHead(g, V(NX, BOARD_TOP-proud+.4, 0));
+  drivenGroup.add(g);
+}
+let drivenCount = 0;
+function syncDrivenNails(fired, depth){
+  const want = Math.min(Math.max(0, fired|0), 24);
+  while (drivenCount < want){ addDrivenNail(depth===1 ? 1.2 : depth===0 ? 2.7 : 4.2); drivenCount++; }
+  while (drivenCount > want){ drivenGroup.remove(drivenGroup.children[drivenGroup.children.length-1]); drivenCount--; }
+}
+
+/* ---------- 气流（教学线索） ---------- */
+const flows = [];
+function addFlow(pts, active, r=1.4){
+  const curve = new THREE.CatmullRomCurve3(pts.map(p=>V(...p)));
+  const o = mesh(new THREE.SphereGeometry(r,12,10), M.air, world);
+  o.renderOrder = 10;
+  flows.push({ curve, active, o, tmp:new THREE.Vector3() });
+}
+addFlow([[ -2,-214],[0,-180],[4,-120],[8,-60],[10,-24]], m => m.air, 1.7);                       // 气源 → 触发阀
+addFlow([[14,-8,10],[28,4,18],[70,26,22],[120,44,22],[160,54,14],[174,58,4]], m => m.air && m.valve < .4, 1.5); // 触发阀 → 头阀上腔
+addFlow([[NX,76,0],[NX,62,0],[NX,52,0]], m => m.cycleT > .12 && m.cycleT < .40, 1.7);           // 气室 → 打开的头阀
+addFlow([[NX,46,0],[NX,30,0],[NX,10,0],[NX,-12,0]], m => m.cycleT > .28 && m.cycleT < .58, 1.8); // 活塞上腔
+addFlow([[NX,-18,0],[NX-20,-12,0],[NX-20,14,0],[NX,34,0]], m => m.cycleT > .58 && m.cycleT < .90, 1.5); // 回程腔
+addFlow([[NX+12,74,0],[NX+26,78,0],[NX+36,80,0]], m => m.cycleT > .60 && m.cycleT < .95, 1.7);  // 排气
+const puff = mesh(new THREE.ConeGeometry(5,15,12,1,true), M.puff, world, V(NX+34,78,0));
+puff.rotation.z = -Math.PI/2; puff.renderOrder = 9;
+
+function poseParts(m = MECH){
+  const kb = k => byKey.get(k);
+  if (kb('plunger')) kb('plunger').anim.y = 5*m.plunger;
+  if (kb('piston'))  kb('piston').anim.y = -STROKE*m.piston;
+  if (kb('trip'))    kb('trip').anim.y = 4*m.trip;
+  if (kb('tvalve'))  kb('tvalve').anim.y = 2.5*m.valve;
+  if (PIV.trig)      PIV.trig.rotation.z = .16*m.trigger;
+  if (PIV.pawl)      PIV.pawl.rotation.z = -.55*m.trip;
+  if (PIV.dwheel)    PIV.dwheel.rotation.z = 1.6*m.depth;
+  if (PIV.latch)     PIV.latch.rotation.y = 1.15*m.latch;
+  if (PIV.defl)      PIV.defl.rotation.y = m.deflect;
+  if (PIV.tstem)     PIV.tstem.position.y = 2.5*m.valve;
+  if (kb('nails')){
+    kb('nails').anim.x = PITCH*m.fired;
+    kb('nails').g.visible = m.nails > 0;
+    const arr = kb('nails').obj.userData.nailMeshes || [];
+    for (let k=0;k<arr.length;k++) arr[k].visible = k >= m.fired;
+  }
+  if (kb('follower')) kb('follower').anim.x = PITCH*m.fired;
+  if (PIV.jamnail) PIV.jamnail.visible = !!m.jam;
+  for (const f of flows){
+    f.o.visible = !!f.active(m);
+    if (f.o.visible){ f.curve.getPoint(((m.now||0)*.0011)%1, f.tmp); f.o.position.copy(f.tmp); }
+  }
+  const puffOn = (m.cycleT>.55 && m.cycleT<.92) || m.puffT < 1;
+  puff.visible = puffOn && m.pressure > .05;
+  if (m.puffT < 1){ puff.scale.setScalar(.5+.9*Math.sin(m.puffT*Math.PI)); puff.material.opacity = .5*(1-m.puffT); m.puffT = Math.min(1, m.puffT+.02); }
+  else if (puffOn){ const q = seg(m.cycleT,.55,.92); puff.scale.setScalar(.4+q*1.7); puff.material.opacity = .5*(1-q); }
+}
+
+/* 击发循环：阀杆抬起 → 头阀上移 → 气室进活塞上腔 → 活塞下行 → 阀塞复位 → 回程 → 排气 */
+function runCycle(m = MECH){
+  const t = m.cycleT, c = CYCLE;
+  m.valve = t < c.seat ? seg(t,0,c.stem) : 1-seg(t,c.seat,c.back);
+  m.plunger = t < c.seat ? seg(t,c.stem*.7,c.lift) : 1-seg(t,c.seat,c.seat+.08);
+  let drive = Math.pow(seg(t,c.lift*.9,c.fire), 1.7), maxDrive = 1;
+  if (m.lockout) maxDrive = .005;
+  else if (m.jam) maxDrive = .12;
+  m.piston = Math.min(drive, maxDrive);
+  if (t >= c.seat) m.piston = Math.min(m.piston, 1-seg(t,c.seat+.04,c.back));
+  m.piston = Math.max(0, Math.min(1, m.piston));
+  if (m.cycleT >= c.done){ m.cycle = false; m.cycleT = 0; m.lockout = false; }
+}
+
+/* ---------- 测试台：细支架 + 木板 ---------- */
+{
+  const stand = group();
+  box(14, 250, 60, M.clamp, stand, V(-62, -84, 0));      // 立柱
+  box(40, 10, 46, M.clamp, stand, V(-54, 30, 0));        // 上夹臂
+  box(16, 30, 46, M.clamp, stand, V(-42, 10, 0));        // 夹块
+  box(44, 136, 110, M.clamp, stand, V(318, -142, -30));  // 木板台
+  box(470, 8, 270, new THREE.MeshStandardMaterial({color:0xd7d2c8, roughness:.95}), stand, V(120, -214, 0));  // 地面
+  world.add(stand); PIV.stand = stand;
+}
+{
+  const board = group();
+  box(230, 20, 160, M.wood, board, V(215, -64, 0));
+  box(230, .8, 160, new THREE.MeshStandardMaterial({ color:0xb58e58, roughness:.9 }), board, V(215, -54.4, 0));
+  world.add(board); PIV.board = board;
+}
+
+/* ---------- 包围盒 ---------- */
+function moduleBounds(keys) {
+  const b = new THREE.Box3();
+  for (const k of keys) {
+    const p = byKey.get(k);
+    if (p) b.union(new THREE.Box3().setFromObject(p.g));
+  }
+  return b;
+}
+
+/* ---------- 运动：状态只来自 logic 的 state，几何在这里落位 ---------- */
+function applyMotion(view, state) {
+  MECH.air = !!state.air;
+  MECH.trip = state.trip || 0;
+  MECH.trigger = state.trigger || 0;
+  MECH.depth = state.depth || 0;
+  MECH.jam = !!state.jam;
+  MECH.latch = state.latch || 0;
+  MECH.fired = Math.max(0, (state.fired || 0) - (MECH.pending ? 1 : 0));
+  MECH.nails = state.nails == null ? NAILS : state.nails;
+  syncDrivenNails(state.fired || 0, state.depth || 0);
+  drivenGroup.visible = (state.placed || []).includes('nails');
+  PIV.board.visible = PIV.stand.visible = true;
+  for (const p of parts) p.anim.set(0, 0, 0);
+  poseParts(MECH);
+  const nailsPart = byKey.get('nails');
+  if (nailsPart && !(state.placed || []).includes('nails')) nailsPart.g.visible = false;
+  for (const p of parts) p.g.position.add(p.anim);
+}
+const MODEL = { world, byKey, PARTS: parts, moduleBounds, applyMotion, runCycle, mech: MECH, NAILS };
+
+/* ==== nail-gun-lab/manifest.mjs ==== */
+/* 气钉枪 · 插槽填充（纯数据 + 少量回调）
+ * 外形依据 DeWalt DWFP12233 18Ga 直钉枪公开规格（长≈287 / 高≈241 / 宽≈81 mm，
+ * 70–120 psi，1/4" NPT，100 支弹匣，F15–F50 直钉）；内部气路与阀件为教学估算。
+ */
+const MANIFEST = {
+  slug: 'nail-gun-lab',
+  brand: {
+    title: '气钉枪装配实验室',
+    subtitle: '把气压变成一颗钉子 · 13 模块 · 3 关',
+    mark: { a: '#c2452d', b: '#e9b53a' },
+  },
+
+  chapters: [
+    {
+      title: '让活塞自己回来', subtitle: '缸下腔的空气就是一根气弹簧：压下去、弹回来。', badge: '气垫观察员',
+      exp: '手压活塞',
+      expText: '点「手压活塞」：活塞下行，把缸下腔的空气经缸壁两圈小孔挤进机体的回程环腔；松手后这团被压缩的空气把活塞顶回去。看「回程」读数先升后降。',
+      q: '松手之后，是什么把活塞推回顶部？',
+      options: ['缸下腔与回程环腔里被压缩的空气', '击针自己的弹性', '头阀里的阀弹簧'],
+      a: 0,
+      why: '活塞下行时缸下腔容积变小，空气只能经缸壁两圈回程孔挤进回程环腔；松手后它膨胀，把活塞推回。击针是钢的，不储能；阀弹簧只作用于头阀塞，碰不到活塞。',
+    },
+    {
+      title: '先压鼻端，再扣扳机', subtitle: '触发阀是气路的开关，保险挂块是扳机的锁。', badge: '两段保险',
+      exp: '三步各试一次',
+      expText: '①只接气：气停在触发阀，头阀塞上腔有气压顶着；②再压鼻端：扳机解锁，但触发阀还没动；③只扣扳机（不压鼻端）：保险挂块挡住扳机，触发阀不动。两道输入同时成立，气才会被放掉。',
+      q: '只扣扳机时，气钉枪为什么不击发？',
+      options: ['气压还不够高', '保险挂块挡住扳机，触发阀不动作，头阀塞被上腔气压顶住', '头阀里的弹簧太硬'],
+      a: 1,
+      why: '头阀塞平时被上腔气压压在下位，把气室封住。触发阀不放气，上腔压力就不降，气室的高压气进不了活塞上腔。顺序击发让工具跌落时最多只满足一道输入，所以不会走火。',
+    },
+    {
+      title: '一次击发的六个动作', subtitle: '从扳机到钉子，按顺序看完这六步。', badge: '击发工程师',
+      exp: '完整击发',
+      expText: '接气 → 压鼻端 → 扣扳机 → 击发。默认慢放 ×60，盯住「阶段」读数：阀杆抬起 → 头阀打开 → 气室进活塞上腔 → 活塞下行击钉 → 阀塞复位 → 回程腔推回 → 排气、钉条前进一格。',
+      q: '推动活塞下行的高压气，是从哪里来的？',
+      options: ['回程环腔', '一直存在气室里、经打开的头阀放进活塞上腔的那团气', '排气口吸进来的空气'],
+      a: 1,
+      why: '气室一直充满高压气，只是被头阀塞封住。扳机放掉阀塞上腔的气压后，气室的气把阀塞顶起，气室与活塞上腔接通，同一团高压气随即压下活塞。回程腔的气只在活塞回程时使用，排气口只出气。',
+    },
+  ],
+
+  stage: {
+    title: '拼一把会打钉的气钉枪',
+    hint: '选一块模块，把它放到蓝色轮廓里。',
+  },
+
+  readout: [
+    { key: 'supply', label: '气源' },
+    { key: 'ret', label: '回程腔' },
+    { key: 'phase', label: '阶段', big: true },
+    { key: 'piston', label: '活塞行程' },
+    { key: 'nails', label: '余钉' },
+  ],
+
+  tray: { title: '第一盒 · 动力核心', hint: '点选模块，再拖到蓝色位置' },
+
+  modules: [
+    { id: 'body', chapter: 0, name: '主机体', parts: ['body'], color: '#7b8694', icon: 'housing',
+      tip: '把主机体放上测试台。缸孔、钉道、回程环腔和鼻框都在这一件上。',
+      learn: '主机体是基准件：气缸压进前部的缸孔，头盖拧在顶法兰上，弹匣梁和鼻框都由它定位。回程环腔也铸在机体里，是活塞回程的气源。' },
+    { id: 'core', chapter: 0, name: '动力缸芯', parts: ['cylinder', 'bumper'], color: '#c2734a', icon: 'disc',
+      tip: '把预装了缓冲垫的气缸压进机体缸孔。',
+      learn: '缓冲垫在缸底，空击时接住活塞。缸壁有两圈各 4 个回程孔，把缸下腔和机体的回程环腔连通——这就是回程气弹簧的通道。压装工序以吸附归位示意。' },
+    { id: 'piston', chapter: 0, name: '活塞击针', parts: ['piston'], color: '#5e7ea6', icon: 'piston',
+      tip: '把活塞和击针从缸孔上方装入气缸。',
+      learn: '活塞带一道 O 形圈，把气缸分成上腔和下腔。击针从活塞底面伸出，穿过缓冲垫中孔直达钉头。它没有回程弹簧——回程靠气。' },
+    { id: 'headvalve', chapter: 0, name: '头盖阀总成', parts: ['headcap', 'plunger', 'vspring', 'deflector'], color: '#8a6bb8', icon: 'valve',
+      tip: '把带阀塞和弹簧的头盖总成装到机体顶法兰上。',
+      learn: '头阀塞被弹簧和上腔气压压在下位，封住气室；气室在头盖顶部，一直充满高压气。阀塞一抬起，气室就与活塞上腔接通。排气导板把回程时的排气引向侧面。' },
+    { id: 'airkit', chapter: 1, name: '触发阀与接头', parts: ['tvalve', 'inlet'], color: '#b8934a', icon: 'coil',
+      tip: '把触发阀组件放进握把腔，气源接头已预装在阀体下方。',
+      learn: '1/4 英寸 NPT 快插接头把压缩空气送进触发阀。阀是三通：平时把气送去头阀塞上腔，扣扳机时改把上腔放空。没有电，全靠气压切换。' },
+    { id: 'trip', chapter: 1, name: '保险触压板', parts: ['trip'], color: '#4a9a8c', icon: 'plate',
+      tip: '把 U 形触压板滑进鼻端滑槽，出钉孔对正出口。',
+      learn: '触压板底部有防滑垫，中间是出钉孔；只有它压住工件上缩 4 mm，扳机的保险挂块才让路。这是第一道输入，也是深度的基准。' },
+    { id: 'trig', chapter: 1, name: '扳机联动', parts: ['trig'], color: '#c25a5a', icon: 'lever',
+      tip: '把扳机杆装进握把销孔，保险挂块朝上。',
+      learn: '触压板没压下时，保险挂块挡住扳机行程；压下后扳机才能推动触发阀的阀杆。两道输入都给到，触发阀才会放掉头阀塞上腔的气。' },
+    { id: 'tube', chapter: 1, name: '控制气管', parts: ['tube'], color: '#6a86b8', icon: 'shaft',
+      tip: '把控制气管一头插进触发阀，一头插到头盖后部，卡进机体线槽。',
+      learn: '这根细管就是头阀塞上腔的控制线：触发阀供气时，上腔压力把阀塞压住；触发阀放气时，上腔压力下降，阀塞才被气室顶起。' },
+    { id: 'grip', chapter: 1, name: '握把壳', parts: ['grip'], color: '#5a6272', icon: 'housing',
+      tip: '合上左右握把壳，罩住触发阀和扳机。',
+      learn: '握把固定触发阀与扳机，底部拧入气源接头。合壳后气路完整，可以接气做两段保险实验。' },
+    { id: 'follower', chapter: 2, name: '推钉组件', parts: ['follower'], color: '#9a6a4a', icon: 'spring',
+      tip: '把推钉板和压簧从弹匣梁尾部推进轨道。',
+      learn: '压簧一端顶弹匣尾端、一端顶推钉板，始终把钉条往前送。弹匣打空时，推钉板前沿进入击发窗挡住刀口——空击锁定。' },
+    { id: 'nails', chapter: 2, name: '钉条', parts: ['nails'], color: '#4a7ab8', icon: 'pin',
+      tip: '把 F38 直钉条钉尖朝下放入钉道，顶住击针刀口。',
+      learn: '18Ga 直钉 Ø1.2×38 mm，胶排成条，钉头挂在头钉道里，由刀口从上向下逐支击出。真机 100 支/条；模型 80 支、钉距 1.5（放大保证刀口与邻钉头有间隙）。' },
+    { id: 'depth', chapter: 2, name: '深度调节轮', parts: ['dwheel'], color: '#b8a24a', icon: 'gear',
+      tip: '把滚花深度调节轮装到鼻端侧面轴销上。',
+      learn: '轮子改变触压板的基准位：基准越低，枪身离木板越远，钉帽露出越多。真机靠触压板行程/泄气微调，模型用三档示意。' },
+    { id: 'latch', chapter: 2, name: '卡扣门', parts: ['latch'], color: '#8c8c94', icon: 'bolt',
+      tip: '把卡扣门装到鼻端侧面销轴上，清障用。',
+      learn: '卡钉时打开侧门就能夹出弯钉。卡扣门也是检查刀槽和出钉口的窗口。' },
+  ],
+
+  notes: [
+    '<b>一次击发，六个动作：</b>①扣扳机，扳机推动触发阀阀杆；②触发阀把控制气管和头阀塞上腔放空；③上腔压力一降，气室里那团高压气把阀塞顶起；④气室与活塞上腔接通，高压气压下活塞、击针打钉；⑤活塞到底后阀塞复位，气室重新封闭；⑥缸下腔的空气经回程孔把活塞推回，排气导板放掉余气，钉条前进一格。',
+    '<b>为什么没有回程弹簧：</b>缸壁下段有两圈各 4 个回程孔，活塞下行时把缸下腔的空气挤进机体里的回程环腔；活塞到底后，这团压缩空气膨胀，把活塞推回。气压既是动力也是回程，结构比弹簧更耐高频。',
+    '<b>两段保险为什么防跌落：</b>触发阀只在「鼻端压住工件」且「扳机被扣下」时动作。工具掉落时通常只碰到其中一个，头阀塞上腔的气压不会被放掉，气室始终封着，所以不会击发。',
+    '<b>空击锁定：</b>弹匣打空后，推钉板前沿正好进入击发窗挡住刀口，活塞只走一小段就停住，避免刀口硬撞机体。',
+    '外形按 DeWalt DWFP12233 18Ga 直钉枪包络（长约 287 mm、70–120 psi、1/4 英寸 NPT、100 支直钉弹匣）。内部气路与阀件为教学估算，<b>不对应某一品牌剖面</b>。击发原理参考 HowStuffWorks《How Nail Guns Work》与 Everwin 阀序说明；直排式「钉条竖挂、刀口下行」参考专利 EP1874505B1。',
+    '默认动画慢放约 60 倍；观察速度只影响播放，不改变真实时序（实际击发行程约 10 ms 量级）。',
+  ],
+
+  scene: {
+    bench: false,  // 场景自带地面与木板台，避免和 kit 的大平面重叠
+    spawnFor: (id, info) => [20 - info.center.x, 120 - info.center.y, 90 - info.center.z],
+    camera: { fov: 34, near: 1, far: 3000, defaultFocus: 'all' },
+    orbit: { minDistance: 80, maxDistance: 2600, minPolar: 0.04, maxPolar: 0.57 },
+    renderer: { exposure: 1.02, pixelRatio: 1.5 },
+    env: 0.6,
+    lights: {
+      hemi: [0xffffff, 0xcfc4ac, 1.5],
+      key: { color: 0xfff6ec, intensity: 2.2, pos: [-220, 320, 280] },
+      fill: { color: 0xdfe9ff, intensity: 0.6, pos: [260, 120, -260] },
+      rim: { color: 0xe8eeff, intensity: 1.1, pos: [220, 140, -240] },
+    },
+    cut: { normal: [0, 0, -1], constant: 0 },
+    focus: {
+      all: { dir: [27, 16], fit: 0.94, box: () => [[110, -70, 0], [430, 330, 240]] },
+      valve: { dir: [27, 16], fit: 1.1, box: () => [[190, 52, 0], [90, 90, 60]] },
+      nose: { dir: [27, 16], fit: 1.1, box: () => [[194, -36, 0], [120, 110, 60]] },
+    },
+    inset: {
+      fov: 36,
+      visible: (s, v) => v.cut && s.placed.includes('headvalve'),
+      target: () => ({
+        part: 'headcap',
+        local: [190, 62, 0],
+        offset: [-34, 22, 76],
+        title: MODEL.mech.cycle ? '击发中 · 阀塞上移，气室接通活塞上腔' : '头阀特写 · 阀塞压在下位，气室封闭',
+      }),
+    },
+  },
+};
+
+/* ==== nail-gun-lab/logic.mjs ==== */
+/* 气钉枪 · 装配与实验逻辑（纯逻辑，无 DOM、无三维）
+ * 每个动作先校验前置条件；失败不动业务状态。模块与关卡文案的唯一来源是 manifest.mjs。
+ */
+const MODULES = MANIFEST.modules;
+const CHAPTERS = MANIFEST.chapters;
+function createGame(){
+  const NAILS = 80;
+  const initial = () => ({ chapter:0, phase:'build', placed:[], selected:null,
+    completed:[false,false,false], air:false, trip:0, trigger:0, fired:0, nails:NAILS,
+    depth:0, jam:false, latch:0, expStep:0 });
+  const state = initial();
+  const fail = message => ({ ok:false, message });
+  const mod = id => MODULES.find(m => m.id === id);
+  function current(){
+    if (state.phase !== 'build') return null;
+    return MODULES.find(m => m.chapter === state.chapter && !state.placed.includes(m.id)) || null;
+  }
+  function select(id){
+    if (state.phase !== 'build') return fail(state.phase==='lab' ? '自由实验室里不搞装配,想重拼请点重新开始。' : '先完成本章实验与挑战,再继续装配。');
+    const m = mod(id);
+    if (!m) return fail('没有这块模块,请从零件盒选择。');
+    if (state.placed.includes(id)) return fail(m.name + '已经装好了。');
+    if (m.chapter !== state.chapter) return fail('这一步还轮不到' + m.name + '——先完成当前模块。');
+    state.selected = id;
+    return { ok:true, message:m.tip };
+  }
+  function place(onTarget=true){
+    if (state.phase !== 'build') return fail('本章装配已完成,请进行实验与挑战。');
+    if (!state.selected) return fail('先从零件盒选一块模块。');
+    if (onTarget !== true) return fail('还没对准装配位置——拖到蓝色轮廓里再松手,或按「装到这里」。');
+    const m = current();
+    if (!m) return fail('本章已经装完了。');
+    if (state.selected !== m.id) return fail('这一步需要「' + (m ? m.name : '当前模块') + '」,顺序不能乱。');
+    state.placed.push(m.id); state.selected = null;
+    if (!MODULES.some(x => x.chapter === state.chapter && !state.placed.includes(x.id))) state.phase = 'experiment';
+    return { ok:true, message:m.name + '已归位。', learn:m.learn, kind:'placed' };
+  }
+  function undo(){
+    if (state.phase === 'lab') return fail('自由实验室不撤回;想重拼请点重新开始。');
+    const last = state.placed.at(-1), m = mod(last);
+    if (!m || m.chapter !== state.chapter) return fail('本章还没有可撤回的模块。');
+    state.placed.pop(); state.phase = 'build'; state.selected = null;
+    state.air = false; state.trip = 0; state.trigger = 0; state.expStep = 0;
+    if (m.id === 'nails'){ state.nails = NAILS; }
+    if (m.id === 'follower' && state.placed.includes('nails')){ state.nails = NAILS; }
+    state.completed[state.chapter] = false;
+    return { ok:true, message:'已撤回' + m.name + ',可以重新装配。', kind:'undo' };
+  }
+  function experiment(){
+    if (state.phase !== 'experiment') return fail('先把本章模块全部装好,再进行实验。');
+    state.phase = 'quiz'; state.expStep = 0;
+    return { ok:true, message:CHAPTERS[state.chapter].expText, kind:'experiment' };
+  }
+  // 实验演示动作(阶段限定)
+  function demoAir(){
+    if (state.phase !== 'experiment') return fail('实验动作要在实验阶段做。');
+    if (state.chapter !== 1) return fail('本章不需要接气。');
+    state.air = true; state.expStep = Math.max(state.expStep,1);
+    return { ok:true, message:'气源接通:气室充压。活塞被缸下腔/回程腔的气压顶在上位——听,充气有一声短促的排气声。', kind:'air' };
+  }
+  function demoTrip(){
+    if (state.phase !== 'experiment') return fail('实验动作要在实验阶段做。');
+    if (state.chapter !== 1) return fail('本章不压鼻端。');
+    if (!state.air) return fail('先接通气源,再压鼻端。');
+    state.trip = state.trip ? 0 : 1; state.expStep = Math.max(state.expStep,2);
+    return { ok:true, message:state.trip ? '触压板压紧工件(缩回 4 mm),扳机联动解锁——但还没扣扳机,不击发。' : '触压板回位,扳机重新锁住。', kind:'trip' };
+  }
+  function demoTrigger(){
+    if (state.phase !== 'experiment') return fail('实验动作要在实验阶段做。');
+    if (state.chapter !== 1) return fail('本章不空扣扳机。');
+    if (!state.trip) return { ok:false, kind:'blocked', message:'扣不动:鼻端触压板没有压住工件,顺序击发联动锁住了扳机。这正是两段保险——先压鼻端,再扣扳机。' };
+    if (!state.air) return { ok:false, kind:'blocked', message:'扳机能扣动,但没接气,阀后无气,头阀塞上腔不放气,照样不击发。先接气。' };
+    return { ok:false, kind:'blocked', message:'气已接、鼻端已压、扳机已扣——这下会真的击发!但弹匣里还没装钉条,去第三章装上钉条再打。' };
+  }
+  function answer(i){
+    if (state.phase !== 'quiz') return fail('先亲手完成本章实验,再回答问题。');
+    const c = CHAPTERS[state.chapter];
+    if (!Number.isInteger(i) || i<0 || i>=c.options.length) return fail('请选择一个有效答案。');
+    if (i !== c.a) return { ok:false, message:'再观察一下。' + c.why, kind:'wrong' };
+    state.completed[state.chapter] = true; state.phase = 'checkpoint';
+    return { ok:true, message:'答对了!获得「' + c.badge + '」。', kind:'correct' };
+  }
+  function next(){
+    if (state.phase !== 'checkpoint' || !state.completed[state.chapter]) return fail('先完成本章实验与挑战。');
+    if (state.chapter < CHAPTERS.length-1){ state.chapter++; state.phase='build'; state.expStep=0; state.air=false; state.trip=0; state.trigger=0;
+      return { ok:true, message:CHAPTERS[state.chapter].subtitle, kind:'chapter' }; }
+    state.phase = 'lab';
+    return { ok:true, message:'装配完成!进入自由实验室:击发、调深浅、制造卡钉再清障。', kind:'complete' };
+  }
+  // 自由实验动作
+  function fire(){
+    if (state.phase !== 'lab' && !(state.phase === 'experiment' && state.chapter === 2)) return fail('完成装配与实验后才可击发。');
+    if (!state.air) return fail('未接通气源——先接气再击发。');
+    if (!state.trip) return fail('鼻端触压板未压下——两段式顺序击发要求先压鼻端。');
+    if (!state.trigger) return fail('先扣住扳机,再保持压紧鼻端。');
+    if (state.jam) return { ok:true, kind:'jamstop', message:'刀口下行顶住弯钉,击发中止——打开卡扣门清障。' };
+    if (state.nails <= 0){ return { ok:true, kind:'lockout', message:'弹匣已空:推钉板前沿进入击发窗,锁定空击——装入钉条再打。' }; }
+    state.fired++; state.nails--;
+    return { ok:true, kind:'fired', message:'击发!高压气经头阀压下活塞,击针把钉打进木板;回程腔随即把活塞顶回,钉条前进一格。' };
+  }
+  function setAir(){
+    if (state.phase !== 'lab' && !(state.phase === 'experiment' && state.chapter === 2)) return fail('完成装配后才可操作气源。');
+    state.air = !state.air; state.expStep = Math.max(state.expStep, state.air?1:0);
+    if (!state.air){ state.trigger = 0; }
+    return { ok:true, message:state.air ? '气源接通,气室充压(表压 0.6 MPa)。' : '气源已断开,气压归零。', kind:'air' };
+  }
+  function setTrip(){
+    if (state.phase !== 'lab' && !(state.phase === 'experiment' && state.chapter === 2)) return fail('完成装配后才可压鼻端。');
+    state.trip = state.trip ? 0 : 1;
+    if (!state.trip) state.trigger = 0;
+    return { ok:true, message:state.trip ? '触压板压紧工件,扳机联动解锁。' : '触压板回位,扳机重新锁住。', kind:'trip' };
+  }
+  function setTrigger(){
+    if (state.phase !== 'lab' && !(state.phase === 'experiment' && state.chapter === 2)) return fail('完成装配后才可扣扳机。');
+    if (!state.trip) return { ok:false, kind:'blocked', message:'扣不动:触压板未压下,顺序击发联动锁住扳机——先压鼻端。' };
+    state.trigger = state.trigger ? 0 : 1;
+    return { ok:true, message:state.trigger ? '扳机已扣住:触发阀放气,只待击发。' : '扳机已松开。', kind:'trigger' };
+  }
+  function cycleDepth(){
+    if (state.phase !== 'lab' && !(state.phase === 'experiment' && state.chapter === 2)) return fail('先完成三章挑战,再进实验室调深浅。');
+    state.depth = ((state.depth + 2) % 3) - 1;   // -1 浅 · 0 中 · 1 深
+    const name = state.depth === 1 ? '深(钉帽近齐平)' : state.depth === 0 ? '中' : '浅(钉帽露出更多)';
+    return { ok:true, message:'深度调节:转为' + name + '。再击发一钉对比钉帽高度。', kind:'depth' };
+  }
+  function setLatch(){
+    if (state.phase !== 'lab') return fail('先完成三章挑战,再进实验室。');
+    if (!state.jam && !state.latch){ state.latch = 1; return { ok:true, kind:'latch', message:'卡扣门已打开:能看到刀槽与出口。', latch:1 }; }
+    if (state.jam && state.latch){ state.jam = false; state.latch = 0; return { ok:true, kind:'clearjam', message:'弯钉已取出,合上卡扣门,可以继续击发。', latch:0 }; }
+    state.latch = state.latch ? 0 : 1;
+    return { ok:true, kind:'latch', message:state.latch ? '卡扣门已打开。' : '卡扣门已合上。', latch:state.latch };
+  }
+  function injectJam(){
+    if (state.phase !== 'lab') return fail('先完成三章挑战,再进实验室。');
+    if (state.jam) return fail('已经有一根弯钉卡住了。');
+    if (state.nails <= 0) return fail('弹匣是空的,先装入钉条。');
+    state.jam = true;
+    return { ok:true, kind:'jam', message:'下一根钉打偏弯住——再击发就会顶在弯钉上。打开卡扣门把它取出来。' };
+  }
+  function reload(){
+    if (state.phase !== 'lab') return fail('先完成三章挑战,再进实验室。');
+    state.nails = NAILS; state.fired = 0; state.jam = false; state.latch = 0;
+    return { ok:true, kind:'reload', message:'已装入整条 F38 直钉(80 支展示),清空击发记录与卡钉。' };
+  }
+  function pressPiston(){
+    if (state.phase === 'experiment' && state.chapter === 0) return { ok:true, kind:'press', message:'活塞被压下 21 mm,缸下腔的空气被压进回程环腔;松手后被这团气顶回,晃两下停住。' };
+    if (state.phase === 'lab') return { ok:true, kind:'press', message:'手动下压活塞:缸下腔空气经回程孔压进环腔,松手回弹——这就是回程的气垫。' };
+    return fail('这个动作在第一章实验或实验室里才有意义。');
+  }
+  function freeview(){
+    Object.assign(state, initial());
+    state.placed = MODULES.map(m => m.id);
+    state.completed = [true, true, true];
+    state.chapter = CHAPTERS.length - 1;
+    state.phase = 'lab';
+    return { ok:true, kind:'freeview', message:'已装配完整机,进入自由实验。' };
+  }
+  function restart(){ Object.assign(state, initial()); return { ok:true, kind:'restart', message:'新的装配开始了——把主机体放上装配台。' }; }
+  return { state, current, select, place, undo, experiment, demoAir, demoTrip, demoTrigger,
+           answer, next, fire, setAir, setTrip, setTrigger, cycleDepth, setLatch, injectJam,
+           reload, pressPiston, freeview, restart, NAILS };
+}
+
+/* ==== nail-gun-lab/main.mjs ==== */
+/* 气钉枪 · 接线（规则在 logic.mjs，几何在 model.mjs，文案在 manifest.mjs） */
+const game = createGame();
+const state = game.state;
+const CH = MANIFEST.chapters;
+const MODS = MANIFEST.modules;
+const $ = (s) => document.querySelector(s);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const lab = mountLab(MANIFEST);
+const stage = createStage({
+  host: document.getElementById('viewport'),
+  stageEl: document.getElementById('stage'),
+  world: MODEL.world,
+  modules: MODS,
+  model: MODEL,
+  config: MANIFEST.scene,
+  getState: () => state,
+  nextModule: () => game.current(),
+  canDrag: () => state.phase === 'build' && !!state.selected,
+  targetAlways: () => true,
+  onDrop: (id, onTarget) => act('place', onTarget),
+  onPickKey: (key) => {
+    if (['headcap', 'plunger', 'vspring', 'deflector'].includes(key) && state.placed.includes('headvalve')) stage.fitCamera('valve');
+    else if (['trip', 'dwheel', 'latch'].includes(key) && state.placed.includes('trip')) stage.fitCamera('nose');
+    else stage.fitCamera('all');
+  },
+  tick: (dt) => tick(dt),
+});
+lab.attached3d = true;
+lab.stage = stage;
+const view = stage.view;
+view.cut = true;
+view.speed = 60;
+const mech = MODEL.mech;
+mech.speed = view.speed;
+const STROKE_MM = 41.7;
+
+/* ---------- 每一帧：推进动画（压力、击发循环、手压活塞、气流） ---------- */
+function tick(dt) {
+  mech.now += dt * 1000;
+  mech.pressure += ((state.air ? 0.6 : 0) - mech.pressure) * Math.min(1, dt * 2.2);
+  if (mech.cycle) {
+    mech.cycleT += (dt * mech.speed) / 60;
+    MODEL.runCycle(mech);
+    if (!mech.cycle && mech.pending) mech.pending = false;
+  }
+  if (mech.pressT != null) {
+    mech.pressT += dt;
+    const t = mech.pressT, tau = t - 0.45;
+    mech.piston = t < 0.45 ? 0.5 * smoothStep(t / 0.45) : Math.max(0, 0.5 * Math.exp(-2.6 * tau) * Math.abs(Math.cos(7 * tau)));
+    if (t > 2.4) { mech.pressT = null; mech.piston = 0; }
+  }
+  mech.speed = view.speed;
+  updateReadout();
+}
+const smoothStep = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+
+function updateReadout() {
+  const has = state.placed.includes('body');
+  lab.paint({
+    supply: mech.pressure.toFixed(2) + ' MPa',
+    ret: (state.air ? 0.6 : 0.35 * mech.piston).toFixed(2) + ' MPa',
+    phase: phaseText(),
+    piston: has ? '+' + (mech.piston * STROKE_MM).toFixed(1) + ' mm' : '—',
+    nails: state.placed.includes('nails') ? state.nails + ' 支' : '—',
+  });
+  updateFlow();
+}
+
+/* 阶段读数：把动画正在做的那一步说出来，慢放时能对上画面 */
+function phaseText() {
+  if (!state.placed.includes('body')) return '整机未装';
+  if (mech.pressT != null) return mech.pressT < 0.45 ? '压下·充气' : '松手·回弹';
+  if (!state.air) return state.trip ? '已压鼻端·未接气' : '未接气';
+  if (!state.trip) return '扳机锁定';
+  if (!state.trigger) return '待扣扳机';
+  if (mech.cycle) {
+    const t = mech.cycleT;
+    if (t < 0.10) return '阀杆抬起';
+    if (t < 0.20) return '头阀打开';
+    if (t < 0.30) return '气室进气';
+    if (t < 0.55) return '活塞击钉';
+    if (t < 0.66) return '阀塞复位';
+    if (t < 0.88) return '回程';
+    return '排气';
+  }
+  if (state.jam) return '卡钉·待清障';
+  if (state.nails <= 0) return '空击锁定';
+  return '待击发';
+}
+
+/* 原理链：气源 → 触发阀 → 头阀 → 活塞上腔 → 击针 → 钉 */
+function updateFlow() {
+  const el = document.getElementById('flow');
+  if (!el) return;
+  const mark = (k, on) => {
+    const e = el.querySelector(`[data-node="${k}"]`);
+    if (e) e.classList.toggle('off', !on);
+  };
+  const open = state.air && state.trip && state.trigger;
+  mark('supply', state.air);
+  mark('trig', open);
+  mark('head', open && (mech.valve > 0.3 || (mech.cycleT > 0.1 && mech.cycleT < 0.72)));
+  mark('top', mech.cycleT > 0.24 && mech.cycleT < 0.58);
+  mark('driver', mech.piston > 0.05);
+  mark('nail', state.nails > 0);
+  el.classList.toggle('on', state.air);
+}
+
+/* ---------- 教练面板（按阶段给不同的面板） ---------- */
+lab.task(({ chapter: ch, chapterIndex: i, phase }) => {
+  const next = game.current();
+  const sel = MODS.find((m) => m.id === state.selected);
+  const undoBtn = `<div class="sub"><button id="undo" ${MODS.find((m) => m.id === state.placed.at(-1))?.chapter === state.chapter ? '' : 'disabled'}>撤回一步</button></div>`;
+
+  if (phase === 'build') {
+    return {
+      html: `<p class="label">现在要装</p><h3>${next ? next.name : ''}</h3><p>${next ? next.tip : ''}</p>
+        <div class="note">${sel ? '已拿起：' + sel.name : '从下方零件盘选择一块模块'}</div>
+        <button class="primary action" id="place" ${sel ? '' : 'disabled'}>装入当前模块</button>
+        ${undoBtn}`,
+      bind(root) {
+        root.querySelector('#place').onclick = () => act('place');
+        root.querySelector('#undo').onclick = () => act('undo');
+      },
+    };
+  }
+
+  if (phase === 'experiment') {
+    if (state.chapter === 0) {
+      return {
+        html: `<p class="label">模块已归位，现在验证一下</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+          <button class="primary action" id="press">手压活塞</button>
+          <button class="action" id="to-quiz">看完现象，去答题</button>${undoBtn}`,
+        bind(root) {
+          root.querySelector('#press').onclick = () => act('pressPiston');
+          root.querySelector('#to-quiz').onclick = () => act('experiment');
+          root.querySelector('#undo').onclick = () => act('undo');
+        },
+      };
+    }
+    if (state.chapter === 1) {
+      const step = state.expStep;
+      return {
+        html: `<p class="label">三步各试一次，看清两段保险</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+          <button class="step ${step >= 1 ? 'done' : ''}" id="air"><i>${step >= 1 ? '✓' : '1'}</i>接通气源</button>
+          <button class="step ${step >= 2 ? 'done' : ''}" id="trip"><i>${step >= 2 ? '✓' : '2'}</i>只压鼻端（不扣扳机）</button>
+          <button class="step" id="trig"><i>3</i>只扣扳机（不压鼻端）</button>
+          <button class="action" id="to-quiz">看完现象，去答题</button>${undoBtn}`,
+        bind(root) {
+          root.querySelector('#air').onclick = () => act('demoAir');
+          root.querySelector('#trip').onclick = () => act('demoTrip');
+          root.querySelector('#trig').onclick = () => act('demoTrigger');
+          root.querySelector('#to-quiz').onclick = () => act('experiment');
+          root.querySelector('#undo').onclick = () => act('undo');
+        },
+      };
+    }
+    return {
+      html: `<p class="label">最后一关：打通动力链</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+        <button class="step ${state.air ? 'done' : ''}" id="air"><i>${state.air ? '✓' : '1'}</i>接通气源</button>
+        <button class="step ${state.trip ? 'done' : ''}" id="trip"><i>${state.trip ? '✓' : '2'}</i>压鼻端</button>
+        <button class="step ${state.trigger ? 'done' : ''}" id="trig"><i>${state.trigger ? '✓' : '3'}</i>扣扳机</button>
+        <button class="primary action" id="fire">击发！</button>
+        <button class="action" id="depth">转深度轮，再打一钉对比</button>
+        <button class="action" id="to-quiz">看完现象，去答题</button>${undoBtn}`,
+      bind(root) {
+        root.querySelector('#air').onclick = () => act('setAir');
+        root.querySelector('#trip').onclick = () => act('setTrip');
+        root.querySelector('#trig').onclick = () => act('setTrigger');
+        root.querySelector('#fire').onclick = () => act('fire');
+        root.querySelector('#depth').onclick = () => act('cycleDepth');
+        root.querySelector('#to-quiz').onclick = () => act('experiment');
+        root.querySelector('#undo').onclick = () => act('undo');
+      },
+    };
+  }
+
+  if (phase === 'quiz') {
+    const replay = state.chapter === 0 ? '再压一次活塞' : state.chapter === 1 ? '再试一遍三步' : '再打一钉';
+    return {
+      html: `<p class="label">看一看，想一想</p><h3>${ch.q}</h3>
+        <div class="options">${ch.options.map((o, k) => `<button data-opt="${k}"><b>${String.fromCharCode(65 + k)}</b>${o}</button>`).join('')}</div>
+        <button class="action" id="replay-exp" style="margin-top:12px">${replay}</button>
+        <p class="note" style="margin-top:10px">答错不会清空进度，观察会帮你找到原因。</p>`,
+      bind(root) {
+        root.querySelector('#replay-exp').onclick = () => {
+          if (state.chapter === 0) act('pressPiston');
+          else if (state.chapter === 1) { state.expStep = 0; act('demoAir'); setTimeout(() => act('demoTrip'), 900); setTimeout(() => act('demoTrigger'), 1800); }
+          else { if (!state.air) act('setAir'); if (!state.trip) act('setTrip'); if (!state.trigger) act('setTrigger'); setTimeout(() => act('fire'), 700); }
+        };
+      },
+    };
+  }
+
+  if (phase === 'checkpoint') {
+    return {
+      html: `<div class="badge" aria-hidden="true">✓</div><p class="label">新发现徽章</p><h3>${ch.badge}</h3>
+        <p>${ch.why}</p>
+        <button class="primary action" id="next">${i === CH.length - 1 ? '进入自由实验室' : '继续第 ' + (i + 2) + ' 关'}</button>`,
+      bind(root) {
+        root.querySelector('#next').onclick = () => act('next');
+      },
+    };
+  }
+
+  const dname = state.depth === 1 ? '深' : state.depth === 0 ? '中' : '浅';
+  return {
+    html: `<div class="labgrid">
+        <button class="primary" id="fire">击发！</button>
+        <button id="air">${state.air ? '断开气源' : '接通气源'}</button>
+        <button id="trip">${state.trip ? '松开鼻端' : '压紧鼻端'}</button>
+        <button id="trig">${state.trigger ? '松开扳机' : '扣住扳机'}</button>
+        <button id="depth">深度：${dname} ›</button>
+        <button id="jam">弄弯一根钉</button>
+        <button id="latch">${state.jam && state.latch ? '取弯钉并合门' : state.latch ? '合上卡扣门' : '打开卡扣门'}</button>
+        <button id="reload">重装整条钉</button>
+        <button id="press">手压活塞</button>
+      </div>
+      <label class="speed" for="speed">慢放倍率 <output id="speed-out">×${view.speed}</output>
+        <input id="speed" type="range" min="10" max="150" step="10" value="${view.speed}"></label>
+      <div class="flow ${state.air ? 'on' : ''}" id="flow">
+        <span data-node="supply" class="${state.air ? '' : 'off'}">气源</span><i>›</i>
+        <span data-node="trig" class="off">触发阀</span><i>›</i>
+        <span data-node="head" class="off">头阀</span><i>›</i>
+        <span data-node="top" class="off">上腔</span><i>›</i>
+        <span data-node="driver" class="off">击针</span><i>›</i>
+        <span data-node="nail" class="${state.nails > 0 ? '' : 'off'}">钉</span>
+      </div>
+      <p class="note">${state.jam ? '有弯钉卡在刀槽里：击发会顶住，开卡扣门取钉。' : state.nails <= 0 ? '弹匣已空：推钉板前沿进入击发窗，空击被锁定——重装钉条。' : '先压鼻端、再扣扳机，然后击发。两道输入缺一不可。'}</p>
+      <div class="earned">${CH.map((c) => `<span>✓ ${c.badge}</span>`).join('')}</div>`,
+    bind(root) {
+      for (const [id, action] of [['fire', 'fire'], ['air', 'setAir'], ['trip', 'setTrip'], ['trig', 'setTrigger'], ['depth', 'cycleDepth'], ['jam', 'injectJam'], ['latch', 'setLatch'], ['reload', 'reload'], ['press', 'pressPiston']]) {
+        root.querySelector('#' + id).onclick = () => act(action);
+      }
+      const sp = root.querySelector('#speed');
+      sp.oninput = () => {
+        view.speed = Number(sp.value);
+        mech.speed = view.speed;
+        root.querySelector('#speed-out').textContent = '×' + view.speed;
+      };
+    },
+  };
+});
+
+/* ---------- 刷新显示态 ---------- */
+const BOX = ['第一盒 · 动力核心', '第二盒 · 气路与保险', '第三盒 · 供钉与击发'];
+function refresh() {
+  const labPhase = state.phase === 'lab';
+  const s = lab.state;
+  s.chapter = state.chapter;
+  s.phase = state.phase;
+  s.placed = state.placed;
+  s.selected = state.selected;
+  s.completed = state.completed;
+  s.badges = labPhase ? CH.map((c) => c.badge) : state.completed.map((ok, k) => (ok ? CH[k].badge : null)).filter(Boolean);
+  s.progress = { done: state.placed.length, total: MODS.length };
+  s.cardsLocked = state.phase !== 'build';
+  s.visible.readout = true;
+  s.coach = labPhase
+    ? { tag: '三个发现，全部解锁', title: '你的气钉枪，能打钉了', intro: '自由实验：接气击发、调深浅、卡钉清障，或剖开看阀怎么切换。' }
+    : null;
+  s.trayTitle = labPhase ? '你的装配记录' : BOX[state.chapter];
+  s.trayHint = labPhase ? '13 块模块，拼成了一把能打钉的气钉枪' : '点选模块，再拖到蓝色位置';
+  s.stageHint = labPhase
+    ? '接气、压鼻端、扣扳机——或者剖开看阀怎么切换。'
+    : state.phase === 'build'
+    ? '选一块模块，把它放到蓝色轮廓里。'
+    : state.phase === 'experiment'
+    ? '这一段已拼好，亲手做一次实验。'
+    : '看清谁在动，再完成原理挑战。';
+  lab.render();
+  $('[data-tool="cut"]').setAttribute('aria-pressed', String(view.cut));
+}
+
+/* ---------- 动作 ---------- */
+const ACTIONS = {
+  select: (id) => game.select(id),
+  place: (onTarget) => game.place(onTarget !== false),
+  undo: () => game.undo(),
+  experiment: () => game.experiment(),
+  answer: (i) => game.answer(i),
+  next: () => game.next(),
+  demoAir: () => game.demoAir(),
+  demoTrip: () => game.demoTrip(),
+  demoTrigger: () => game.demoTrigger(),
+  fire: () => game.fire(),
+  setAir: () => game.setAir(),
+  setTrip: () => game.setTrip(),
+  setTrigger: () => game.setTrigger(),
+  cycleDepth: () => game.cycleDepth(),
+  setLatch: () => game.setLatch(),
+  injectJam: () => game.injectJam(),
+  reload: () => game.reload(),
+  pressPiston: () => game.pressPiston(),
+  restart: () => game.restart(),
+  freeview: () => game.freeview(),
+};
+
+function act(name, ...args) {
+  const before = state.chapter;
+  const res = ACTIONS[name](...args);
+  lab.state.feedback = res.message || '';
+  lab.state.feedbackKind = res.ok ? 'success' : 'error';
+  if (res.learn) lab.setDiscovery(res.learn);
+  if (res.ok) {
+    if (res.kind === 'fired') { mech.pending = true; mech.cycle = true; mech.cycleT = 0; }
+    if (res.kind === 'lockout' || res.kind === 'jamstop') { mech.cycle = true; mech.cycleT = 0; mech.lockout = res.kind === 'lockout'; }
+    if (res.kind === 'press') mech.pressT = 0;
+    if (res.kind === 'air' && state.air) mech.puffT = 0;
+    if (res.kind === 'restart' || res.kind === 'freeview') {
+      mech.cycle = false; mech.pending = false; mech.lockout = false; mech.cycleT = 0;
+      mech.piston = 0; mech.pressT = null; mech.pressure = 0;
+      view.offsets.clear();
+      view.cut = true;
+      stage.setNavigation('rotate');
+      lab.setDiscovery('');
+    }
+    if (res.kind === 'chapter') stage.fitCamera('all');
+    if (res.kind === 'complete') { lab.celebrate(); stage.fitCamera('all'); }
+    if (name === 'select' || ['air', 'trip', 'trigger', 'fired', 'experiment'].includes(res.kind)) {
+      if (matchMedia('(max-width:760px)').matches) document.getElementById('stage').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    }
+  }
+  if (before !== state.chapter) stage.fitCamera('all');
+  refresh();
+  return res;
+}
+
+/* ---------- 事件 ---------- */
+lab.on('select', (id) => act('select', id));
+lab.on('place', () => act('place'));
+lab.on('undo', () => act('undo'));
+lab.on('answer', (i) => act('answer', i));
+lab.on('next', () => act('next'));
+lab.on('restart', () => act('restart'));
+lab.on('free', () => { act('freeview'); stage.fitCamera('all'); });
+lab.on('tool', (id) => {
+  if (id === 'cut') view.cut = $('[data-tool="cut"]').getAttribute('aria-pressed') === 'true';
+  if (id === 'home') stage.fitCamera('all');
+  if (id === 'rotate' || id === 'pan') stage.setNavigation(id);
+  refresh();
+});
+
+view.cut = true;
+$('[data-tool="cut"]').setAttribute('aria-pressed', 'true');
+lab.state.feedback = '从下方零件盒选中「主机体」，开始第一步。';
+refresh();
+updateReadout();   // 首帧前先把读数填上（tick 之前是一屏占位）
+stage.start();
+
+</script>
+</body>
+</html>

@@ -46,15 +46,13 @@ function motionAngle() {
 }
 
 /* ---------- 读数 ---------- */
-function setRd(key, value) {
-  const el = document.querySelector(`[data-rd="${key}"]`);
-  if (el && el.textContent !== value) el.textContent = value;
-}
 function updateReadout() {
   const deg = (view.angle * 180) / Math.PI;
   const has = state.placed.includes('core');
-  setRd('angle', has ? (deg >= 0 ? '+' : '') + deg.toFixed(1) + '° / ±3°' : '—');
-  setRd('mode', !has ? '动力芯未装' : state.running ? '通电往复' : state.phase === 'quiz' && state.chapter === 0 ? '手拨回中' : '停机');
+  lab.paint({
+    angle: has ? (deg >= 0 ? '+' : '') + deg.toFixed(1) + '° / ±3°' : '—',
+    mode: !has ? '动力芯未装' : state.running ? '通电往复' : state.phase === 'quiz' && state.chapter === 0 ? '手拨回中' : '停机',
+  });
 }
 
 /* ---------- 教练面板 ---------- */
@@ -237,4 +235,5 @@ lab.on('tool', (id) => {
 });
 
 refresh();
+updateReadout();   // 首帧前先把读数填上（tick 之前是一屏占位）
 stage.start();

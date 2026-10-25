@@ -1,0 +1,83 @@
+{
+  "double-cylinder-engine": {
+    "crankshaft~rotor": 5.48,
+    "crankSprocket~crankshaft": 5.39,
+    "caseUpper~crankshaft": 4.62,
+    "crankshaft~rod1": 4.29,
+    "crankshaft~rod2": 4.29,
+    "camSprocket~camshaft": 4.19,
+    "camshaft~head": 3.86,
+    "caseLower~crankshaft": 2.73,
+    "head~tappet2e": 1.83,
+    "camshaft~tappet2e": 1.67,
+    "camshaft~tappet2i": 1.67,
+    "caseLower~crankSprocket": 1.41,
+    "head~valveCover": 0.6,
+    "head~tappet1i": 0.47
+  },
+  "electric-toothbrush": {
+    "button~front": 0.79,
+    "chassis~contacts": 0.61,
+    "chassis~stator": 0.57,
+    "chassis~rear": 0.55,
+    "rear~stator": 0.5
+  },
+  "hand-crank-flashlight": {
+    "backShell~screws": 2.09,
+    "crank~crankGear": 2.01,
+    "backShell~gearPlate": 1.97,
+    "generator~pcb": 1.71,
+    "frontShell~switch": 1.57,
+    "backShell~switch": 1.54,
+    "frontShell~reflector": 1.5,
+    "backShell~reflector": 1.48,
+    "frontShell~generator": 1.3,
+    "idlerGear~idlerShaft": 1.19,
+    "frontShell~pcb": 0.99,
+    "backShell~crank": 0.99,
+    "frontShell~screws": 0.85,
+    "generator~motorPinion": 0.7
+  },
+  "injection-pen": {
+    "nut~sleeve": 1.35,
+    "body~dial": 0.91
+  },
+  "nail-gun-lab": {
+    "body~plunger": 4.86,
+    "grip~trig": 4.7,
+    "body~headcap": 4.51,
+    "body~trig": 4.28,
+    "body~cylinder": 4.17,
+    "body~grip": 4.05,
+    "body~tube": 3.58,
+    "body~nails": 2.96,
+    "body~tvalve": 2.9,
+    "grip~tube": 2.88,
+    "bumper~nails": 2.53,
+    "body~trip": 1.99,
+    "body~dwheel": 1.87,
+    "body~latch": 1.48,
+    "cylinder~nails": 1.47,
+    "body~bumper": 1.42,
+    "trig~tvalve": 1.39,
+    "headcap~tube": 0.8,
+    "body~follower": 0.8,
+    "dwheel~trip": 0.73,
+    "body~piston": 0.7
+  },
+  "spherical-lock": {
+    "cylHousing~pinStack": 2,
+    "plateIn~retractor": 1.96,
+    "pinStack~throughBolts": 1.76,
+    "faceScrews~faceplate": 1.24,
+    "knobOut~spindle": 1.21,
+    "strike~strikeScrews": 1.2,
+    "faceplate~strike": 1.14,
+    "clutch~plug": 1.08,
+    "cylHousing~key": 0.81,
+    "cylHousing~knobOut": 0.78,
+    "key~plug": 0.74,
+    "latchHousing~strike": 0.56,
+    "latchSpring~retractor": 0.54
+  }
+}

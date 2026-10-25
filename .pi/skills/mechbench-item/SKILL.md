@@ -37,7 +37,7 @@ description: 在 mechbench 项目里新建或修改一个机械装配小游戏�
 | `manifest.mjs` | 品牌/关卡/模块/读数/notes/`scene` | 一个零件只属于一个模块；关卡按真实装配依赖切；每关有 `exp`(实验动作) `expText` `q/options/a/why` |
 | `model.mjs` | 几何 + 运动 | 1 单位 = 1 mm；建在 `world` 组里；每个 mesh 打 `userData.key`；导出 `MODEL={world,PARTS,byKey,applyMotion,moduleBounds,...}`；`shell:true` 的件在剖开时换玻璃 |
 | `logic.mjs` | 业务规则 | 纯逻辑、无 DOM、无三维；**先校验再改状态**；动作返回 `{ok,message,learn?,kind?}`；失败不动已装件 |
-| `main.mjs` | 接线 | `mountLab(MANIFEST)` + `createStage({...})`；接 `select/place/undo/answer/tool/free/restart`；分阶段面板用 `lab.task(fn)` |
+| `main.mjs` | 接线 | `mountLab(MANIFEST)` + `createStage({...})`；接 `select/place/undo/answer/tool/free/restart`；分阶段面板用 `lab.task(fn)`；读数用 `lab.paint({key: 值})`（不要直写 `[data-rd]`） |
 
 需要个别视觉时写 `items/<slug>/lab.css`（同名覆盖），**不要动 `kit/`**。
 
@@ -51,11 +51,14 @@ description: 在 mechbench 项目里新建或修改一个机械装配小游戏�
 ## 第四步：验收（没跑完不许说完成）
 
 ```bash
-python3 tools/build.py <slug>          # 自动 node --check
+python3 tools/build.py <slug>          # 自动 node --check + 静态契约断言
+node tools/verify.mjs <slug>           # 无浏览器断言（毫秒级）：静态契约 + logic.spec.mjs
 node tools/accept.mjs <slug>           # 3 个宽度：1440 / 820 / 390
 ```
 
-通用 25 项之外，必须自己写 `items/<slug>/accept.mjs`（页面内 async 函数体，`return {ok,bad}`，只能用 DOM 驱动），至少覆盖：
+**先写 `items/<slug>/logic.spec.mjs`**：装配顺序、剂量/传动比、失败不动已装件——这些都不需要浏览器。`node tools/verify.mjs <slug>` 跑一遍，绿了再去开 Chrome。两个范例：`items/injection-pen/logic.spec.mjs`（三关主线 + 剂量）、`items/hand-crank-flashlight/logic.spec.mjs`（增速比 + 充放电速率）。
+
+通用 25 项之外，必须自己写 `items/<slug>/accept.mjs`（页面内 async 函数体，`return {ok,bad}`，只能用 DOM 驱动），**只留浏览器才能证明的东西**：
 
 1. 每个按钮点了之后**场景状态真的变**（拆=从场景移除，不是变文案）
 2. 每个实验控件（滑杆/开关）改变了读数或几何
@@ -68,6 +71,8 @@ node tools/accept.mjs <slug>           # 3 个宽度：1440 / 820 / 390
 - 剖开 / 实体两次渲染必须不一样（否则剖切或材质还原失效）
 
 **半壳接缝**：建件时两个半壳各自的 lathe 起止角缩进必须 ≤0.002 rad（≈0.02 mm）。0.01 rad 在 10 mm 半径下就是 0.24 mm 的透光缝，实体外观下正面一眼能看到。
+
+**几何间隙自检**（DOM 测不到的）：运动件与相邻件（刀尖↔钉头、齿轮啮合、活塞↔缓冲垫）另写 `items/<slug>/check-geometry.mjs`，node 直接跑。做法看 `items/nail-gun-lab/check-geometry.mjs`：把 model.mjs 的 `three` 导入换成 `../../vendor/three.module.js` 再 import，用 `Box3` 量。改了尺寸/位置就跑一遍，别只靠肉眼。
 
 **脚本抓不到的一类**：半壳中缝、按钮窗漏缝这种"看得出来但分不清是设计留隙还是漏做"的缺陷。做法固定为：**把 `-after.png` 裁一块放大看**（例：`sips -c 700 500 --cropOffset y x shot.png`），对着旧版同机位比一遍。别只看整图缩略。
 
@@ -86,7 +91,7 @@ python3 tools/serve.py            # 构建全部 + 起服务 + 打开目录页
 ## 完成判据（缺一条就不算完成）
 
 - [ ] 零件表进 `notes.md`，尺寸依据与教学简化分开
-- [ ] `node --check` 通过、`accept.mjs` 3 个宽度全绿
+- [ ] `node --check` 通过、`node tools/verify.mjs` 全绿、`accept.mjs` 3 个宽度全绿
 - [ ] 物品专属断言覆盖了每个按钮与实验控件
 - [ ] 截图人眼看过：模型没穿模、没被剖切成半个、手机上不遮挡
 - [ ] 放大窗、剖切、半壳接缝逐项裁图放大看过（不是只看全图）

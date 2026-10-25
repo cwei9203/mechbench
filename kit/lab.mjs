@@ -121,6 +121,18 @@ export function mountLab(item) {
       if (el) el.textContent = text;
       return lab;
     },
+    /** 按 {key: 显示值} 批量写读数，内部 diff（可以每帧调，不碰 DOM）。
+     * 读数的格式化留在物品侧（那里才知道 model/view/game）；这里只管写。 */
+    paint(values) {
+      for (const k of Object.keys(values || {})) {
+        const el = rdEls.get(k);
+        if (!el) continue;
+        const text = values[k] == null ? '—' : String(values[k]);
+        if (el.textContent !== text) el.textContent = text;
+        lab.state.readout[k] = text;
+      }
+      return lab;
+    },
     render,
   };
 
@@ -153,6 +165,8 @@ export function mountLab(item) {
   q('#readout').innerHTML = readout
     .map((r) => `<div class="row"><span>${esc(r.label)}</span><b data-rd="${r.key}"${r.big ? ' class="big"' : ''}>—</b></div>`)
     .join('');
+  const rdEls = new Map();
+  for (const r of readout) rdEls.set(r.key, q(`[data-rd="${r.key}"]`));
 
   q('[data-slot="coach.extras"]').innerHTML = (item.experiments || [])
     .map((x) => {
@@ -262,7 +276,7 @@ export function mountLab(item) {
     ro.classList.toggle('on', !!s.visible.readout);
     for (const b of ro.querySelectorAll('[data-rd]')) {
       const v = s.readout[b.dataset.rd];
-      if (v != null) b.textContent = v;
+      if (v != null && b.textContent !== String(v)) b.textContent = v;
     }
     // 有三维时 socket 的显隐与位置由 kit/scene.mjs 负责
     if (!lab.attached3d) q('#socket').hidden = !(s.selected && s.phase === 'build');

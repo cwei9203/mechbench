@@ -438,7 +438,7 @@ for (let i = 0; i < 2; i++){
 {
   const g = new THREE.Group();
   for (const x of CYL_X){
-    const m = new THREE.Mesh(ringY(D.DECK - .5, 1.4, D.BORE / 2 - .3, D.BORE / 2 + 7, 56), M.gasket);
+    const m = new THREE.Mesh(ringY(D.DECK + .75, 1.4, D.BORE / 2 - .3, D.BORE / 2 + 7, 56), M.gasket);
     m.position.x = x; g.add(m);
   }
   addPart('gasket', '气缸垫 ×2', g, M.gasket);
@@ -462,7 +462,7 @@ for (let i = 0; i < 2; i++){
   }
   // 缸体底法兰（压在箱体顶面上）
   const flange = prismXZ(rectPts(-92, 92, -80, 80, 10),
-    [circlePts(CYL_X[0], 0, D.BORE / 2, 56, false), circlePts(CYL_X[1], 0, D.BORE / 2, 56, false)], D.BARREL_Y0 - 4, D.BARREL_Y0 + 7);
+    [circlePts(CYL_X[0], 0, D.BORE / 2, 56, false), circlePts(CYL_X[1], 0, D.BORE / 2, 56, false)], D.BARREL_Y0 - .1, D.BARREL_Y0 + 11);
   g.add(new THREE.Mesh(mergeGeos([body, flange, ...fins]), M.barrel));
   for (const sx of [-86, 80]) for (const sz of [-40, 40]){
     g.add(new THREE.Mesh(cylY(D.BARREL_Y0 - 1, D.DECK + 1, 5, 12).translate(sx, 0, sz), M.steelDark));
@@ -476,7 +476,7 @@ for (let i = 0; i < 2; i++){
   const outer = rectPts(-94, 86, -58, 58, 10);
   const chambers = [circlePts(CYL_X[0], 0, D.BORE / 2, 56, false), circlePts(CYL_X[1], 0, D.BORE / 2, 56, false)];
   // 底板：燃烧室开通
-  const deck = prismXZ(outer, chambers, D.DECK - 1, 217);
+  const deck = prismXZ(outer, chambers, D.DECK + 1.3, 217);
   // 侧壁：内腔 x -103..70 / z ±44（避开底板外壁 0.6 mm）
   const cav = rectPts(-88, 70, -48, 48, 10).reverse();
   const walls = prismXZ(rectPts(-93.4, 85.4, -57.4, 57.4, 10), [cav], 216, D.HEAD_Y1);
@@ -527,7 +527,7 @@ for (let i = 0; i < 2; i++) for (const kind of ['im', 'ex']){
   const side = kind === 'im' ? -1 : 1, x = valveX(i, kind), z = side * D.VZ;
   const g = new THREE.Group(), node = new THREE.Group();
   node.position.set(x, 0, z);
-  const geos = [cylY(D.TAPPET_TOP - 20, D.TAPPET_TOP, D.TAPPET_R, 28)];
+  const geos = [cylY(D.TAPPET_TOP - 18.05, D.TAPPET_TOP, D.TAPPET_R, 28)];
   geos.push(cylY(D.TAPPET_TOP - 4, D.TAPPET_TOP, D.TAPPET_R - 1.2, 28));   // 顶面硬化片
   node.add(new THREE.Mesh(mergeGeos(geos), M.steel));
   g.add(node);

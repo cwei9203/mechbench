@@ -8,7 +8,7 @@
 2. **一份几何，多处使用**：`model.mjs` 是几何与运动的唯一真源。读数必须取自驱动模型的那个状态量，不许另算一份。
 3. **文案 ↔ 控件一一对应**：文案说"拆掉 X"，界面上就必须有能拆 X 的东西（`accept.mjs` 会查这条）。
 4. **物品各自成文件夹**：一个物品 = `items/<slug>/` 一整个目录，不许跨物品共享文件。
-5. **没跑浏览器验收就不算完成**：`node tools/accept.mjs <slug>` 全绿 + 人眼看过截图，才算交付。
+5. **没跑浏览器验收就不算完成**：`node tools/accept.mjs <slug>` 全绿 + 人眼看过截图，才算交付。DOM 测不到的间隙（钉条是否在弹匣里、刀尖会不会撞邻钉头、击发到底碰不碰板）另写 `items/<slug>/check-geometry.mjs`，`node` 直接跑，也要全绿。
 
 ## 入口
 
@@ -33,17 +33,21 @@ kit/            固定骨架（冻结）
 items/<slug>/   一个物品
   manifest.mjs  全部文案/关卡/模块/读数 + scene 三维数值
   model.mjs     几何 + 运动 + 零件注册（导出 MODEL）
-  logic.mjs     业务规则（纯逻辑，顶层可读 MANIFEST）
+  logic.mjs     业务规则（纯逻辑，顶层可读 MANIFEST；必须 `export function createGame()`）
   main.mjs      接线：挂面板、连事件、驱动舞台
   lab.css       可选视觉覆盖
   accept.mjs    可选浏览器断言（只能用 DOM 驱动）
+  logic.spec.mjs 可选无浏览器断言（装配顺序/剂量/传动比/失败不动状态，node 直接跑）
   notes.md      尺寸依据 / 教学简化 / 验证记录
 tools/
-  build.py      骨架+kit+物品 → dist/<slug>.html，并生成 dist/index.html（内含 node --check 把关）
+  build.py      骨架+kit+物品 → dist/<slug>.html 与 dist/<slug>.logic.mjs（内含 node --check 与静态断言把关）
   serve.py      本地启动：构建全部 + 静态服务 + 打开目录页
   make-item.py  新物品脚手架
   manifest-dump.mjs  扫描 items/ 输出目录页元数据
   accept.mjs    真实 Chrome 验收 + 截图（CDP + 内置 http 服务，无第三方依赖）
+  verify.mjs    无浏览器断言：manifest×model 交叉校验 + logic.spec.mjs（毫秒级）
+  geom.mjs      几何自检公共底座（Box3 / 顶点半径 / 轴向射线 / 双面射线）
+  check.py      仓库一致性：临时目录重建 + 逐字节比对 + 死链/证据/git 跟踪
 vendor/         three.js 0.170.0 + addons（构建时复制到 dist/vendor）
 dist/           构建产物 + 验收报告 + 截图（提交进库，作为交付证据）
 ```
@@ -54,12 +58,22 @@ dist/           构建产物 + 验收报告 + 截图（提交进库，作为交�
 2. `python3 tools/make-item.py <slug> --title "…"` 生成目录。
 3. **填 `manifest.mjs`**：品牌、关卡（3 关左右，按真实装配依赖切）、模块（零件盒卡片，每个零件只属于一个模块）、每题（`exp` 实验动作 / `expText` 怎么做 / `q` 判断题 / `why` 解释）、读数行、实验台控件。字段含义见 `kit/slots.md`。
 4. **写 `model.mjs`**：几何建在 `world` 组里，零件注册成 `byKey`（每个 meshes 带 `userData.key`），导出 `MODEL = { world, PARTS, byKey, applyMotion, moduleBounds, ... }`。`shell:true` 的零件在剖开模式下换玻璃。1 单位 = 1 mm。
-5. **写 `logic.mjs`**：业务状态与动作。规则：**先校验，再改状态**；失败操作不动已装件。动作返回 `{ok, message, learn?, kind?}`。
+5. **写 `logic.mjs`**：业务状态与动作。规则：**先校验，再改状态**；失败操作不动已装件。动作返回 `{ok, message, learn?, kind?}`。必须 `export function createGame()`（`verify.mjs` 靠这个把游戏拿出来测）。
 6. **写 `main.mjs`**：`mountLab(MANIFEST)` + `createStage({...})`，把 `select/place/undo/answer/tool/free/restart` 接上，并用 `lab.task(fn)` 换掉默认教练面板（按阶段给不同面板）。
-7. `python3 tools/build.py <slug>` → `dist/<slug>.html`（自动跑 `node --check`，重名/语法错直接失败）。
-8. `node tools/accept.mjs <slug>` → 3 个宽度全绿，看 `dist/accept/<slug>/*.png`（`-after` 是交互后画面）。
-9. 需要离线交付时 `python3 tools/build.py <slug> --single`（技能打包器内联 three，产物 ~1.4 MB）。
-10. 写 `notes.md`：尺寸依据、哪些是教学简化、验证记录、未验证项。
+7. `python3 tools/build.py <slug>` → `dist/<slug>.html` + `dist/<slug>.logic.mjs`（自动跑 `node --check` 与静态断言，重名/语法错/零件归属错直接失败）。
+8. `node tools/verify.mjs <slug>` → 无浏览器断言：manifest×model 交叉校验（零件归属、读数 key、取景名）+ `items/<slug>/logic.spec.mjs` 的行为断言。**能在这里测的规则，不要写进 accept.mjs。**
+9. `node tools/accept.mjs <slug>` → 3 个宽度全绿，看 `dist/accept/<slug>/*.png`（`-after` 是交互后画面）。有三维间隙风险的物品（活塞/击针/钉条/齿轮啮合这类）再写一个 `items/<slug>/check-geometry.mjs`：把 model.mjs 的 `three` 导入改指 `../../vendor/three.module.js` 后 import，用 `Box3` 量间隙（参考 nail-gun-lab 的实现）。
+10. 需要离线交付时 `python3 tools/build.py <slug> --single`（技能打包器内联 three，产物 ~1.4 MB）。
+11. 写 `notes.md`：尺寸依据、哪些是教学简化、验证记录、未验证项。
+
+## 无浏览器断言（先跑这个）
+
+`node tools/verify.mjs <slug>` 读 `dist/<slug>.logic.mjs`（`build.py` 生成的 model+manifest+logic 三合一，node 可以直接 import），毫秒级跑完：
+
+- **静态契约**：`modules[].parts` 的每个 key 都在 `MODEL.byKey` 里、每个零件被且只被一个模块认领（环境件用 `MANIFEST.envParts` 声明）、`readout`/`experiments` 字段齐全、`main.mjs` 里的 `fitCamera('x')` 都在 `scene.focus` 里、`applyMotion` 不产生 NaN。**这项已接进 `build.py`，规则写错构建就失败。**
+- **行为断言**：`items/<slug>/logic.spec.mjs`（`export default (t, {createGame, MANIFEST, MODEL}) => {...}`，用 `t.ok/t.eq/t.near`）。装配顺序、剂量换算、传动比、失败不动已装件、打完的余量都该写在这里。
+
+分工：`verify.mjs` 管规则和几何，`accept.mjs` 只留浏览器才能证明的东西（布局、DOM 交互、像素）。
 
 ## 浏览器验收（必过）
 
@@ -111,6 +125,7 @@ dist/           构建产物 + 验收报告 + 截图（提交进库，作为交�
 - **三维必须走 http**：importmap + `document` 模块在 `file://` 下会因 CORS 失败。`accept.mjs` 自带静态服务器；手动看用 `python3 -m http.server -d dist`。
 - **移动端工具栏会压住标题**：`.stage-title` 在 ≤780px 用 `max-width:calc(100% - 172px)` 让位。
 - **读数为空是设计**：没装对应模块时读数显示 `—`。验收只要求"可见时至少一项有值"。
+- **读数只能走 `lab.paint()`**：别在物品里直写 `[data-rd]`——`kit` 的 `render()` 也写同一批节点，两边各写一份就会互相覆盖。验收把读数快照记进 `acceptance.json` 的 `meta.readouts`，改读数公式后先看那里。
 - **DOM 覆盖层会骗过肉眼**：局部放大窗曾经有一层 `background:#ffffffd9`，画在 canvas 上的内容被它盖住，看起来"窗口是空的"。放大窗/局部特写这类"canvas 上再画一块"的地方一律 `background:transparent`，标签条单独给底色。
 - **像素探针必须在渲染帧内读**：默认帧缓冲 `preserveDrawingBuffer:false`，在帧外 `readPixels` 只会读到全 0。用 `stage.probe(rect)`（内部排队到 render 之后执行），不要自己拿 `getContext()` 读。
 - **迁移后先看旧版同视角**：几何原样搬过来不等于观感一致。至少对比一次「旧版单文件 vs 新版」同一机位截图，差异要能说清是哪个改动造成的。
@@ -124,8 +139,15 @@ python3 tools/serve.py                          # 启动（构建 + 服务 + 目
 python3 tools/make-item.py <slug> --title "…"   # 新物品
 python3 tools/build.py <slug>                   # 构建 → dist/<slug>.html
 python3 tools/build.py all                      # 全部构建
+node tools/verify.mjs <slug>                    # 无浏览器断言（静态契约 + 行为），0.3 秒
+node tools/verify.mjs all                       # 全部物品
 node tools/accept.mjs <slug>                    # 浏览器验收 + 截图
 node tools/accept.mjs <slug> --widths 1440,390  # 只跑指定宽度
+node items/<slug>/check-geometry.mjs            # 物品几何自检（间隙/孔/传动比，工具在 tools/geom.mjs）
+node tools/interference.mjs                     # 全物品穿模探测：任意两件实体是否互穿
+node tools/interference.mjs <slug>              # 只探一件
+node tools/interference.mjs --gate              # 与 tools/interference.baseline.json 比对，新增/恶化即 exit 1
+node tools/interference.mjs --baseline          # 确认现状后写基线（只在"现状可接受"时用）
 python3 tools/build.py <slug> --single          # 额外打离线单文件（需三维）
 ```
 

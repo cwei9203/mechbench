@@ -1,0 +1,5 @@
+/* 气钉枪：标题比通用文案长，窄屏下让出工具栏宽度 */
+@media (max-width: 780px) {
+  .stage-title { max-width: calc(100% - 196px); }
+  .stage-title h1 { font-size: 19px; }
+}

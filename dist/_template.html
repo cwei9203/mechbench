@@ -85,6 +85,23 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
   font-variant-numeric:tabular-nums;line-height:1.75}
 .readout .row b{color:var(--ink);font-weight:700}
 .readout .big{font-size:12px;color:var(--steel);font-weight:800}
+#inset{position:absolute;left:22px;bottom:91px;z-index:5;width:192px;height:188px;border:1px solid #c3ccd5;
+  border-radius:12px;overflow:hidden;pointer-events:none;box-shadow:0 4px 16px #1d22281a}
+#inset[hidden]{display:none}
+#inset .top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;gap:10px;
+  padding:7px 10px;font-size:10px;color:var(--muted);background:#f5f9ffeb;
+  border-bottom:1px solid var(--line)}
+#inset .top span:last-child{letter-spacing:.12em;font-size:8.5px}
+.discovery{margin-top:12px;border-left:3px solid var(--gold);background:#fdf8ea;border-radius:8px;
+  padding:9px 11px;font-size:11px;line-height:1.75;color:#7a5c1e}
+.discovery[hidden]{display:none}
+.discovery b{display:block;font-size:10.5px;margin-bottom:3px;color:#8a6a1c}
+#celebration{position:fixed;inset:0;pointer-events:none;z-index:40;display:grid;place-items:center}
+#celebration i{position:absolute;width:9px;height:9px;border-radius:2px;opacity:0;
+  animation:confetti 1.1s ease-out forwards}
+@keyframes confetti{
+  0%{opacity:1;transform:translate(0,0) rotate(0)}
+  100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r))}}
 #fault{position:absolute;inset:34% 12%;z-index:20;background:#fff;padding:18px;border:2px solid #e0b088;
   border-radius:10px;color:#7c4a22;display:none;font-size:13px}
 
@@ -176,6 +193,7 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
   .card{grid-template-columns:32px minmax(0,1fr);text-align:left;min-height:62px}
   .card svg{display:block;width:28px;height:28px}
   .coach{border-left:0;border-top:1px solid var(--line);padding:20px}
+  #inset{left:12px;bottom:12px;width:132px;height:150px}
   .readout{min-width:0;padding:6px 9px}
   .readout .row{font-size:9.5px;gap:8px}
   .scene-footer>span{max-width:150px;font-size:8.5px}
@@ -212,6 +230,7 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
       <span data-slot="stage.gestures"></span>
       <div class="readout" id="readout" data-slot="stage.readout"></div>
     </div>
+    <div id="inset" hidden><div class="top"><span id="inset-title">局部放大</span><span>DETAIL VIEW</span></div></div>
     <div id="fault" role="alert"></div>
   </section>
 
@@ -223,6 +242,7 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
     <div class="plabel"><span id="plabel"></span><span id="bcount"></span></div>
     <div class="task" id="task"></div>
     <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="discovery" id="discovery" hidden><b>刚刚发现</b><span id="discovery-text"></span></div>
     <div class="hintbox"><b data-slot="coach.hintLabel"></b><span id="hinttext"></span></div>
     <div data-slot="coach.extras"></div>
     <details class="technical" id="notes">
@@ -238,6 +258,7 @@ button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--
 </main>
 <script>window.__mechbench={slug:'_template',built:true}</script>
 
+<div id="celebration" aria-hidden="true"></div>
 <pre id="debug"></pre>
 
 <script>
@@ -345,6 +366,7 @@ function mountLab(item) {
       trayTitle: '',
       trayHint: '',
       cardsLocked: false,
+      discovery: '',
     },
     handlers: {},
     on(name, fn) {
@@ -363,6 +385,39 @@ function mountLab(item) {
     /** 物品自定义教练面板：fn({chapter, phase, state, lab}) => {html, bind(root)} */
     task(fn) {
       lab.taskRenderer = fn;
+      return lab;
+    },
+    /** 发现卡：放一段“刚刚发现”的观察，传空串隐藏 */
+    setDiscovery(text) {
+      lab.state.discovery = text || '';
+      const box = q('#discovery');
+      if (!box) return lab;
+      box.hidden = !text;
+      if (text) q('#discovery-text').textContent = text;
+      return lab;
+    },
+    /** 通关撒花：纯装饰，reduced-motion 下静默 */
+    celebrate() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return lab;
+      const el = q('#celebration');
+      if (!el) return lab;
+      el.replaceChildren();
+      const colors = ['#c2452d', '#b8862f', '#2f6f9f', '#2f7d5c'];
+      for (let i = 0; i < 28; i++) {
+        const bit = document.createElement('i');
+        bit.style.background = colors[i % 4];
+        const angle = (i / 28) * Math.PI * 2;
+        bit.style.setProperty('--x', Math.cos(angle) * (95 + (i % 5) * 27) + 'px');
+        bit.style.setProperty('--y', Math.sin(angle) * 130 + 130 + 'px');
+        bit.style.setProperty('--r', i * 47 + 'deg');
+        el.appendChild(bit);
+      }
+      setTimeout(() => el.replaceChildren(), 1500);
+      return lab;
+    },
+    setInsetTitle(text) {
+      const el = q('#inset-title');
+      if (el) el.textContent = text;
       return lab;
     },
     render,
@@ -555,6 +610,8 @@ function mountLab(item) {
   });
 
   render();
+  // 调试钩子：?debug=1 时把 lab（含 lab.stage）挂到 window，方便控制台/验收排查
+  if (new URLSearchParams(location.search).has('debug')) window.__lab = lab;
   return lab;
 }
 

@@ -1,0 +1,2419 @@
+<!doctype html>
+<!-- mechbench · 固定页面骨架。物品不许改这个文件；个性化一律走插槽（kit/slots.md）。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>装配实验室</title>
+<style>/* mechbench · 固定布局层
+ * 只放"所有物品共用"的东西：区域、断点、控件外观、无障碍焦点。
+ * 物品自己的视觉微调写在 items/<slug>/lab.css。
+ */
+
+:root{
+  --ink:#1d2228; --muted:#63707d; --line:#cfd6dc; --stage:#e7ebee; --paper:#f8fafb;
+  --accent:#c2452d; --accent-dark:#93301e;
+  --steel:#4d5966; --blue:#2f6f9f; --green:#2f7d5c; --gold:#b8862f;
+  --topbar-h:70px; --coach-w:344px; --tray-h:182px; --radius:9px;
+}
+
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:#dfe4e8;color:var(--ink);
+  font:14px/1.5 "Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button,input{font:inherit}
+button{cursor:pointer;color:inherit;border:1px solid var(--line);background:#fff;
+  border-radius:var(--radius);padding:8px 13px;font-weight:600;transition:background .14s,transform .1s}
+button:hover:not(:disabled){background:#f4f7f9}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:default}
+:focus-visible{outline:3px solid #d99b2b;outline-offset:2px}
+button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 0 var(--accent-dark)}
+.primary:hover:not(:disabled){background:#b03c26}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- 顶栏 ---------- */
+.topbar{height:var(--topbar-h);display:flex;align-items:center;gap:22px;padding:0 24px;
+  border-bottom:1px solid var(--line);background:#f7f9fa}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.mark{width:34px;height:34px;border-radius:8px;background:var(--steel);position:relative;overflow:hidden;flex:none}
+.mark svg{display:block;width:100%;height:100%}
+.brand strong{display:block;font-size:16px;letter-spacing:-.2px}
+.brand small{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.journey{list-style:none;display:flex;gap:6px;margin:0 auto;padding:0}
+.journey li{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8b98a4;white-space:nowrap}
+.journey b{width:23px;height:23px;display:grid;place-items:center;border:1px solid #cbd4dc;border-radius:50%;font-size:11px}
+.journey .active{color:var(--accent);font-weight:700}
+.journey .active b{background:var(--accent);color:#fff;border-color:var(--accent)}
+.journey .done{color:var(--green)}
+.journey .done b{background:#e3f1ea;border-color:#a9cdbc}
+.topacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex:none}
+.topacts .ghost{font-size:11px;padding:6px 10px;border-radius:999px;background:#fff}
+.topacts .ghost:hover{border-color:var(--accent);color:var(--accent)}
+.topacts .bare{font-size:11px;background:transparent;border-color:transparent;padding:6px}
+
+/* ---------- 主网格 ---------- */
+.lab{display:grid;grid-template-columns:minmax(0,1fr) var(--coach-w);
+  grid-template-rows:minmax(420px,1fr) var(--tray-h);
+  grid-template-areas:"stage coach" "tray coach";
+  height:calc(100dvh - var(--topbar-h));min-height:640px}
+.stage{grid-area:stage;position:relative;overflow:hidden;min-width:0;background-color:var(--stage);
+  background-image:radial-gradient(#c6cfd7 1px,transparent 1px);background-size:24px 24px}
+#viewport{position:absolute;inset:0}
+#viewport canvas{display:block;touch-action:none}
+.stage-title{position:absolute;top:18px;left:22px;pointer-events:none;max-width:360px}
+.stage-title h1{font-size:27px;line-height:1.2;margin:0 0 5px;letter-spacing:-.6px;font-weight:800}
+.stage-title p{margin:0;font-size:11px;color:var(--muted)}
+.toolbar{position:absolute;top:18px;right:16px;display:flex;flex-wrap:wrap;gap:5px;max-width:250px;justify-content:flex-end}
+.toolbar button{font-size:10.5px;padding:6px 10px;background:#fffefbe8}
+.toolbar button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.socket{position:absolute;z-index:4;transform:translate(-50%,-50%);background:var(--accent);color:#fff;
+  border:2px solid #fff;border-radius:20px;box-shadow:0 2px 0 #8f2d1b,0 3px 12px #c2452d30;
+  white-space:nowrap;font-size:11px;padding:6px 12px}
+.socket.near{background:var(--green);box-shadow:0 0 0 8px #2f7d5c22}
+.preview-label{position:absolute;pointer-events:none;transform:translate(-50%,0);background:#fff6ec;
+  border:1px solid #e2b393;border-radius:6px;padding:3px 8px;font-size:10px;color:#96562f;white-space:nowrap}
+.scene-footer{position:absolute;bottom:12px;left:20px;right:20px;display:flex;align-items:flex-end;
+  justify-content:space-between;gap:12px;pointer-events:none}
+.scene-footer>span{font-size:9.5px;color:#7d8b98;line-height:1.6;max-width:44%}
+.readout{display:none;background:#ffffffef;border:1px solid #ccd6de;border-radius:var(--radius);
+  padding:8px 12px;min-width:196px;pointer-events:auto}
+.readout.on{display:block}
+.readout .row{display:flex;justify-content:space-between;gap:12px;font-size:10.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums;line-height:1.75}
+.readout .row b{color:var(--ink);font-weight:700}
+.readout .big{font-size:12px;color:var(--steel);font-weight:800}
+#inset{position:absolute;left:22px;bottom:91px;z-index:5;width:192px;height:188px;border:1px solid #c3ccd5;
+  border-radius:12px;overflow:hidden;pointer-events:none;box-shadow:0 4px 16px #1d22281a}
+#inset[hidden]{display:none}
+#inset .top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;gap:10px;
+  padding:7px 10px;font-size:10px;color:var(--muted);background:#f5f9ffeb;
+  border-bottom:1px solid var(--line)}
+#inset .top span:last-child{letter-spacing:.12em;font-size:8.5px}
+.discovery{margin-top:12px;border-left:3px solid var(--gold);background:#fdf8ea;border-radius:8px;
+  padding:9px 11px;font-size:11px;line-height:1.75;color:#7a5c1e}
+.discovery[hidden]{display:none}
+.discovery b{display:block;font-size:10.5px;margin-bottom:3px;color:#8a6a1c}
+#celebration{position:fixed;inset:0;pointer-events:none;z-index:40;display:grid;place-items:center}
+#celebration i{position:absolute;width:9px;height:9px;border-radius:2px;opacity:0;
+  animation:confetti 1.1s ease-out forwards}
+@keyframes confetti{
+  0%{opacity:1;transform:translate(0,0) rotate(0)}
+  100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r))}}
+#fault{position:absolute;inset:34% 12%;z-index:20;background:#fff;padding:18px;border:2px solid #e0b088;
+  border-radius:10px;color:#7c4a22;display:none;font-size:13px}
+
+/* ---------- 教练面板 ---------- */
+.coach{grid-area:coach;background:var(--paper);border-left:1px solid var(--line);padding:22px 22px 26px;overflow:auto}
+.coach .ctag{color:var(--accent);font-weight:700;font-size:11px;margin-bottom:6px}
+.coach h2{font-size:21px;line-height:1.28;margin:0 0 8px;letter-spacing:-.4px;font-weight:800}
+.coach .intro{font-size:12px;line-height:1.8;color:var(--muted);margin:0 0 16px}
+.progress{height:6px;border-radius:6px;background:#e0e7ec;overflow:hidden;margin:6px 0 4px}
+.progress i{display:block;background:var(--accent);height:100%;width:0;transition:width .3s}
+.plabel{font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+.task{margin-top:18px}
+.task .label{font-size:10px;color:var(--muted);margin:0 0 4px}
+.task h3{font-size:17px;line-height:1.4;margin:0 0 8px;font-weight:750}
+.task p{font-size:12px;line-height:1.8;margin:0 0 10px}
+.task .action{width:100%;margin-top:6px}
+.sub{display:flex;gap:6px;margin-top:10px}
+.sub button{font-size:11px;padding:7px 9px;flex:1}
+.feedback{min-height:40px;padding:9px 11px;background:#e9eef3;border-radius:8px;font-size:11px;
+  line-height:1.7;margin:16px 0 0;border-left:3px solid #8fa4b8}
+.feedback.error{background:#fdf0e8;border-color:#d59a6c;color:#7c4a22}
+.feedback.success{background:#e8f3ed;border-color:#77b295;color:#2f6b52}
+.hintbox{border-top:1px solid var(--line);padding-top:14px;margin-top:16px;font-size:11px;line-height:1.8;color:var(--muted)}
+.hintbox b{display:block;font-size:11px;color:#8a6a1c;margin-bottom:4px}
+.options{display:grid;gap:7px;margin-top:12px}
+.options button{text-align:left;font-size:12px;font-weight:500;padding:10px 11px;line-height:1.6}
+.options button b{display:inline-block;color:var(--accent);margin-right:7px}
+.badge{display:grid;place-items:center;width:66px;height:66px;background:var(--gold);color:#fff;
+  border:5px solid #e4c98c;border-radius:50%;margin:10px 0;font-size:28px;font-weight:800}
+.earned{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px}
+.earned span{border:1px solid #ddc98d;background:#fbf5e3;color:#8a6a1c;font-size:9px;padding:3px 6px;border-radius:5px}
+.technical{font-size:10px;color:var(--muted);line-height:1.8;border-top:1px solid var(--line);margin-top:18px;padding-top:11px}
+.technical summary{cursor:pointer;font-weight:600}
+.technical p{margin:8px 0 0}
+.note{font-size:10.5px!important;color:var(--muted)}
+
+/* ---------- 实验台控件（experiments 插槽） ---------- */
+.labctl{margin-top:12px;font-size:11px}
+.labctl output{float:right;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.labctl input[type=range]{width:100%;accent-color:var(--blue);margin:8px 0 0}
+.labctl.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.labgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+.labgrid .primary{grid-column:1/-1}
+.labgrid button{font-size:11px;padding:8px 6px}
+
+/* ---------- 零件盒 ---------- */
+.tray{grid-area:tray;border-top:2px solid #c3ccd5;padding:12px 22px 14px;background:#dae1e7;min-width:0;overflow:auto}
+.tray-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;font-size:12px;font-weight:700;gap:12px}
+.tray-head small{font-size:10px;color:#7c8a96;font-weight:400;text-align:right}
+.mlist{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.card{position:relative;border:1px solid #c3ccd5;border-bottom:4px solid #b2bec8;background:#fbfcfd;
+  border-radius:10px;display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:6px;
+  text-align:left;padding:10px 9px;min-height:74px;--pc:#5b6470}
+.card svg{width:34px;height:34px;stroke:var(--pc);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.card strong{font-size:11.5px;display:block;line-height:1.3}
+.card small{font-size:9.5px;color:var(--muted);font-weight:400;display:block;margin-top:3px}
+.card[aria-pressed=true]{border-color:#d99878;border-bottom-color:var(--accent);background:#fdf1ea;color:var(--ink)}
+.card[data-installed=true]{background:#e9f2ec;border-color:#b2cec0;border-bottom-color:#9dbfae}
+.card[data-installed=true] small{color:var(--green)}
+.empty{font-size:12px;color:#5f7488;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0}
+.empty strong{display:block;color:#2f4c63;margin-bottom:4px}
+.empty .primary{flex:none}
+
+#debug{display:none;position:fixed;left:0;bottom:0;background:#fff;font-size:10px;z-index:30;padding:2px}
+
+/* ---------- 断点 ---------- */
+@media(max-width:1180px){
+  .lab{grid-template-columns:minmax(0,1fr) 306px}
+  .coach{padding:20px 16px}
+  .card{grid-template-columns:1fr;text-align:center;padding:9px 6px}
+  .card svg{display:none}
+  .mlist{gap:6px}
+}
+@media(max-width:780px){
+  .topbar{height:auto;min-height:96px;padding:12px 14px 8px;flex-wrap:wrap;gap:8px}
+  .brand{min-width:0;flex:1}
+  .brand strong{font-size:13.5px}
+  .brand small{font-size:9px}
+  .journey{order:3;width:100%;justify-content:space-between;margin:0;gap:2px}
+  .journey li{font-size:9.5px;gap:5px;min-width:0}
+  .journey b{width:19px;height:19px;font-size:9.5px}
+  .tray-head small{max-width:130px;font-size:9px}
+  .lab{grid-template-columns:1fr;grid-template-areas:"stage" "tray" "coach";
+    grid-template-rows:minmax(360px,56dvh) auto auto;height:auto;min-height:0}
+  .stage-title h1{font-size:21px}
+  .stage-title{max-width:calc(100% - 172px)}
+  .toolbar{top:14px;max-width:150px}
+  .mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .card{grid-template-columns:32px minmax(0,1fr);text-align:left;min-height:62px}
+  .card svg{display:block;width:28px;height:28px}
+  .coach{border-left:0;border-top:1px solid var(--line);padding:20px}
+  #inset{left:12px;bottom:12px;width:132px;height:150px}
+  .readout{min-width:0;padding:6px 9px}
+  .readout .row{font-size:9.5px;gap:8px}
+  .scene-footer>span{max-width:150px;font-size:8.5px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
+<style>/* 注射笔：教练面板里的步骤按钮与传动链示意（骨架的 .step/.flow 没有内置样式） */
+.penstep{display:block;width:100%;text-align:left;font-size:11.5px;margin-top:6px;padding:8px 10px}
+.penstep i{display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;
+  background:#e2e8ee;color:#5b6874;font-style:normal;font-size:9.5px;font-weight:700;margin-right:7px}
+.penstep.done{background:#eef7f1;border-color:#2f7d5c;color:#245f46}
+.penstep.done i{background:#2f7d5c;color:#fff}
+.penflow{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:10px;font-size:10px}
+.penflow span{border:1px solid #d7dee5;background:#f4f7fa;border-radius:5px;padding:3px 6px;color:#5b6874;white-space:nowrap}
+.penflow span.on{background:#2f7d5c;border-color:#2f7d5c;color:#fff}
+.penflow i{color:#9aa6b2;font-style:normal}
+@media (max-width: 780px) {
+  .stage-title { max-width: calc(100% - 196px); }
+  .stage-title h1 { font-size: 19px; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="mark" data-slot="brand.mark" aria-hidden="true"></div>
+    <div><strong data-slot="brand.title"></strong><small data-slot="brand.subtitle"></small></div>
+  </div>
+  <ol class="journey" data-slot="journey" aria-label="关卡进度"></ol>
+  <div class="topacts">
+    <button class="ghost" id="free-lab">自由实验</button>
+    <button class="bare" id="restart">重新开始</button>
+  </div>
+</header>
+
+<main class="lab">
+  <section class="stage" id="stage" aria-label="三维装配工作台">
+    <div id="viewport"></div>
+    <div class="stage-title">
+      <h1 data-slot="stage.title"></h1>
+      <p data-slot="stage.hint"></p>
+    </div>
+    <div class="toolbar" data-slot="stage.tools" aria-label="观察工具"></div>
+    <button class="socket" id="socket" hidden>装到这里</button>
+    <div class="preview-label" id="preview-label" hidden>拖动这块</div>
+    <div class="scene-footer">
+      <span data-slot="stage.gestures"></span>
+      <div class="readout" id="readout" data-slot="stage.readout"></div>
+    </div>
+    <div id="inset" hidden><div class="top"><span id="inset-title">局部放大</span><span>DETAIL VIEW</span></div></div>
+    <div id="fault" role="alert"></div>
+  </section>
+
+  <aside class="coach">
+    <div class="ctag" data-slot="coach.tag"></div>
+    <h2 data-slot="coach.title"></h2>
+    <p class="intro" data-slot="coach.intro"></p>
+    <div class="progress" role="progressbar" aria-label="装配进度" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" id="progress"><i id="pfill"></i></div>
+    <div class="plabel"><span id="plabel"></span><span id="bcount"></span></div>
+    <div class="task" id="task"></div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="discovery" id="discovery" hidden><b>刚刚发现</b><span id="discovery-text"></span></div>
+    <div class="hintbox"><b data-slot="coach.hintLabel"></b><span id="hinttext"></span></div>
+    <div data-slot="coach.extras"></div>
+    <details class="technical" id="notes">
+      <summary data-slot="coach.notesLabel"></summary>
+      <div data-slot="coach.notes"></div>
+    </details>
+  </aside>
+
+  <section class="tray" aria-label="零件盒">
+    <div class="tray-head"><span id="tray-title"></span><small id="tray-hint"></small></div>
+    <div class="mlist" id="mlist"></div>
+  </section>
+</main>
+<script>window.__mechbench={slug:'injection-pen',built:true}</script>
+
+<div id="celebration" aria-hidden="true"></div>
+<pre id="debug"></pre>
+
+<script>
+window.addEventListener('error', e => {
+  const el = document.getElementById('fault');
+  el.style.display = 'block';
+  el.textContent = '工作台未能加载：' + e.message;
+});
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ==== kit/icons.mjs ==== */
+/* mechbench · 通用零件图标（24×24，描边）
+ * 物品在 manifest 里写 icon:'gear' 即可；要自定义就写 icon:'<path d="..."/>' 原样 SVG。
+ */
+const ICONS = {
+  box:'<rect x="4" y="8" width="16" height="11" rx="1.5"/><path d="M4 12h16M9 8V5h6v3"/>',
+  shell:'<path d="M4 9l8-4 8 4v7l-8 4-8-4z"/><path d="M4 9l8 4 8-4M12 13v7"/>',
+  shaft:'<path d="M3 12h18"/><path d="M6 9v6M18 9v6"/>',
+  gear:'<circle cx="12" cy="12" r="5"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3M6.5 6.5l2 2M15.5 15.5l2 2M17.5 6.5l-2 2M8.5 15.5l-2 2"/>',
+  spring:'<path d="M8 4h8M8 20h8"/><path d="M8 6l8 3-8 3 8 3-8 3"/>',
+  screw:'<path d="M9 4h6l-1 3H10z"/><path d="M10 7v10l2 3 2-3V7"/><path d="M10 11h4M10 14h4"/>',
+  plate:'<path d="M4 14l8-4 8 4-8 4z"/><path d="M7 13l3 1.5"/>',
+  disc:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/>',
+  piston:'<path d="M7 5h10v7H7z"/><path d="M10 12v6M14 12v6"/><path d="M7 8h10"/>',
+  valve:'<path d="M12 4v9"/><path d="M8 16h8l-4 4z"/><path d="M9 4h6"/>',
+  coil:'<circle cx="12" cy="12" r="6"/><path d="M12 6v12M9 6.8v10.4M15 6.8v10.4"/>',
+  battery:'<rect x="3" y="8" width="15" height="8" rx="1.5"/><path d="M21 11v2"/><path d="M7 10v4M11 10v4"/>',
+  bolt:'<path d="M12 4l5 3v6l-5 3-5-3V7z"/><circle cx="12" cy="10" r="2"/>',
+  lever:'<path d="M4 18h16"/><path d="M8 18l6-10"/><circle cx="15" cy="7" r="2"/>',
+  housing:'<rect x="4" y="6" width="16" height="13" rx="2"/><path d="M8 6V4h8v2M4 12h16"/>',
+  pin:'<path d="M5 12h14"/><path d="M8 9v6M16 9v6"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/>',
+};
+function iconSvg(name, color) {
+  const body = ICONS[name] || ICONS.box;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"${color ? ` style="--pc:${color}"` : ''}>${body}</svg>`;
+}
+
+/* ==== kit/lab.mjs ==== */
+/* mechbench · 布局渲染层
+ * 把 manifest 的插槽填进固定骨架，并把玩家操作转成事件。
+ * 不做三维（kit/scene.mjs）、不做业务规则（物品的 logic.mjs / main.mjs）。
+ */
+
+const COPY = {
+  brand: { title: '装配实验室', subtitle: '', mark: { a: '#c2452d', b: '#9aa6b2' } },
+  stage: {
+    title: '装一台能动的机器',
+    hint: '从下方零件盒选一块模块，拖到机身高亮处。',
+    gestures: '拖动空白处旋转 · 右键平移 · 滚轮缩放<br>触屏双指平移 / 缩放',
+  },
+  tray: { title: '零件盒', hint: '点选模块，再拖到高亮位置' },
+  coach: { tag: '第 {n} 关 / {total}', hintLabel: '工作台提示', notesLabel: '这是怎样的一套模型？' },
+  tools: [
+    { id: 'rotate', label: '旋转', pressed: true },
+    { id: 'pan', label: '平移' },
+    { id: 'cut', label: '剖开看' },
+    { id: 'home', label: '复位' },
+  ],
+  labels: {
+    exp: '本关要观察的', quiz: '判断一下', done: '本关完成',
+    installed: '✓ 已归位', picked: '拿起这块', preloaded: '{n} 组零件预装',
+  },
+};
+
+const q = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function pick(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? pick(base[k] || {}, v) : v;
+  }
+  return out;
+}
+function mountLab(item) {
+  const copy = pick(COPY, item.copy);
+  const chapters = item.chapters || [];
+  const modules = item.modules || [];
+  const tasks = item.tasks || [];
+  const readout = item.readout || [];
+  const tools = item.tools || copy.tools;
+
+  const lab = {
+    item,
+    chapters,
+    modules,
+    attached3d: false,
+    taskRenderer: null,
+    state: {
+      chapter: 0,
+      placed: [],
+      selected: null,
+      phase: 'build',
+      completed: [],
+      badges: [],
+      progress: null, // {done,total} 覆盖默认的「本关模块数」
+      readout: {},
+      visible: {},
+      hint: '',
+      feedback: '',
+      feedbackKind: '',
+      stageHint: '',
+      trayTitle: '',
+      trayHint: '',
+      cardsLocked: false,
+      discovery: '',
+    },
+    handlers: {},
+    on(name, fn) {
+      (lab.handlers[name] ||= []).push(fn);
+      return lab;
+    },
+    emit(name, payload) {
+      for (const fn of lab.handlers[name] || []) fn(payload);
+    },
+    moduleOf(id) {
+      return modules.find((m) => m.id === id);
+    },
+    chapterModules(i = lab.state.chapter) {
+      return modules.filter((m) => m.chapter === i);
+    },
+    /** 物品自定义教练面板：fn({chapter, phase, state, lab}) => {html, bind(root)} */
+    task(fn) {
+      lab.taskRenderer = fn;
+      return lab;
+    },
+    /** 发现卡：放一段“刚刚发现”的观察，传空串隐藏 */
+    setDiscovery(text) {
+      lab.state.discovery = text || '';
+      const box = q('#discovery');
+      if (!box) return lab;
+      box.hidden = !text;
+      if (text) q('#discovery-text').textContent = text;
+      return lab;
+    },
+    /** 通关撒花：纯装饰，reduced-motion 下静默 */
+    celebrate() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return lab;
+      const el = q('#celebration');
+      if (!el) return lab;
+      el.replaceChildren();
+      const colors = ['#c2452d', '#b8862f', '#2f6f9f', '#2f7d5c'];
+      for (let i = 0; i < 28; i++) {
+        const bit = document.createElement('i');
+        bit.style.background = colors[i % 4];
+        const angle = (i / 28) * Math.PI * 2;
+        bit.style.setProperty('--x', Math.cos(angle) * (95 + (i % 5) * 27) + 'px');
+        bit.style.setProperty('--y', Math.sin(angle) * 130 + 130 + 'px');
+        bit.style.setProperty('--r', i * 47 + 'deg');
+        el.appendChild(bit);
+      }
+      setTimeout(() => el.replaceChildren(), 1500);
+      return lab;
+    },
+    setInsetTitle(text) {
+      const el = q('#inset-title');
+      if (el) el.textContent = text;
+      return lab;
+    },
+    /** 按 {key: 显示值} 批量写读数，内部 diff（可以每帧调，不碰 DOM）。
+     * 读数的格式化留在物品侧（那里才知道 model/view/game）；这里只管写。 */
+    paint(values) {
+      for (const k of Object.keys(values || {})) {
+        const el = rdEls.get(k);
+        if (!el) continue;
+        const text = values[k] == null ? '—' : String(values[k]);
+        if (el.textContent !== text) el.textContent = text;
+        lab.state.readout[k] = text;
+      }
+      return lab;
+    },
+    render,
+  };
+
+  /* ---------- 静态插槽：挂载时填一次 ---------- */
+  document.title = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.title"]').textContent = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.subtitle"]').textContent = item.brand?.subtitle || copy.brand.subtitle;
+  const mark = item.brand?.mark || copy.brand.mark;
+  q('[data-slot="brand.mark"]').innerHTML = mark.svg
+    ? mark.svg
+    : `<span style="position:absolute;left:6px;top:9px;width:9px;height:16px;border-radius:2px;background:${mark.a || '#c2452d'}"></span>
+       <span style="position:absolute;left:19px;top:6px;width:9px;height:16px;border-radius:2px;background:${mark.b || '#9aa6b2'}"></span>`;
+
+  q('[data-slot="stage.title"]').textContent = item.stage?.title || copy.stage.title;
+  q('[data-slot="stage.hint"]').textContent = item.stage?.hint || copy.stage.hint;
+  q('[data-slot="stage.gestures"]').innerHTML = item.stage?.gestures || copy.stage.gestures;
+  q('[data-slot="coach.hintLabel"]').textContent = copy.coach.hintLabel;
+  q('[data-slot="coach.notesLabel"]').textContent = copy.coach.notesLabel;
+  q('[data-slot="coach.notes"]').innerHTML = (item.notes || []).map((p) => `<p>${p}</p>`).join('');
+  q('#notes').hidden = !(item.notes || []).length;
+
+  q('[data-slot="journey"]').innerHTML = chapters
+    .map((c, i) => `<li data-chapter="${i}"><b>${i + 1}</b>${esc(c.title)}</li>`)
+    .join('');
+
+  q('[data-slot="stage.tools"]').innerHTML = tools
+    .map((t) => `<button data-tool="${t.id}" aria-pressed="${t.pressed ? 'true' : 'false'}">${esc(t.label)}</button>`)
+    .join('');
+
+  q('#readout').innerHTML = readout
+    .map((r) => `<div class="row"><span>${esc(r.label)}</span><b data-rd="${r.key}"${r.big ? ' class="big"' : ''}>—</b></div>`)
+    .join('');
+  const rdEls = new Map();
+  for (const r of readout) rdEls.set(r.key, q(`[data-rd="${r.key}"]`));
+
+  q('[data-slot="coach.extras"]').innerHTML = (item.experiments || [])
+    .map((x) => {
+      if (x.control === 'toggle') {
+        return `<div class="labctl toggle"><span>${esc(x.label)}</span>
+          <button data-exp="${x.id}" aria-pressed="${x.value ? 'true' : 'false'}">${x.value ? '开' : '关'}</button></div>`;
+      }
+      if (x.control === 'button') return `<div class="labgrid"><button data-exp="${x.id}">${esc(x.label)}</button></div>`;
+      return `<label class="labctl">${esc(x.label)}<output data-exp-out="${x.id}">${x.value ?? ''}${x.unit || ''}</output>
+        <input type="range" data-exp="${x.id}" min="${x.min}" max="${x.max}" step="${x.step || 1}" value="${x.value ?? x.min}"></label>`;
+    })
+    .join('');
+
+  /* ---------- 动态插槽 ---------- */
+  function renderCards() {
+    const list = q('#mlist');
+    const chMods = lab.chapterModules();
+    if (!chMods.length) {
+      list.innerHTML = '<div class="empty"><div><strong>这一关没有模块</strong>检查 manifest 的 modules[].chapter。</div></div>';
+      return;
+    }
+    list.innerHTML = chMods
+      .map((m) => {
+        const installed = lab.state.placed.includes(m.id);
+        const sub = installed
+          ? copy.labels.installed
+          : m.sub || (m.parts?.length > 1 ? copy.labels.preloaded.replace('{n}', m.parts.length) : copy.labels.picked);
+        return `<button class="card" data-id="${m.id}" data-installed="${installed}" style="--pc:${m.color || '#5b6470'}"
+          aria-pressed="${lab.state.selected === m.id}"${installed || lab.state.cardsLocked ? ' disabled' : ''}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">${m.icon && m.icon.startsWith('<') ? m.icon : iconBody(m.icon || 'box')}</svg>
+          <span><strong>${esc(m.name)}</strong><small>${esc(sub)}</small></span></button>`;
+      })
+      .join('');
+  }
+
+  function renderTask() {
+    const ch = chapters[lab.state.chapter] || {};
+    if (lab.taskRenderer) {
+      const out = lab.taskRenderer({ chapter: ch, chapterIndex: lab.state.chapter, phase: lab.state.phase, state: lab.state, lab }) || {};
+      q('#task').innerHTML = out.html || '';
+      out.bind?.(q('#task'));
+      return;
+    }
+    const task = tasks[lab.state.chapter] || {};
+    const s = lab.state;
+    const head = `<p class="label">${esc(copy.labels.exp)}</p><h3>${esc(task.exp || ch.title || '')}</h3>
+      <p>${esc(task.expText || ch.subtitle || '')}</p>`;
+    if (s.phase === 'check' && task.options) {
+      q('#task').innerHTML =
+        head +
+        `<p class="label">${esc(copy.labels.quiz)}</p><div class="options">${task.options
+          .map((o, i) => `<button data-opt="${i}"><b>${'ABCD'[i]}</b>${esc(o)}</button>`)
+          .join('')}</div>`;
+      return;
+    }
+    if (s.phase === 'done') {
+      q('#task').innerHTML =
+        head +
+        `<div class="badge">${esc(ch.badge || '✓')}</div><p>${esc(task.why || '')}</p>
+         <div class="sub">${
+           s.chapter < chapters.length - 1 ? '<button class="primary" data-act="next">进入下一关</button>' : ''
+         }<button data-act="replay">再看一遍</button></div>`;
+      return;
+    }
+    q('#task').innerHTML =
+      head +
+      `<div class="sub"><button class="primary" data-act="place"${s.selected ? '' : ' disabled'}>装到这里</button>
+       <button data-act="undo"${s.placed.length ? '' : ' disabled'}>撤回一步</button></div>`;
+  }
+
+  function render() {
+    const s = lab.state;
+    for (const li of document.querySelectorAll('.journey li')) {
+      const i = Number(li.dataset.chapter);
+      li.className = s.completed?.[i] ? 'done' : i === s.chapter ? 'active' : '';
+      li.querySelector('b').textContent = s.completed?.[i] ? '✓' : i + 1;
+    }
+    const ch = chapters[s.chapter] || {};
+    const co = s.coach || {};
+    q('[data-slot="coach.tag"]').textContent =
+      co.tag ?? (copy.coach.tag || '').replace('{n}', s.chapter + 1).replace('{total}', chapters.length);
+    q('[data-slot="coach.title"]').textContent = co.title ?? ch.title ?? '';
+    q('[data-slot="coach.intro"]').textContent = co.intro ?? ch.subtitle ?? '';
+    q('[data-slot="stage.hint"]').textContent = s.stageHint || item.stage?.hint || copy.stage.hint;
+
+    const chMods = lab.chapterModules();
+    const p = s.progress || { done: chMods.filter((m) => s.placed.includes(m.id)).length, total: chMods.length };
+    const bar = q('#progress');
+    bar.setAttribute('aria-valuemax', String(p.total || 1));
+    bar.setAttribute('aria-valuenow', String(p.done));
+    q('#pfill').style.width = (p.total ? (p.done / p.total) * 100 : 0) + '%';
+    q('#plabel').textContent = `${p.done} / ${p.total} 块模块`;
+    q('#bcount').textContent = `${(s.badges || []).length} 个徽章`;
+
+    q('#tray-title').textContent = s.trayTitle || item.tray?.title || copy.tray.title;
+    q('#tray-hint').textContent = s.trayHint || item.tray?.hint || copy.tray.hint;
+
+    renderTask();
+    renderCards();
+
+    const fb = q('#feedback');
+    fb.className = 'feedback' + (s.feedbackKind ? ' ' + s.feedbackKind : '');
+    if (s.feedback) fb.textContent = s.feedback;
+    q('#hinttext').textContent = s.hint || '';
+
+    const ro = q('#readout');
+    ro.classList.toggle('on', !!s.visible.readout);
+    for (const b of ro.querySelectorAll('[data-rd]')) {
+      const v = s.readout[b.dataset.rd];
+      if (v != null && b.textContent !== String(v)) b.textContent = v;
+    }
+    // 有三维时 socket 的显隐与位置由 kit/scene.mjs 负责
+    if (!lab.attached3d) q('#socket').hidden = !(s.selected && s.phase === 'build');
+  }
+
+  /* ---------- 交互：只发事件 ---------- */
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (card && !card.disabled) return lab.emit('select', card.dataset.id);
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act) return lab.emit(act);
+    const tool = e.target.closest('[data-tool]')?.dataset.tool;
+    if (tool) {
+      if (tool === 'cut') {
+        const b = e.target.closest('[data-tool]');
+        b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+      }
+      return lab.emit('tool', tool);
+    }
+    if (e.target.id === 'free-lab') return lab.emit('free');
+    if (e.target.id === 'restart') return lab.emit('restart');
+    if (e.target.id === 'socket') return lab.emit('place');
+    const opt = e.target.closest('[data-opt]');
+    if (opt) return lab.emit('answer', Number(opt.dataset.opt));
+    const exp = e.target.closest('[data-exp]');
+    if (exp) {
+      const id = exp.dataset.exp;
+      const spec = (item.experiments || []).find((x) => x.id === id) || {};
+      const value =
+        exp.tagName === 'BUTTON'
+          ? spec.control === 'toggle'
+            ? exp.getAttribute('aria-pressed') !== 'true'
+            : null
+          : Number(exp.value);
+      return lab.emit('experiment', { id, value });
+    }
+  });
+
+  document.addEventListener('input', (e) => {
+    const id = e.target.dataset?.exp;
+    if (!id) return;
+    const out = document.querySelector(`[data-exp-out="${id}"]`);
+    const exp = (item.experiments || []).find((x) => x.id === id);
+    if (out) out.textContent = e.target.value + (exp?.unit || '');
+    lab.emit('experiment', { id, value: Number(e.target.value) });
+  });
+
+  render();
+  // 调试钩子：?debug=1 时把 lab（含 lab.stage）挂到 window，方便控制台/验收排查
+  if (new URLSearchParams(location.search).has('debug')) window.__lab = lab;
+  return lab;
+}
+
+function iconBody(name) {
+  const set = typeof ICONS === 'undefined' ? {} : ICONS;
+  return set[name] || set.box || '<rect x="4" y="8" width="16" height="11" rx="1.5"/>';
+}
+
+/* ==== kit/scene.mjs ==== */
+/* mechbench · 三维舞台（kit）
+ * 相机/灯光/地面/剖切/目标轮廓/拾取/拖放/取景/循环 —— 所有物品共用。
+ * 物品只给几何（model.mjs）、数值（manifest.scene）、回调。
+ */
+
+
+
+const vec = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+
+const DEFAULT = {
+  spawn: [255, 26, 155],
+  renderer: { exposure: 0.94, pixelRatio: 1.5 },
+  camera: { fov: 32, near: 2, far: 6000, defaultFocus: 'engine' },
+  orbit: { minDistance: 190, maxDistance: 1800, minPolar: 0.06, maxPolar: 0.54 },
+  bench: { y: -110, color: 0xdfe5ea, size: 4000 },
+  env: 0.48,
+  lights: {
+    hemi: [0xffffff, 0x9aa7b3, 0.62],
+    key: { color: 0xfff6ec, intensity: 2.0, pos: [-190, 300, 240] },
+    fill: { color: 0xdce8f4, intensity: 0.85, pos: [280, 90, 240] },
+    rim: { color: 0xcfe0f0, intensity: 0.8, pos: [160, 200, -300] },
+  },
+  cut: { normal: [0, 0, -1], constant: 0 },
+  ghost: { color: 0x9aa4ad, opacity: 0.62 },
+  target: { color: 0x2f6f9f, opacity: 0.17 },
+  focus: {},
+  nearRadius: { wide: 52, narrow: 66 },
+};
+
+function merge(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? merge(base[k] || {}, v) : v;
+  }
+  return out;
+}
+function createStage(opts) {
+  const cfg = merge(DEFAULT, opts.config);
+  const host = opts.host;
+  const stageEl = opts.stageEl;
+  const worldGroup = opts.world;
+  const modules = opts.modules || [];
+  const model = opts.model || {};
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 渲染器 / 场景 ---------- */
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, cfg.renderer.pixelRatio));
+  renderer.setSize(stageEl.clientWidth, stageEl.clientHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = cfg.renderer.exposure;
+  renderer.localClippingEnabled = true;
+  renderer.domElement.setAttribute('aria-label', '三维装配台：选中模块后拖到安装位置，也可用「装到这里」按钮');
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.add(worldGroup);
+  const camera = new THREE.PerspectiveCamera(cfg.camera.fov, stageEl.clientWidth / stageEl.clientHeight, cfg.camera.near, cfg.camera.far);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.085;
+  controls.enablePan = true;
+  controls.screenSpacePanning = true;
+  controls.rotateSpeed = 0.62;
+  controls.zoomSpeed = 0.8;
+  controls.panSpeed = 0.8;
+  controls.minDistance = cfg.orbit.minDistance;
+  controls.maxDistance = cfg.orbit.maxDistance;
+  controls.minPolarAngle = Math.PI * cfg.orbit.minPolar;
+  controls.maxPolarAngle = Math.PI * cfg.orbit.maxPolar;
+  controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  scene.environmentIntensity = cfg.env;
+
+  const [hs, hg, hi] = cfg.lights.hemi;
+  scene.add(new THREE.HemisphereLight(hs, hg, hi));
+  for (const k of ['key', 'fill', 'rim']) {
+    const l = cfg.lights[k];
+    if (!l) continue;
+    const dir = new THREE.DirectionalLight(l.color, l.intensity);
+    dir.position.set(...l.pos);
+    scene.add(dir);
+  }
+
+  if (cfg.bench !== false) {
+  const bench = new THREE.Mesh(
+    new THREE.PlaneGeometry(cfg.bench.size, cfg.bench.size),
+    new THREE.MeshStandardMaterial({ color: cfg.bench.color, roughness: 0.97, metalness: 0 })
+  );
+  bench.rotation.x = -Math.PI / 2;
+  bench.position.y = cfg.bench.y;
+  scene.add(bench);
+  }
+
+  /* ---------- 剖切 ---------- */
+  const CUT = new THREE.Plane(vec(...cfg.cut.normal), cfg.cut.constant);
+  const GHOST = new THREE.MeshStandardMaterial({
+    color: cfg.ghost.color, roughness: 0.9, metalness: 0,
+    transparent: true, opacity: cfg.ghost.opacity, depthWrite: false,
+    side: THREE.DoubleSide, clippingPlanes: [CUT],
+  });
+  const TARGET = new THREE.MeshBasicMaterial({
+    color: cfg.target.color, transparent: true, opacity: cfg.target.opacity,
+    depthWrite: false, side: THREE.DoubleSide,
+  });
+  const ghostGroup = new THREE.Group();
+  scene.add(ghostGroup);
+  let targetKey = null;
+
+  /* ---------- 视图状态 ---------- */
+  const view = {
+    crankDeg: 0, camDeg: 0, speed: 1, running: false, cut: false, solid: false,
+    navigation: 'rotate', selected: null, offsets: new Map(), drag: null, focus: cfg.camera.defaultFocus,
+    hintOn: false,
+  };
+  const SPAWN = vec(...cfg.spawn);
+
+  const byKey = model.byKey;
+  const info = new Map(
+    modules.map((m) => {
+      const b = model.moduleBounds(m.parts);
+      return [m.id, { ...m, bounds: b, center: b.getCenter(vec()), size: b.getSize(vec()) }];
+    })
+  );
+
+  const socketEl = document.getElementById('socket');
+  const previewEl = document.getElementById('preview-label');
+  const state = () => (opts.getState ? opts.getState() : {});
+
+  /* ---------- 摆位与材质 ---------- */
+  const moduleOffsetTarget = (id) => {
+    if (state().placed?.includes(id)) return vec();
+    if (typeof cfg.spawnFor === 'function') {
+      const v = cfg.spawnFor(id, info.get(id), state(), view);
+      if (v) return v.isVector3 ? v.clone() : vec(...v);
+    }
+    return SPAWN.clone();
+  };
+
+  function render(dt = 1) {
+    const s = state();
+    for (const m of modules) {
+      const installed = s.placed?.includes(m.id);
+      const selected = s.selected === m.id;
+      const visible = installed || selected;
+      let off = view.offsets.get(m.id);
+      if (!off) {
+        off = moduleOffsetTarget(m.id).clone();
+        view.offsets.set(m.id, off);
+      }
+      if (view.drag?.id !== m.id) {
+        const want = moduleOffsetTarget(m.id);
+        if (reduced || dt === 1) off.copy(want);
+        else off.lerp(want, Math.min(1, dt * 12));
+      }
+      for (const key of m.parts) {
+        const p = byKey.get(key);
+        if (!p) continue;
+        p.g.visible =
+          visible && !(cfg.hiddenPart && cfg.hiddenPart(key, s));
+        p.g.position.copy(off);
+        materials(p, installed || view.solid);
+      }
+    }
+    model.applyMotion(view, s);
+    worldGroup.updateMatrixWorld(true);
+  }
+
+  // 剖开：外壳换玻璃；带 userData.cutaway 的网格（被切掉的那半）直接隐藏
+  function materials(p, showSolid) {
+    const cutting = showSolid && view.cut;
+    p.g.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.userData.cutaway) o.visible = !cutting;
+      const ghost = cutting && (p.shell || o.userData.socketCover) && !(view.focus !== 'all' && view.focus === p.key);
+      if (ghost) {
+        if (!p.ghostMat) {
+          p.ghostMat = GHOST.clone();
+          p.ghostMat.opacity = 0.58 + 0.06 * Math.min(p.layer || 0, 2);
+        }
+        o.material = p.ghostMat;
+        o.renderOrder = 3;
+      } else if (o.material !== o.userData.omat) {
+        o.material = o.userData.omat;
+        o.renderOrder = 0;
+      }
+    });
+  }
+
+  /* ---------- 目标轮廓 ---------- */
+  function setTarget(keys) {
+    const want = keys ? keys.join('|') : null;
+    const always = typeof opts.targetAlways === 'function' ? opts.targetAlways() : !!opts.targetAlways;
+    const show = !!keys && keys.length && (view.hintOn || always);
+    if (want === targetKey && !show) {
+      ghostGroup.visible = show;
+      return;
+    }
+    for (const c of [...ghostGroup.children]) ghostGroup.remove(c);
+    targetKey = want;
+    if (!show) {
+      ghostGroup.visible = false;
+      return;
+    }
+    for (const key of keys) {
+      const p = byKey.get(key);
+      if (!p) continue;
+      const clone = p.obj.clone(true);
+      clone.traverse((o) => {
+        if (o.isMesh) o.material = TARGET;
+      });
+      ghostGroup.add(clone);
+    }
+    ghostGroup.visible = true;
+  }
+
+  /* ---------- 相机 ---------- */
+  const box = new THREE.Box3();
+  for (const p of model.PARTS || []) box.union(new THREE.Box3().setFromObject(p.g));
+  const MODEL_CENTER = box.getCenter(vec());
+  const MODEL_SIZE = box.getSize(vec());
+
+  function focusSpec(name) {
+    const f = cfg.focus[name] || {};
+    const dir = f.dir || [0, 18];
+    if (f.box) {
+      const b = typeof f.box === 'function' ? f.box(state(), view) : f.box;
+      return { center: vec(...b[0]), size: vec(...b[1]), dir, fit: f.fit || 1 };
+    }
+    if (name === cfg.camera.defaultFocus || !name) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
+    const p = byKey.get(name);
+    if (!p) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
+    const b = new THREE.Box3().setFromObject(p.g);
+    const size = b.getSize(vec());
+    size.set(Math.max(size.x, 30), Math.max(size.y, 30), Math.max(size.z, 30));
+    return { center: b.getCenter(vec()), size, dir, fit: f.fit || 1.75 };
+  }
+
+  function fitCamera(name = cfg.camera.defaultFocus) {
+    view.focus = name;
+    const { center, size, dir, fit } = focusSpec(name);
+    const f = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const narrow = stageEl.clientWidth < 620;
+    const usableW = stageEl.clientWidth - (narrow ? 40 : 90);
+    const usableH = stageEl.clientHeight - (narrow ? 150 : 40);
+    const dist =
+      Math.max(
+        (size.y / (2 * f)) * (stageEl.clientHeight / usableH),
+        (size.x / (2 * f * camera.aspect)) * (stageEl.clientWidth / usableW)
+      ) * fit + 40;
+    const [yaw, pitch] = dir.map((d) => (d * Math.PI) / 180);
+    camera.position.copy(center).add(vec(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).multiplyScalar(dist));
+    controls.target.copy(center);
+    controls.update();
+  }
+
+  let userNavigated = false;
+  controls.addEventListener('start', () => {
+    userNavigated = true;
+  });
+
+  /* ---------- 导航 ---------- */
+  function setNavigation(mode) {
+    view.navigation = mode;
+    controls.mouseButtons.LEFT = mode === 'pan' ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.touches.ONE = mode === 'pan' ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+    for (const b of document.querySelectorAll('[data-tool]')) {
+      if (b.dataset.tool === 'rotate' || b.dataset.tool === 'pan') b.setAttribute('aria-pressed', String(b.dataset.tool === mode));
+    }
+    renderer.domElement.style.cursor = mode === 'pan' ? 'move' : 'grab';
+  }
+
+  /* ---------- 屏幕坐标 ---------- */
+  function project(v) {
+    const p = v.clone().project(camera);
+    return { x: (p.x * 0.5 + 0.5) * stageEl.clientWidth, y: (-0.5 * p.y + 0.5) * stageEl.clientHeight };
+  }
+
+  function nearTarget(id) {
+    const next = opts.nextModule ? opts.nextModule() : null;
+    if (!next || !info.get(id)) return false;
+    const a = project(info.get(id).center.clone().add(view.offsets.get(id) || vec()));
+    const b = project(info.get(next.id).center);
+    const r = stageEl.clientWidth < 620 ? cfg.nearRadius.narrow : cfg.nearRadius.wide;
+    return Math.hypot(a.x - b.x, a.y - b.y) < r;
+  }
+
+  function overlay() {
+    const s = state();
+    const next = opts.nextModule ? opts.nextModule() : null;
+    const showSocket = !!next && s.phase === 'build' && !s.lab;
+    if (socketEl) {
+      socketEl.hidden = !showSocket;
+      if (showSocket) {
+        const md = info.get(next.id);
+        const p = project(vec(md.center.x, md.bounds.max.y + 16, md.center.z));
+        socketEl.style.left = p.x + 'px';
+        socketEl.style.top = p.y + 'px';
+        socketEl.disabled = !s.selected;
+        socketEl.classList.toggle('near', !!s.selected && nearTarget(s.selected));
+      }
+    }
+    const sel = s.selected && info.get(s.selected);
+    if (previewEl) {
+      previewEl.hidden = !sel || s.phase !== 'build';
+      if (sel) {
+        const c = sel.center.clone().add(view.offsets.get(sel.id) || vec());
+        const p = project(vec(c.x, c.y + sel.size.y / 2 + 14, c.z));
+        previewEl.style.left = p.x + 'px';
+        previewEl.style.top = p.y + 'px';
+      }
+    }
+    if (next) setTarget(next.parts);
+    else setTarget(null);
+  }
+
+  /* ---------- 拾取与拖放 ---------- */
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const clickables = [];
+  for (const p of model.PARTS || []) p.g.traverse((o) => o.isMesh && clickables.push(o));
+
+  function rayAt(e) {
+    const r = renderer.domElement.getBoundingClientRect();
+    pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, 1 - ((e.clientY - r.top) / r.height) * 2);
+    raycaster.setFromCamera(pointer, camera);
+  }
+  const visibleIn = (o) => {
+    for (let x = o; x; x = x.parent) if (!x.visible) return false;
+    return true;
+  };
+  function pickKey(e) {
+    rayAt(e);
+    const hit = raycaster.intersectObjects(clickables.filter(visibleIn), false)[0];
+    if (!hit) return null;
+    let o = hit.object;
+    while (o && !o.userData.key) o = o.parent;
+    return o ? o.userData.key : null;
+  }
+
+  const canDrag = () => (opts.canDrag ? opts.canDrag() : true) && view.navigation !== 'pan';
+  let downPt = null;
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    downPt = { x: e.clientX, y: e.clientY };
+  }, { capture: true });
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !canDrag()) return;
+    const s = state();
+    const m = info.get(s.selected);
+    if (!m) return;
+    rayAt(e);
+    const objs = m.parts.map((k) => byKey.get(k).g).filter(Boolean);
+    const hit = raycaster.intersectObjects(objs, true).find((h) => visibleIn(h.object));
+    if (!hit) return;
+    const off = view.offsets.get(m.id) || vec();
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(vec()), m.center.clone().add(off));
+    const point = raycaster.ray.intersectPlane(plane, vec());
+    if (!point) return;
+    view.drag = { id: m.id, pointerId: e.pointerId, plane, start: point.clone(), offset: off.clone() };
+    controls.enabled = false;
+    renderer.domElement.setPointerCapture?.(e.pointerId);
+    renderer.domElement.style.cursor = 'grabbing';
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!view.drag || view.drag.pointerId !== e.pointerId) return;
+    rayAt(e);
+    const p = raycaster.ray.intersectPlane(view.drag.plane, vec());
+    if (p) {
+      if (!view.offsets.has(view.drag.id)) view.offsets.set(view.drag.id, vec());
+      view.offsets.get(view.drag.id).copy(view.drag.offset).add(p.sub(view.drag.start));
+    }
+    socketEl?.classList.toggle('near', nearTarget(view.drag.id));
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  function releaseDrag(e, cancel) {
+    if (!view.drag || view.drag.pointerId !== e.pointerId) return;
+    const id = view.drag.id;
+    const onTarget = !cancel && nearTarget(id);
+    view.drag = null;
+    controls.enabled = true;
+    renderer.domElement.releasePointerCapture?.(e.pointerId);
+    setNavigation(view.navigation);
+    socketEl?.classList.remove('near');
+    if (!cancel && onTarget) opts.onDrop?.(id, true);
+    else if (!cancel) opts.onDrop?.(id, false);
+    e.stopImmediatePropagation();
+  }
+  renderer.domElement.addEventListener('pointerup', (e) => releaseDrag(e, false), { capture: true });
+  renderer.domElement.addEventListener('pointercancel', (e) => releaseDrag(e, true), { capture: true });
+
+  renderer.domElement.addEventListener('click', (e) => {
+    // 旋转/平移后松手也会派发 click：位移 > 5px 就不算点击
+    if (downPt && Math.hypot(e.clientX - downPt.x, e.clientY - downPt.y) > 5) return;
+    if (view.drag) return;
+    const k = pickKey(e);
+    if (k && opts.onPickKey) opts.onPickKey(k, view.focus === k);
+  });
+
+  /* ---------- 局部放大窗（同一个 canvas 里用 scissor 画第二视角） ---------- */
+  const insetEl = document.getElementById('inset');
+  const insetCam = new THREE.PerspectiveCamera(cfg.inset?.fov || 36, 1, cfg.inset?.near || 0.1, cfg.inset?.far || 500);
+  function drawInset() {
+    if (!insetEl || !cfg.inset) return;
+    const s = state();
+    const ic = cfg.inset;
+    const fits = stageEl.clientWidth > (ic.minWidth || 760) && stageEl.clientHeight > (ic.minHeight || 430);
+    const spec = fits && ic.visible?.(s, view) ? ic.target?.(s, view) : null;
+    const part = spec && byKey.get(spec.part);
+    insetEl.hidden = !part;
+    if (!part) return;
+    const title = insetEl.querySelector('#inset-title');
+    if (title && spec.title) title.textContent = spec.title;
+    const target = part.g.localToWorld(vec(...(spec.local || [0, 0, 0])));
+    insetCam.position.copy(target).add(vec(...spec.offset));
+    insetCam.lookAt(target);
+    const r = insetEl.getBoundingClientRect(), base = stageEl.getBoundingClientRect();
+    if (r.width < 10 || r.height < 10) return;
+    insetCam.aspect = r.width / r.height;
+    insetCam.updateProjectionMatrix();
+    const x = r.left - base.left, y = stageEl.clientHeight - (r.bottom - base.top);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+    renderer.setScissor(x, y, r.width, r.height);
+    renderer.setViewport(x, y, r.width, r.height);
+    renderer.setScissorTest(true);
+    renderer.clearDepth();
+    renderer.render(scene, insetCam);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+  }
+
+  /* ---------- 像素探针：给验收用，肉眼看不到的"空"要能被机器测出来 ---------- */
+  // 必须在渲染循环里紧接着 render() 读，否则默认帧缓冲内容已经丢弃（读到全 0）
+  const pendingProbes = [];
+  function probe(rect) {
+    return new Promise((res) => pendingProbes.push({ rect, res }));
+  }
+  function runProbes() {
+    if (!pendingProbes.length) return;
+    const gl = renderer.getContext();
+    const pr = renderer.getPixelRatio();
+    const H = renderer.domElement.height;
+    for (const { rect, res } of pendingProbes.splice(0)) {
+      const x = Math.max(0, Math.round(rect.x * pr));
+      const y = Math.max(0, Math.round(H - (rect.y + rect.height) * pr));
+      const w = Math.max(1, Math.round(rect.width * pr));
+      const h = Math.max(1, Math.round(rect.height * pr));
+      const buf = new Uint8Array(w * h * 4);
+      gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      const colors = new Set();
+      const rows = new Array(h).fill(0);
+      const cols = new Array(w).fill(0);
+      let lit = 0;
+      for (let j = 0; j < h; j++) {
+        for (let i = 0; i < w; i++) {
+          const k = ((h - 1 - j) * w + i) * 4;
+          const r = buf[k], g = buf[k + 1], b = buf[k + 2], a = buf[k + 3];
+          // 画布是 alpha:true 的清屏，舞台底色是 CSS 背景 → alpha 就是最干净的"有没有物体"判据
+          if (a < 8) continue;
+          colors.add((r >> 3) * 1024 + (g >> 3) * 32 + (b >> 3));
+          rows[j]++;
+          cols[i]++;
+          lit++;
+        }
+      }
+      res({ colors: colors.size, lit, rows, cols, w, h });
+    }
+  }
+
+  /* ---------- 尺寸与循环 ---------- */
+  function resize() {
+    const w = stageEl.clientWidth, h = stageEl.clientHeight;
+    if (!w || !h) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    if (!userNavigated) fitCamera(view.focus);
+  }
+  new ResizeObserver(resize).observe(stageEl);
+
+  function start() {
+    let prev = performance.now();
+    renderer.setAnimationLoop((now) => {
+      const dt = Math.min(0.05, Math.max(0, (now - prev) / 1000));
+      prev = now;
+      opts.tick?.(dt);
+      render(dt);
+      controls.update();
+      overlay();
+      renderer.render(scene, camera);
+      drawInset();
+      runProbes();
+    });
+  }
+
+  resize();
+  render(1);
+  fitCamera(view.focus);
+
+  return {
+    view, renderer, scene, camera, controls, info, spawn: SPAWN, fitCamera, setNavigation, project,
+    nearTarget, overlay, render, start, setTarget, resize, probe,
+    get solidScreen() {
+      return renderer.domElement;
+    },
+  };
+}
+
+
+/* ==== injection-pen/model.mjs ==== */
+
+/* 注射笔 · 几何与运动 —— 一次性预充式注射笔（替尔泊肽 / KwikPen 类）
+ * 1 unit = 1 mm；笔轴 = x（后端 0 → 针尖 +155 量级）；含外帽总长 170 mm。
+ *
+ * 传动链（全部由 applyMotion 里的同一组状态量驱动，读数也从这组量算）：
+ *   剂量旋钮(棘轮咔哒) → 扭簧上弦 → 按钮松闸 → 驱动套筒/螺母转 → 丝杠(被笔身键住不能转，只能直线走) → 活塞
+ * 剂量关系：1.0 mg = 旋钮半圈 = 丝杠 1 转（导程 5.64 的双头螺纹）= 活塞 2.82 mm。
+ * 尺寸依据 / 教学简化见 notes.md。
+ */
+
+const PEN = {
+  len: 170,          // 含外帽总长
+  bore: 4.75,        // 卡式瓶内径半径（Ø9.5）
+  strokePerMg: 2.82, // 活塞行程 / mg（由 Ø9.5 内径与 5 mg/mL 浓度折算）
+  lead: 5.64,        // 丝杠导程（双头，螺距 2.82）
+  crest: 2.95,       // 螺纹牙顶半径
+  clickMg: 0.125,    // 一格（22.5°）
+  teeth: 16,         // 棘轮齿数 / 转
+  dialDegPerMg: 180, // 旋钮 180° / 1.0 mg
+  totalMg: 10,       // 2 mL × 5 mg/mL
+  bung0: 92,         // 活塞后端 x（未注射时）
+  bungL: 6,
+  drugLen: 30,       // 药液柱长（98 → 128）
+  drugEnd: 128,
+  capOuterInner: 164.2, // 外帽内腔前端（针尖必须在这之前）
+  capInnerInner: 159, // 内帽内腔前端
+};
+
+const penWorld = new THREE.Group();
+const penTau = Math.PI * 2;
+const penDeg = (d) => (d * Math.PI) / 180;
+
+/* ============================ 材质 ============================ */
+const PM = {
+  shell: new THREE.MeshPhysicalMaterial({ color: 0xf7e9ec, roughness: 0.34, clearcoat: 0.7, clearcoatRoughness: 0.3 }),
+  shell2: new THREE.MeshPhysicalMaterial({ color: 0xf0dade, roughness: 0.42, clearcoat: 0.5 }),
+  dial: new THREE.MeshStandardMaterial({ color: 0xa02b4e, roughness: 0.5 }),
+  dialRib: new THREE.MeshStandardMaterial({ color: 0xc8556f, roughness: 0.42 }),
+  button: new THREE.MeshStandardMaterial({ color: 0x6e1a33, roughness: 0.42 }),
+  cap: new THREE.MeshStandardMaterial({ color: 0x8d2545, roughness: 0.45 }),
+  clear: new THREE.MeshPhysicalMaterial({ color: 0xe2f0f4, roughness: 0.18, clearcoat: 1, transparent: true, opacity: 0.34, depthWrite: false, side: THREE.DoubleSide }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0xd3ecf5, roughness: 0.06, clearcoat: 1, transparent: true, opacity: 0.52, depthWrite: false, side: THREE.DoubleSide }),
+  drug: new THREE.MeshPhysicalMaterial({ color: 0xdcbe86, roughness: 0.28, clearcoat: 0.5 }),
+  rubber: new THREE.MeshStandardMaterial({ color: 0x44444c, roughness: 0.85 }),
+  steel: new THREE.MeshStandardMaterial({ color: 0xcfd6da, metalness: 1, roughness: 0.24 }),
+  alu: new THREE.MeshStandardMaterial({ color: 0xb6bec3, metalness: 1, roughness: 0.32 }),
+  plastic: new THREE.MeshStandardMaterial({ color: 0xe9e7e1, roughness: 0.45 }),
+  tan: new THREE.MeshStandardMaterial({ color: 0xcbbca6, roughness: 0.6 }),
+  grey: new THREE.MeshStandardMaterial({ color: 0x98a2a6, roughness: 0.5 }),
+  sep: new THREE.MeshStandardMaterial({ color: 0x8a8478, roughness: 0.72 }),
+  ink: new THREE.MeshStandardMaterial({ color: 0x2a2320, roughness: 0.62 }),
+  needle: new THREE.MeshStandardMaterial({ color: 0xdfe4e7, metalness: 1, roughness: 0.18 }),
+};
+
+/* ============================ 几何助手 ============================ */
+function penMesh(geo, mat, parent) { const m = new THREE.Mesh(geo, mat); if (parent) parent.add(m); return m; }
+// profile: [[x, r], ...]，沿 +x 的旋转面；闭合 profile 得到有壁厚的筒
+function penLathe(profile, seg = 72, start = 0, len = penTau) {
+  const pts = profile.map(([x, r]) => new THREE.Vector2(Math.max(r, 1e-4), x));
+  const g = new THREE.LatheGeometry(pts, seg, start, len);
+  g.rotateZ(-Math.PI / 2);
+  g.computeVertexNormals();
+  return g;
+}
+// 只做一段圆弧：worldStart/worldLen 是"世界角"（0 = +Z，向 +Y 为正）
+function penArc(profile, worldStart, worldLen, seg = 96) {
+  return penLathe(profile, seg, penDeg(-(worldStart + worldLen)), penDeg(worldLen));
+}
+function penExtrudeX(shape, x0, x1) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth: x1 - x0, bevelEnabled: false, curveSegments: 24 });
+  g.rotateY(-Math.PI / 2);
+  g.translate(x1, 0, 0);
+  return g;
+}
+function penBox(w, h, d, mat, parent, x, y, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  if (parent) parent.add(m);
+  return m;
+}
+// 把"角度 + 半径"换成 y/z（0° = +Z，90° = +Y）
+const penPolar = (deg, r) => [Math.sin(penDeg(deg)) * r, Math.cos(penDeg(deg)) * r];
+// 螺纹示意：半径 r 的螺旋管；leftHanded=true 时旋向相反
+function penHelix(x0, x1, r, wire, turns, segPerTurn = 14, phase = 0, leftHanded = false) {
+  const n = Math.max(16, Math.round(turns * segPerTurn));
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, a = (leftHanded ? -1 : 1) * t * turns * penTau + phase;
+    pts.push(new THREE.Vector3(x0 + (x1 - x0) * t, Math.sin(a) * r, Math.cos(a) * r));
+  }
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), n, wire, 6, false);
+}
+// 径向棘轮环：外圈圆、内孔是锯齿（齿顶 rCrest、齿谷 rValley）
+function penRatchetRing(x0, x1, rOut, rValley, rCrest, n, phase = 0) {
+  const step = penTau / n;
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, rOut, 0, penTau, false);
+  const hole = new THREE.Path();
+  const push = (r, a, first) => {
+    const x = Math.cos(a + phase) * r, y = Math.sin(a + phase) * r;
+    if (first) hole.moveTo(x, y); else hole.lineTo(x, y);
+  };
+  for (let i = 0; i < n; i++) {
+    const a0 = i * step;
+    push(rValley, a0, i === 0);
+    push(rCrest, a0 + step * 0.42, false);   // 缓坡爬升
+    push(rCrest, a0 + step * 0.50, false);   // 齿顶
+    push(rValley, a0 + step * 0.55, false);  // 陡壁落下
+  }
+  hole.closePath();
+  shape.holes.push(hole);
+  return penExtrudeX(shape, x0, x1);
+}
+// 扁带绕簧（可扭转的钢丝带）
+function penRibbon(x0, x1, radius, width, thick, turns, segPerTurn = 56) {
+  const N = Math.round(turns * segPerTurn);
+  const ri = radius - thick / 2, ro = radius + thick / 2;
+  const pos = [], idx = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, a = t * turns * penTau, cx = x0 + (x1 - x0) * t;
+    const c = Math.cos(a), s = Math.sin(a);
+    pos.push(cx - width / 2, ri * c, ri * s, cx - width / 2, ro * c, ro * s,
+      cx + width / 2, ri * c, ri * s, cx + width / 2, ro * c, ro * s);
+  }
+  for (let i = 0; i < N; i++) {
+    const p = i * 4, q = p + 4;
+    idx.push(p, p + 2, q + 2, p, q + 2, q);             // 内表面
+    idx.push(p + 1, q + 1, q + 3, p + 1, q + 3, p + 3); // 外表面
+    idx.push(p, q, q + 1, p, q + 1, p + 1);             // 后侧窄边
+    idx.push(p + 2, p + 3, q + 3, p + 2, q + 3, q + 2); // 前侧窄边
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/* ============================ 零件注册 ============================ */
+const penParts = [], penByKey = new Map();
+function addPenPart(key, name, obj, mat, opt = {}) {
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    if (!o.userData.keepMat) o.material = mat.clone();
+    o.userData.omat = o.material;
+    o.userData.key = key;
+  });
+  const g = new THREE.Group();
+  g.add(obj);
+  g.userData.key = key;
+  penWorld.add(g);
+  const p = { key, name, g, obj, shell: !!opt.shell };
+  penParts.push(p); penByKey.set(key, p);
+  return p;
+}
+
+/* ---------- 笔身（含剂量窗；棘爪座 + 防转键 + 扭簧前支点都在壳内） ---------- */
+{
+  const grp = new THREE.Group();
+  const rin = 9.5, rout = 10.4;
+  grp.add(new THREE.Mesh(penLathe([[26, rin], [26, rout], [33, rout], [33, rin], [26, rin]], 96), PM.shell));
+  // 剂量窗：正对观察者挖掉 64°（世界角 -32°…+32°）
+  grp.add(new THREE.Mesh(penArc([[33, rin], [33, rout], [52, rout], [52, rin], [33, rin]], 32, 296, 128), PM.shell));
+  // 窗两侧封边（弧段两端的切面要补，否则能看见薄壳）
+  for (const s of [-1, 1]) {
+    const [y, z] = penPolar(32 * s, rout - 0.45);
+    grp.add(penBox(19, 1.0, 0.9, PM.shell, grp, 42.5, y, z)).rotation.x = -penDeg(32 * s);
+  }
+  grp.add(new THREE.Mesh(penLathe([[52, rin], [52, rout], [104, rout], [106, rout - 0.55], [106, rin], [52, rin]], 96), PM.shell));
+  // 后端法兰：棘爪的固定根座
+  grp.add(new THREE.Mesh(penLathe([[26.2, 6.3], [26.2, 8.5], [31, 8.5], [31, 6.3], [26.2, 6.3]], 64), PM.shell));
+  // 防转键座：丝杠的扁位从这里穿过，只许直走不许转
+  grp.add(new THREE.Mesh(penLathe([[34, 3.1], [34, 8.45], [39, 8.45], [39, 3.1], [34, 3.1]], 64), PM.shell));
+  for (const s of [-1, 1]) penBox(4.4, 0.6, 1.8, PM.shell, grp, 36.5, s * 2.8, 0);
+  // 扭簧前支点：扭簧前端挂在这块凸耳上（固定在笔身，不跟任何轴转）
+  penBox(2, 1.6, 1.6, PM.shell2, grp, 73, 0, 7.8);
+  penBox(2, 1.6, 1.0, PM.shell2, grp, 73, 0, 9.05);
+  addPenPart('body', '笔身外壳（含剂量窗、棘爪座、防转键）', grp, PM.shell, { shell: true });
+}
+
+/* ---------- 棘爪：只许旋钮单向转，一齿一声咔哒 ---------- */
+const pawlPivot = new THREE.Group();
+pawlPivot.position.set(26, 0, 8.26);
+{
+  // 叶片从根座(x=26) 往前伸 8 mm，尖端落在棘轮齿谷里
+  pawlPivot.add(penBox(8, 0.9, 0.4, PM.tan, pawlPivot, -4, 0, 0));
+  pawlPivot.add(penBox(1.1, 0.9, 0.26, PM.tan, pawlPivot, -8.1, 0, 0.05));
+  addPenPart('pawl', '棘爪弹片', pawlPivot, PM.tan);
+}
+const pawl = penByKey.get('pawl');
+
+/* ---------- 剂量刻度套筒（印着 0 / 0.5 / 1.0，随旋钮转） ---------- */
+// 刻度数字用贴片平面：位置与朝向都是显式给的，不受圆柱 UV 方向影响
+function penNumberDecal(text, wmm = 7.4, hmm = 6.0) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 208;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 256, 208);
+  g.fillStyle = '#241d20';
+  g.font = '700 150px ui-monospace, Menlo, monospace';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 128, 108);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(wmm, hmm),
+    new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2 }));
+  m.userData.keepMat = true;
+  return m;
+}
+const SCALE_R = 9.22;
+const scaleAt = (obj, dose, r = SCALE_R, x = 41) => {
+  const a = penDeg(PEN.dialDegPerMg * dose);   // 刻度在“该剂量正对窗口”的位置上
+  obj.position.set(x, Math.sin(a) * r, Math.cos(a) * r);
+  obj.rotation.x = -a;
+  return obj;
+};
+{
+  const grp = new THREE.Group();
+  grp.add(new THREE.Mesh(penLathe([[26.6, 8.6], [26.6, 9.2], [52, 9.2], [52, 8.6], [26.6, 8.6]], 96), PM.plastic));
+  for (const [dose, label] of [[0, '0'], [0.5, '0.5'], [1.0, '1.0']]) {
+    grp.add(scaleAt(penNumberDecal(label), dose, SCALE_R + 0.02));
+  }
+  for (let k = 0; k <= 8; k++) {            // 分格线：一格 0.125 mg
+    const major = k % 4 === 0;
+    const tick = new THREE.Mesh(new THREE.BoxGeometry(major ? 4.6 : 2.8, major ? 0.7 : 0.5, 0.16), PM.ink);
+    tick.userData.keepMat = false;
+    scaleAt(tick, k * PEN.clickMg, SCALE_R, 47.2);
+    grp.add(tick);
+  }
+  // 扭簧后支点：这块筋跟着旋钮转，扭簧前端钩在笔身上，一上弦就扭起来
+  penBox(2, 1.0, 2.6, PM.plastic, grp, 53, 0, 7.9);
+  addPenPart('scale', '剂量刻度套筒', grp, PM.plastic);
+}
+
+/* ---------- 扭簧（上弦时按扭转量变形） ---------- */
+const springGeo = penRibbon(54, 72, 7.15, 1.6, 0.5, 12);
+const springRest = springGeo.attributes.position.array.slice();
+const springPart = addPenPart('spring', '扭簧', new THREE.Mesh(springGeo, PM.steel), PM.steel);
+
+/* ---------- 驱动套筒 + 驱动螺母 ---------- */
+{
+  const grp = new THREE.Group();
+  grp.add(new THREE.Mesh(penLathe([[56, 3.2], [56, 5.6], [88, 5.6], [88, 3.2], [56, 3.2]], 64), PM.plastic));
+  for (const x of [74, 84]) grp.add(new THREE.Mesh(penLathe([[x, 5.6], [x, 7.2], [x + 2, 7.2], [x + 2, 5.6], [x, 5.6]], 64), PM.plastic));
+  addPenPart('sleeve', '驱动套筒', grp, PM.plastic);
+}
+const nutGroup = new THREE.Group();
+{
+  // 螺母：内孔吃丝杠螺纹，外圈与套筒花键同转
+  nutGroup.add(new THREE.Mesh(penLathe([[76, 3.0], [76, 6.95], [84, 6.95], [84, 3.0], [76, 3.0]], 64), PM.grey));
+  for (let i = 0; i < 8; i++) {
+    const [y, z] = penPolar(i * 45, 7.02);
+    const rib = penBox(7, 0.9, 0.5, PM.grey, nutGroup, 80, y, z);
+    rib.rotation.x = -penDeg(i * 45);
+  }
+  addPenPart('nut', '驱动螺母', nutGroup, PM.grey);
+}
+
+/* ---------- 丝杠：扁位段被笔身键住，螺纹段吃在螺母里；只平移不自转 ---------- */
+const screwGroup = new THREE.Group();
+{
+  // 双扁位截面：上平 → 左弧 → 下平 → 右弧（扁位就被笔身的防转键咬住）
+  const R = 2.8, FLAT = 2.45, aTop = Math.asin(FLAT / R);
+  const shapePts = [[R * Math.cos(aTop), FLAT], [-R * Math.cos(aTop), FLAT]];
+  for (let i = 0; i <= 20; i++) {                        // 左半弧
+    const ang = Math.PI - aTop + (2 * aTop) * (i / 20);
+    shapePts.push([R * Math.cos(ang), R * Math.sin(ang)]);
+  }
+  shapePts.push([R * Math.cos(2 * Math.PI - aTop), -FLAT]);
+  for (let i = 0; i <= 20; i++) {                        // 右半弧
+    const ang = 2 * Math.PI - aTop + (2 * aTop) * (i / 20);
+    shapePts.push([R * Math.cos(ang), R * Math.sin(ang)]);
+  }  const shape = new THREE.Shape(shapePts.map(([x, y]) => new THREE.Vector2(x, y)));
+  screwGroup.add(new THREE.Mesh(penExtrudeX(shape, 30, 42), PM.steel));
+  // 螺纹段：芯杆 + 双头左旋螺纹（螺母反向转 → 丝杠前进）
+  const core = new THREE.CylinderGeometry(2.62, 2.62, 50, 24);
+  core.rotateZ(-Math.PI / 2);
+  const coreMesh = penMesh(core, PM.steel, screwGroup);
+  coreMesh.position.x = 67;
+  for (const ph of [0, Math.PI]) {
+    screwGroup.add(new THREE.Mesh(penHelix(42, 92, 2.78, 0.17, 50 / PEN.lead, 12, ph, true), PM.steel));
+  }
+  addPenPart('screw', '丝杠（推杆）', screwGroup, PM.steel);
+}
+
+/* ---------- 剂量旋钮（内侧就是棘轮齿） ---------- */
+const dialGroup = new THREE.Group();
+{
+  dialGroup.add(new THREE.Mesh(penLathe([[0, 8.9], [0, 9.4], [25.6, 9.4], [25.6, 8.9], [0, 8.9]], 96), PM.dial));
+  dialGroup.add(new THREE.Mesh(penLathe([[0, 5.6], [0, 9.4], [1.6, 9.4], [1.6, 5.6], [0, 5.6]], 64), PM.dial));
+  // 棘轮：齿谷在 0°（正对棘爪），16 齿 / 转
+  dialGroup.add(new THREE.Mesh(penRatchetRing(2, 25.6, 8.9, 8.6, 7.3, PEN.teeth, penDeg(-0.775 * (360 / PEN.teeth))), PM.dialRib));
+  // 前轮毂：插进刻度套筒的孔里，一起转
+  dialGroup.add(new THREE.Mesh(penLathe([[25.6, 7.6], [25.6, 8.4], [27.6, 8.4], [27.6, 7.6], [25.6, 7.6]], 64), PM.dial));
+  for (let i = 0; i < 24; i++) {         // 滚花
+    const [y, z] = penPolar(i * 15, 9.55);
+    const rib = penBox(21, 0.55, 0.42, PM.dialRib, dialGroup, 12.5, y, z);
+    rib.rotation.x = -penDeg(i * 15);
+  }
+  addPenPart('dial', '剂量旋钮（棘轮咔哒）', dialGroup, PM.dial);
+}
+
+/* ---------- 注射按钮 ---------- */
+const buttonGroup = new THREE.Group();
+{
+  buttonGroup.add(new THREE.Mesh(penLathe([[-4.5, 0], [-4.5, 4.6], [-3.4, 5.4], [5, 5.4], [5, 0]], 48), PM.button));
+  addPenPart('button', '注射按钮', buttonGroup, PM.button);
+}
+
+/* ---------- 药筒支架（透明，开四道窗看药） ---------- */
+{
+  const grp = new THREE.Group();
+  const prof = [[87, 6.2], [87, 7.0], [134, 7.0], [134, 6.2], [87, 6.2]];
+  for (let i = 0; i < 4; i++) grp.add(new THREE.Mesh(penArc(prof, i * 90 + 13, 64, 24), PM.clear));
+  grp.add(new THREE.Mesh(penLathe([[134, 7.0], [141, 4.45], [141, 3.85], [134, 6.2], [134, 7.0]], 64), PM.clear));
+  addPenPart('holder', '卡式瓶支架', grp, PM.clear, { shell: true });
+}
+
+/* ---------- 卡式瓶：玻璃管 + 铝盖 + 隔膜 ---------- */
+{
+  const grp = new THREE.Group();
+  grp.add(new THREE.Mesh(penLathe([[88.2, 4.75], [88.2, 5.8], [132, 5.8], [135.6, 3.0], [139.8, 3.0], [139.8, 2.0], [135.6, 2.0], [132, 4.75], [88.2, 4.75]], 72), PM.glass));
+  const crimp = new THREE.Mesh(penLathe([[137.0, 2.62], [137.0, 3.5], [140.9, 3.5], [140.9, 2.72], [140.2, 2.72], [140.2, 3.02], [137.0, 3.02], [137.0, 2.62]], 64), PM.alu);
+  grp.add(crimp);
+  const septum = new THREE.Mesh(penLathe([[139.6, 0], [139.6, 2.7], [141.15, 2.7], [141.15, 0]], 48), PM.sep);
+  septum.userData.sub = 'septum';
+  grp.add(septum);
+  addPenPart('cartridge', '卡式瓶（玻璃 + 铝盖 + 隔膜）', grp, PM.glass, { shell: true });
+}
+
+/* ---------- 药液：柱体随活塞缩短，瓶颈里的药液不缩 ---------- */
+const drugMove = new THREE.Group();
+{
+  const grp = new THREE.Group();
+  const col = new THREE.CylinderGeometry(4.72, 4.72, PEN.drugLen, 40);
+  col.rotateZ(-Math.PI / 2);
+  col.translate(PEN.drugLen / 2, 0, 0);   // 平移烘进几何，scale.x 才不会把位置也缩掉
+  drugMove.add(penMesh(col, PM.drug, drugMove));
+  drugMove.position.x = PEN.bung0 + PEN.bungL; // 98
+  grp.add(drugMove);
+  const neck = new THREE.CylinderGeometry(1.9, 1.9, 12.4, 28);
+  neck.rotateZ(-Math.PI / 2);
+  const neckMesh = penMesh(neck, PM.drug, grp);
+  neckMesh.position.x = 133.6;
+  addPenPart('drug', '药液', grp, PM.drug);
+}
+
+/* ---------- 活塞 ---------- */
+const bungGroup = new THREE.Group();
+{
+  // 几何从 0 起算，位置由 applyMotion 给（92 + 行程）
+  bungGroup.add(new THREE.Mesh(penLathe([
+    [0, 0], [0, 4.6], [0.8, 4.68], [1.6, 4.68], [2.2, 4.45], [3.0, 4.45],
+    [3.8, 4.68], [4.6, 4.68], [5.4, 4.45], [6, 4.45], [6, 0],
+  ], 48), PM.rubber));
+  bungGroup.position.x = PEN.bung0;
+  addPenPart('bung', '活塞', bungGroup, PM.rubber);
+}
+
+/* ---------- 螺纹针座 ---------- */
+{
+  const grp = new THREE.Group();
+  grp.add(new THREE.Mesh(penLathe([[141.0, 2.8], [141.0, 4.4], [146.6, 4.4], [146.6, 2.8], [141.0, 2.8]], 64), PM.alu));
+  grp.add(new THREE.Mesh(penHelix(141.5, 146.2, 4.32, 0.3, 4, 20), PM.alu));
+  addPenPart('hub', '螺纹针座', grp, PM.alu);
+}
+
+/* ---------- 一次性针头：塑料座 + 一根套管针 ---------- */
+const needleGroup = new THREE.Group();
+{
+  needleGroup.add(new THREE.Mesh(penLathe([
+    [145.6, 4.72], [145.6, 5.0], [152.0, 5.0], [152.9, 3.2], [152.9, 0.95], [152.0, 0.95], [152.0, 4.72], [145.6, 4.72],
+  ], 64), PM.plastic));
+  for (let i = 0; i < 8; i++) {      // 拧针时的滚花
+    const [y, z] = penPolar(i * 45, 4.99);
+    const rib = penBox(6, 0.45, 0.3, PM.plastic, needleGroup, 149, y, z);
+    rib.rotation.x = -penDeg(i * 45);
+  }
+  const cannula = new THREE.CylinderGeometry(0.36, 0.36, 17.4, 12);
+  cannula.rotateZ(-Math.PI / 2);
+  const cm = penMesh(cannula, PM.needle, needleGroup);
+  cm.position.x = 147.9;   // 139.2 … 156.6
+  const tip = new THREE.ConeGeometry(0.36, 0.9, 12);
+  tip.rotateZ(-Math.PI / 2);
+  const tm = penMesh(tip, PM.needle, needleGroup);
+  tm.position.x = 156.95;  // 针尖 157.4
+  addPenPart('needle', '一次性针头', needleGroup, PM.plastic);
+}
+
+/* ---------- 内帽（内针护套） ---------- */
+const capInnerGroup = new THREE.Group();
+{
+  capInnerGroup.add(new THREE.Mesh(penLathe([
+    [142.8, 5.4], [142.8, 6.6], [159.0, 6.6], [161.0, 5.2], [161.0, 0], [159.0, 0], [159.0, 5.4], [142.8, 5.4],
+  ], 64), PM.shell2));
+  addPenPart('capInner', '内帽', capInnerGroup, PM.shell2, { shell: true });
+}
+
+/* ---------- 外帽（杯状 + 笔夹） ---------- */
+const capOuterGroup = new THREE.Group();
+{
+  capOuterGroup.add(new THREE.Mesh(penLathe([
+    [104, 9.9], [104, 11.5], [147, 11.5], [152.5, 10.9], [158, 9.2], [163, 4.6], [165.5, 0],
+    [164.6, 0], [162.2, 3.4], [157.2, 7.8], [151.8, 9.5], [147, 9.9], [104, 9.9],
+  ], 72), PM.cap));
+  penBox(42, 1.7, 5.4, PM.cap, capOuterGroup, 126, 11.9, 0);
+  penBox(6, 6.4, 3.2, PM.cap, capOuterGroup, 104.5, 9.6, 0);
+  addPenPart('capOuter', '外帽', capOuterGroup, PM.cap, { shell: true });
+}
+
+/* ---------- 装配台地面阴影（场景件，不注册） ---------- */
+{
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(64, 64, 4, 64, 64, 64);
+  g.addColorStop(0, 'rgba(70,58,40,.34)'); g.addColorStop(.55, 'rgba(70,58,40,.13)'); g.addColorStop(1, 'rgba(70,58,40,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  const sh = new THREE.Mesh(new THREE.PlaneGeometry(240, 46),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  sh.rotation.x = -Math.PI / 2;
+  sh.position.set(85, -9.6, 0);
+  penWorld.add(sh);
+}
+
+/* ============================ 运动 ============================ */
+const penSmooth = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+const penStroke = (state) => PEN.strokePerMg * (state.delivered || 0);
+const penWindAngle = (state) => penDeg(PEN.dialDegPerMg) * (state.windMg || 0);
+
+function penSpringGeom(dialAngle) {
+  // 后端跟旋钮转、前端挂在笔身上：按扭转量做线性插值的扭转
+  const pos = springGeo.attributes.position;
+  const x0 = 54, x1 = 72;
+  for (let i = 0; i < pos.count; i++) {
+    const j = i * 3;
+    const bx = springRest[j], by = springRest[j + 1], bz = springRest[j + 2];
+    const u = (x1 - bx) / (x1 - x0);          // 1 = 后端（旋钮侧）
+    const a = dialAngle * u, c = Math.cos(a), s = Math.sin(a);
+    pos.setXYZ(i, bx, c * by + s * bz, -s * by + c * bz);
+  }
+  pos.needsUpdate = true;
+  springGeo.computeVertexNormals();
+}
+
+function applyMotion(view, state) {
+  const s = state || {};
+  const installed = (k) => (s.placed || []).includes(k);
+  const wind = s.windMg || 0;
+  const delivered = s.delivered || 0;
+  const dialA = penWindAngle(s);
+  const nutA = -penDeg(PEN.dialDegPerMg) * delivered;   // 螺母与旋钮回零同向转
+  const stroke = penStroke(s);
+
+  // 旋钮、刻度套筒、螺母、套筒：同一组角度，读数与几何同源
+  dialGroup.rotation.x = dialA;
+  penByKey.get('scale').obj.rotation.x = dialA;
+  nutGroup.rotation.x = nutA;
+  penByKey.get('sleeve').obj.rotation.x = nutA;
+
+  // 丝杠只平移（被笔身防转键挡住不能转）
+  screwGroup.position.x = stroke;
+  bungGroup.position.x = PEN.bung0 + stroke;
+  drugMove.position.x = PEN.bung0 + PEN.bungL + stroke;
+  drugMove.scale.x = Math.max(0.02, (PEN.drugLen - stroke) / PEN.drugLen);
+
+  // 扭簧：上弦扭转，按下按钮释放后回到零
+  penSpringGeom(dialA);
+
+  // 棘爪：拨一格抬一次（按齿距相位算），按下按钮则被离合片顶开
+  const press = penSmooth(s.press || 0);
+  const phase = Math.abs(dialA) / penDeg(360 / PEN.teeth);
+  const clickLift = Math.sin(Math.PI * (phase % 1)) * 1.34;
+  const lift = Math.max(clickLift, press * 1.34);
+  pawl.obj.rotation.y = -Math.asin(Math.min(0.99, lift / 8));
+
+  // 按钮：按入 1.8 mm
+  buttonGroup.position.x = 1.8 * press;
+
+  // 帽与针：拆下就沿轴滑出并隐藏（不是"冻住"）
+  if (installed('caps')) {
+    const co = s.capOuter == null ? 1 : s.capOuter;
+    const ci = s.capInner == null ? 1 : s.capInner;
+    capOuterGroup.position.x = (1 - co) * 46;
+    capInnerGroup.position.x = (1 - ci) * 40;
+    capOuterGroup.visible = co > 0.02;
+    capInnerGroup.visible = ci > 0.02;
+  }
+  if (installed('needle')) {
+    const nv = s.needle == null ? 0 : s.needle;
+    needleGroup.position.x = (1 - nv) * 26;
+    needleGroup.visible = nv > 0.02;
+  }
+}
+
+/* ============================ 包围盒 ============================ */
+function moduleBounds(keys) {
+  const b = new THREE.Box3();
+  for (const k of keys) {
+    const p = penByKey.get(k);
+    if (p) b.union(new THREE.Box3().setFromObject(p.g));
+  }
+  return b;
+}
+const MODEL = {
+  world: penWorld,
+  byKey: penByKey,
+  PARTS: penParts,
+  moduleBounds,
+  applyMotion,
+  PEN,
+  strokeOf: (mg) => PEN.strokePerMg * mg,
+};
+
+/* ==== injection-pen/manifest.mjs ==== */
+/* 注射笔 · 插槽填充（纯数据 + 少量回调）
+ * 机构依据：一次性预充式注射笔（替尔泊肽 / KwikPen 类，一次性卡式瓶不可更换）。
+ * 尺寸与简化项见 notes.md。
+ */
+const MANIFEST = {
+  slug: 'injection-pen',
+  brand: {
+    title: '注射笔装配实验室',
+    subtitle: '一次性预充笔 · 17 件零件 / 12 模块 · 3 关',
+    mark: { a: '#a02b4e', b: '#f0dade' },
+  },
+
+  chapters: [
+    {
+      title: '先装药：卡式瓶与活塞',
+      subtitle: '药液封在玻璃卡式瓶里，前端被隔膜堵住，后端只有活塞能动。',
+      badge: '药筒观察员',
+      exp: '剖开，看药液与活塞',
+      expText: '剖开笔身：玻璃卡式瓶、里面的药液、尾部那块黑色橡胶活塞。药液前端被隔膜封住，后端只有活塞能动。',
+      q: '药液是被什么推向针头的？',
+      options: ['活塞被丝杠顶着往前推', '药液自己会往外流', '靠重力往下滴'],
+      a: 0,
+      why: '卡式瓶两头一封：前端是铝盖压住的橡胶隔膜，后端是活塞。丝杠把活塞往隔膜顶，药液只能经针头出去——活塞每前进 2.82 mm，正好 0.2 mL（1.0 mg）。',
+    },
+    {
+      title: '把旋转变成直推',
+      subtitle: '旋钮转半圈 → 扭簧上弦 → 螺母转 → 丝杠前进 2.82 mm。',
+      badge: '传动解码员',
+      exp: '拨 8 格（1.0 mg），盯住丝杠',
+      expText: '一格 22.5°，八格正好半圈。旋钮转了、刻度窗跳出 1.0、扭簧上弦——但丝杠和活塞一点没动。',
+      q: '拨完剂量、还没按按钮，活塞前进了吗？',
+      options: ['前进了 2.82 mm', '没动：剂量先存在扭簧里', '前进了 1.41 mm'],
+      a: 1,
+      why: '拨剂量只是把扭簧上弦、把旋钮转到刻度上；螺母被棘爪挡着不转，丝杠也就不会走。按下按钮才松闸，扭簧带着螺母转半圈，丝杠前进 2.82 mm。',
+    },
+    {
+      title: '合笔、上帽、装针',
+      subtitle: '笔身把丝杠键住只许直走；拔帽、装针、按到底，药才出去。',
+      badge: '注射流程师',
+      exp: '拔帽 · 拔内帽 · 装针 · 注射',
+      expText: '按顺序做：拔外帽、拔内帽、把针头拧到针座上、拨 1.0 mg 后按下注射按钮。盯着活塞和剩余药量。',
+      q: '按下按钮后，是什么让丝杠前进的？',
+      options: ['手指直接推丝杠', '扭簧释放，螺母转，丝杠被笔身键住只能直走', '电机带动'],
+      a: 1,
+      why: '按钮只是松闸：棘爪脱开，扭簧把套筒和螺母带着转半圈；丝杠被笔身的防转键卡住不能自转，螺纹只能把它变成 2.82 mm 的直线行程。',
+    },
+  ],
+
+  stage: {
+    title: '装一支只会往前推的笔',
+    hint: '选一块模块，把它放到笔身上它该在的位置。',
+  },
+
+  readout: [
+    { key: 'dose', label: '剂量设定', big: true },
+    { key: 'stroke', label: '活塞行程' },
+    { key: 'left', label: '剩余药量' },
+    { key: 'clicks', label: '棘轮咔哒' },
+  ],
+
+  tray: { title: '第一盒 · 药与活塞', hint: '点选模块，再拖到笔身上' },
+
+  modules: [
+    {
+      id: 'cart', chapter: 0, name: '药筒组件', parts: ['holder', 'cartridge', 'drug'], color: '#9dbcc6', icon: 'disc',
+      sub: '3 件预装',
+      tip: '把装好药液的玻璃卡式瓶推进透明支架，瓶颈朝笔头。',
+      learn: '卡式瓶是一次性密封件：玻璃管里装着 2 mL 药液（5 mg/mL），前端铝盖压住橡胶隔膜，后端由活塞密封。支架只负责抱住它，不参与密封。',
+    },
+    {
+      id: 'bung', chapter: 0, name: '活塞', parts: ['bung'], color: '#4d4d57', icon: 'piston',
+      tip: '把活塞从卡式瓶尾部塞进玻璃管内壁，两道密封筋朝上。',
+      learn: '活塞是药液唯一的活动边界。它向前走多少，药液就被挤出多少——Ø9.5 的管内径下，每 2.82 mm 正好是 0.2 mL（1.0 mg）。',
+    },
+    {
+      id: 'hub', chapter: 0, name: '螺纹针座', parts: ['hub'], color: '#aab3b8', icon: 'screw',
+      tip: '把针座旋到支架前端，螺纹段朝外，中心孔对着隔膜。',
+      learn: '针座外圆是 4 圈螺纹，针头就拧在这上面。它的中心孔正对橡胶隔膜：针头拧到底时，针管才能穿过隔膜进到药液里。',
+    },
+    {
+      id: 'scale', chapter: 1, name: '剂量刻度套筒', parts: ['scale'], color: '#e5dad6', icon: 'disc',
+      tip: '把印着 0 / 0.5 / 1.0 的套筒塞进笔身，字正好落在剂量窗后面。',
+      learn: '刻度套筒和旋钮是同一根轴上的一体件：旋钮转多少，窗口里的数字就转过多少。数字之间还有 8 根分格线——一格就是一声咔哒。',
+    },
+    {
+      id: 'spring', chapter: 1, name: '扭簧', parts: ['spring'], color: '#c6ced2', icon: 'coil',
+      tip: '把钢带扭簧套到驱动套筒外，后端钩在刻度套筒、前端挂在笔身凸耳上。',
+      learn: '拨剂量时旋钮把扭簧拧紧，弹性能先存着；按下按钮松闸，扭簧把套筒和螺母一起带着转。药不是被手指推出去的，是这股储能转出来的。',
+    },
+    {
+      id: 'drive', chapter: 1, name: '驱动套筒与螺母', parts: ['sleeve', 'nut'], color: '#8f9a9e', icon: 'screw',
+      sub: '2 件预装',
+      tip: '把套筒推进笔身，让螺母的内螺纹对准丝杠中心。',
+      learn: '螺母只能转、不能前后走（被套筒两侧的凸缘夹住）。它一转，吃在里面的丝杠就只能沿轴向走——这就是"旋转变直推"的那一步。',
+    },
+    {
+      id: 'screw', chapter: 1, name: '丝杠（推杆）', parts: ['screw'], color: '#cfd6da', icon: 'shaft',
+      tip: '把丝杠的扁位段穿进笔身的防转键座，螺纹段吃进螺母。',
+      learn: '丝杠是双头螺纹，导程 5.64 mm。它的尾部有两道扁位，被笔身上的防转键咬住，所以它永远不会自转——只能被螺母推着直线前进。',
+    },
+    {
+      id: 'dial', chapter: 1, name: '剂量旋钮', parts: ['dial'], color: '#a02b4e', icon: 'gear',
+      tip: '把旋钮套到笔身后端，内侧的棘轮齿对准棘爪。',
+      learn: '旋钮内侧有 16 个单向棘齿，配一只弹片棘爪：每转过一格（22.5°）棘爪跳一次齿，你听到的就是那声"咔哒"。棘爪只许它往拨剂量的方向转，回不了头。',
+    },
+    {
+      id: 'button', chapter: 2, name: '注射按钮', parts: ['button'], color: '#6e1a33', icon: 'bolt',
+      tip: '把按钮从旋钮后端推进去，按面朝外，行程 1.8 mm。',
+      learn: '按钮自己不推药：它是一道闸。按下去棘爪被顶开，扭簧才有机会释放。没拨剂量时按钮是压不动的——旋钮不到 1.0，闸就是空的。',
+    },
+    {
+      id: 'body', chapter: 2, name: '笔身与棘爪', parts: ['body', 'pawl'], color: '#f7e9ec', icon: 'housing',
+      sub: '2 件预装',
+      tip: '把笔身两端口对准，棘爪弹片朝里，剂量窗朝上。',
+      learn: '笔身干三件事：托住刻度套筒、用防转键咬住丝杠的扁位、用棘爪给旋钮定格。剖开看，剂量窗后面就是转动的刻度套筒。',
+    },
+    {
+      id: 'needle', chapter: 2, name: '一次性针头', parts: ['needle'], color: '#dfe4e7', icon: 'pin',
+      tip: '把针头拧到针座螺纹上，拧到底时针管刚好穿过隔膜。',
+      learn: '针头是一次性耗材：塑料座内螺纹咬住针座的 4 圈螺纹，一根 32G 套管针穿过隔膜伸进药液。用完连同针头一起丢，卡式瓶不能换。',
+    },
+    {
+      id: 'caps', chapter: 2, name: '外帽与内帽', parts: ['capOuter', 'capInner'], color: '#8d2545', icon: 'shell',
+      sub: '2 件预装',
+      tip: '先套内帽护住针头，再扣外帽。取用时顺序相反：先外后内。',
+      learn: '外帽是杯状硬壳，内帽是一层薄护套。两层都拔掉才能碰到针座；装针前必须先拔帽，否则针座被内帽整个罩住。',
+    },
+  ],
+
+  experiments: [
+    { id: 'dose', label: '拨剂量（一格 0.125 mg）', control: 'slider', min: 0, max: 8, step: 1, value: 0, unit: ' 格' },
+    { id: 'inject', label: '按注射按钮', control: 'button' },
+  ],
+
+  notes: [
+    '1 unit = 1 mm。含外帽总长 170 mm、笔身 Ø20.8、旋钮 Ø19、卡式瓶 Ø11.6（内径 Ø9.5，壁 1.05）：与公开的预充式注射笔尺度同一量级。除标准件（32G 针管、M 级螺纹）外，内部布置为教学估算。',
+    '<b>三条传动链是一条：</b>旋钮（棘轮 16 齿，一格 22.5° = 0.125 mg）→ 扭簧上弦 → 按下按钮松闸 → 套筒与螺母转（180°/mg）→ 丝杠被笔身防转键咬住，只能沿 x 直线走（双头螺纹导程 5.64 mm）→ 活塞 2.82 mm/mg。剂量、行程、剩余药量三个读数都取自同一个 <code>delivered</code> / <code>windMg</code> 状态量。',
+    '<b>为什么拨剂量时活塞不动：</b>拨剂量只是把扭簧拧紧、把旋钮转到刻度上；螺母被棘轮挡着不转，丝杠自然不动。按下按钮才松闸。这是这支笔最容易讲错的一环——所以第 2 关的实验专门让人盯着丝杠看。',
+    '剖开看：外壳类零件（笔身、支架、卡式瓶、内外帽）在剖开模式下换成半透明，机构保持实体；针座与针头有局部放大窗。',
+  ],
+
+  scene: {
+    bench: { y: -15, color: 0xe8e4da, size: 1200 },
+    spawnFor: (id, info) => [0, 32 + (info.size.y > 16 ? 4 : 0), -4],
+    camera: { fov: 30, near: 1, far: 3000, defaultFocus: 'all' },
+    orbit: { minDistance: 60, maxDistance: 1800, minPolar: 0.05, maxPolar: 0.55 },
+    renderer: { exposure: 1.0, pixelRatio: 1.5 },
+    env: 0.55,
+    lights: {
+      hemi: [0xffffff, 0xcbc2b6, 1.1],
+      key: { color: 0xfff4e8, intensity: 2.4, pos: [-100, 190, 170] },
+      rim: { color: 0xcfe0f0, intensity: 1.0, pos: [130, 110, -160] },
+    },
+    cut: { normal: [0, 0, -1], constant: 0 },
+    focus: {
+      all: { dir: [56, 20], fit: 1.02, box: () => [[85, 0, 0], [196, 34, 34]] },
+      rear: { dir: [62, 26], fit: 1.1, box: () => [[16, 0, 0], [54, 30, 30]] },
+      drive: { dir: [62, 24], fit: 1.05, box: () => [[68, 0, 0], [48, 26, 26]] },
+      cart: { dir: [62, 22], fit: 1.05, box: () => [[112, 0, 0], [58, 24, 24]] },
+      tip: { dir: [62, 24], fit: 1.1, box: () => [[148, 0, 0], [32, 22, 22]] },
+    },
+    inset: {
+      fov: 30,
+      visible: (s) => s.phase !== 'build' && (s.capOuter || 0) < 0.5 && (s.capInner || 0) < 0.5
+        && (s.needle || 0) > 0.6 && (s.placed || []).includes('needle'),
+      target: () => ({
+        part: 'needle',
+        local: [149, 0, 0],
+        offset: [11, 9, 20],
+        title: '针座螺纹 · 针头 · 隔膜',
+      }),
+    },
+  },
+};
+
+/* ==== injection-pen/logic.mjs ==== */
+/* 注射笔 · 装配与实验逻辑（纯逻辑，无 DOM、无三维）
+ * 每步先校验、再改状态；失败不动已装件与已拨剂量。
+ * 剂量 / 行程 / 剩余药量都出自这里的 windMg、delivered 两个状态量，model.mjs 的几何也只读这两个量。
+ */
+const PEN_MODS = MANIFEST.modules;
+const PEN_CH = MANIFEST.chapters;
+const PEN_CLICKS_PER_MG = Math.round(1 / PEN.clickMg);   // 8 格 = 1.0 mg
+function createGame() {
+  const TOTAL = PEN.totalMg;
+  const DIAL_RATE = 2.6;      // mg/s：拨剂量动画（8 格约 0.4 s）
+  const INJECT_RATE = 0.55;   // mg/s：注射动画（1.0 mg 约 1.8 s）
+  const MOVE_RATE = 5;        // 帽 / 针的滑动速度（每秒完成比例）
+
+  const initial = () => ({
+    chapter: 0, phase: 'build', placed: [], selected: null,
+    completed: [false, false, false],
+    capOuterT: 1, capOuter: 1, capInnerT: 1, capInner: 1,
+    needleT: 1, needle: 1,
+    pressT: 0, press: 0,
+    targetMg: 0, windMg: 0, delivered: 0, pending: 0,
+    expStep: 0, lastKind: '',
+  });
+  const state = initial();
+
+  const fail = (message) => ({ ok: false, message });
+  const mod = (id) => PEN_MODS.find((m) => m.id === id);
+  const has = (id) => state.placed.includes(id);
+  const capsOff = () => state.capOuter < 0.05 && state.capInner < 0.05;
+  const slack = () => TOTAL - state.delivered - state.windMg;
+
+  function current() {
+    if (state.phase !== 'build') return null;
+    return PEN_MODS.find((m) => m.chapter === state.chapter && !has(m.id)) || null;
+  }
+  function select(id) {
+    if (state.phase !== 'build') return fail(state.phase === 'lab' ? '自由实验室里不重装零件，想从头来请点「重新开始」。' : '先完成本章的实验与挑战，再继续装配。');
+    const m = mod(id);
+    if (!m) return fail('没有这块模块，请从零件盒选择。');
+    if (has(id)) return fail(m.name + ' 已经装好了。');
+    if (m.chapter !== state.chapter) return fail('这一步还轮不到' + m.name + '——先完成当前这一关。');
+    state.selected = id;
+    return { ok: true, message: m.tip };
+  }
+  function place(onTarget = true) {
+    if (state.phase !== 'build') return fail('本章装配已完成，请做实验与挑战。');
+    if (!state.selected) return fail('先从零件盒选一块模块。');
+    if (onTarget !== true) return fail('还没对准位置——拖到笔身上的高亮轮廓里再松手。');
+    const m = current();
+    if (!m) return fail('本章已经装完了。');
+    if (state.selected !== m.id) return fail('这一步需要「' + m.name + '」，顺序不能乱。');
+    state.placed.push(m.id);
+    state.selected = null;
+    if (m.id === 'caps') { state.capOuterT = 1; state.capInnerT = 1; }
+    if (m.id === 'needle') { state.needleT = 1; }
+    if (!PEN_MODS.some((x) => x.chapter === state.chapter && !has(x.id))) state.phase = 'experiment';
+    return { ok: true, message: m.name + ' 已归位。', learn: m.learn, kind: 'placed' };
+  }
+  function undo() {
+    if (state.phase === 'lab') return fail('自由实验室不撤回；想重装请点「重新开始」。');
+    const last = state.placed.at(-1), m = mod(last);
+    if (!m || m.chapter !== state.chapter) return fail('本章还没有可撤回的模块。');
+    state.placed.pop(); state.phase = 'build'; state.selected = null;
+    state.completed[state.chapter] = false; state.expStep = 0;
+    if (m.id === 'dial' || m.id === 'spring') { state.targetMg = 0; state.windMg = 0; }
+    if (m.id === 'screw' || m.id === 'bung') { state.delivered = 0; state.pending = 0; }
+    if (m.id === 'caps') { state.capOuterT = 1; state.capInnerT = 1; }
+    if (m.id === 'needle') { state.needleT = 0; }
+    return { ok: true, message: '已撤回 ' + m.name + '，可以重新装配。', kind: 'undo' };
+  }
+  function experiment() {
+    if (state.phase !== 'experiment') return fail('先把本章模块全部装好，再做实验。');
+    state.phase = 'quiz';
+    return { ok: true, message: PEN_CH[state.chapter].expText || '', kind: 'experiment' };
+  }
+  function answer(i) {
+    if (state.phase !== 'quiz') return fail('先亲手完成本章实验，再回答问题。');
+    const c = PEN_CH[state.chapter];
+    if (!Number.isInteger(i) || i < 0 || i >= c.options.length) return fail('请选择一个有效答案。');
+    if (i !== c.a) return { ok: false, message: '再观察一下。' + c.why, learn: c.why, kind: 'wrong' };
+    state.completed[state.chapter] = true; state.phase = 'checkpoint';
+    return { ok: true, message: '答对了！获得「' + c.badge + '」。', learn: c.why, kind: 'correct' };
+  }
+  function next() {
+    if (state.phase !== 'checkpoint' || !state.completed[state.chapter]) return fail('先完成本章的实验与挑战。');
+    if (state.chapter < PEN_CH.length - 1) {
+      state.chapter++; state.phase = 'build'; state.expStep = 0;
+      return { ok: true, message: PEN_CH[state.chapter].subtitle, kind: 'chapter' };
+    }
+    state.phase = 'lab';
+    return { ok: true, message: '装配完成！拔帽、装针、拨剂量、按到底——随便试。', kind: 'complete' };
+  }
+
+  /* ---------------- 剂量 ---------------- */
+  function dialTo(mg) {
+    if (state.phase === 'build' || state.phase === 'checkpoint') return fail('先装完这一段，再拨剂量。');
+    if (!has('dial')) return fail('剂量旋钮还没装，拨不动。');
+    if (state.pending > 0) return fail('正在注射——等它打完再拨。');
+    const want = Math.max(0, Math.min(1, Math.round(Number(mg) / PEN.clickMg) * PEN.clickMg));
+    if (want > slack() + 1e-6) return fail('药不够了：这支笔只剩 ' + (TOTAL - state.delivered).toFixed(2) + ' mg。');
+    state.targetMg = want;
+    state.expStep = Math.max(state.expStep, want > 0.001 ? 1 : 0);
+    const clicks = Math.round(want / PEN.clickMg);
+    return {
+      ok: true,
+      kind: 'dose',
+      message: want < 0.001
+        ? '旋钮回到 0：扭簧松了，按钮压不动。'
+        : '旋钮转过 ' + clicks + ' 格（' + (clicks * 22.5).toFixed(1) + '°），棘爪咔哒 ' + clicks + ' 声，扭簧上弦；丝杠和活塞没有动。',
+    };
+  }
+  function clickOne() {
+    const next = Math.round((state.targetMg + PEN.clickMg) / PEN.clickMg) * PEN.clickMg;
+    return dialTo(next > 1.0001 ? PEN.clickMg : next);
+  }
+  function inject() {
+    if (state.phase !== 'lab' && !(state.phase === 'experiment' && state.chapter === 2))
+      return fail('先装完这一段，再按注射按钮。');
+    if (!has('dial') || !has('button')) return fail('按钮或旋钮还没装好。');
+    if (state.pending > 0) return fail('正在注射——等它打完。');
+    if (state.capOuter > 0.05 || state.capOuterT > 0.5) return fail('外帽还盖着——先拔掉外帽。');
+    if (has('caps') && (state.capInner > 0.05 || state.capInnerT > 0.5)) return fail('内帽还罩着针头——先拔掉内帽。');
+    if (has('needle') && (state.needle < 0.5 || state.needleT < 0.5)) return fail('还没装针头，药出不去。');
+    if (state.windMg < PEN.clickMg / 2) return fail('旋钮在 0：按钮是锁死的，先拨剂量。');
+    state.pending = state.windMg;
+    state.pressT = 1;
+    return {
+      ok: true, kind: 'inject',
+      message: '按下按钮：棘爪被顶开，扭簧释放——螺母转，丝杠前进 ' + (PEN.strokePerMg * state.windMg).toFixed(2) + ' mm，药经针头出去。',
+    };
+  }
+
+  /* ---------------- 帽 / 针 ---------------- */
+  function uncapOuter() {
+    if (!has('caps')) return fail('外帽还没装上。');
+    if (state.pending > 0) return fail('正在注射——先等它打完。');
+    if (state.capOuterT < 0.5) return fail('外帽已经拔掉了。');
+    state.capOuterT = 0;
+    return { ok: true, kind: 'uncap', message: '外帽（杯状硬壳）已取下，露出内帽。' };
+  }
+  function uncapInner() {
+    if (!has('caps')) return fail('内帽还没装上。');
+    if (state.pending > 0) return fail('正在注射——先等它打完。');
+    if (state.capOuterT > 0.5) return fail('外帽还套着——先把外帽拔掉。');
+    if (state.capInnerT < 0.5) return fail('内帽已经拔掉了。');
+    state.capInnerT = 0;
+    return { ok: true, kind: 'uncap', message: '内帽（护住针座的薄护套）已取下，针座和针头露出来了。' };
+  }
+  function mountNeedle() {
+    if (!has('needle')) return fail('针头还没装上。');
+    if (state.pending > 0) return fail('正在注射——先等它打完。');
+    if (state.capInnerT > 0.5) return fail('内帽还罩着针座——先拔内帽，针头才拧得进去。');
+    if (state.needleT > 0.5) return fail('针头已经拧在针座上了。');
+    state.needleT = 1;
+    return { ok: true, kind: 'needle', message: '针头拧到针座螺纹上，拧到底时针管穿过隔膜进到药液里。' };
+  }
+  function unmountNeedle() {
+    if (!has('needle')) return fail('针头还没装上。');
+    if (state.pending > 0) return fail('正在注射——先等它打完。');
+    if (state.needleT < 0.5) return fail('针头已经取下了。');
+    state.needleT = 0;
+    return { ok: true, kind: 'needle', message: '针头拧下来（一次性耗材，用完就丢）——卡式瓶不能换，但药还剩 ' + (TOTAL - state.delivered).toFixed(2) + ' mg。' };
+  }
+
+  /* ---------------- 每帧 ---------------- */
+  function update(dt) {
+    const h = Math.max(0, Math.min(0.1, dt || 0));
+    // 帽 / 针滑动
+    const step = (cur, want) => {
+      const d = want - cur, m = MOVE_RATE * h;
+      return Math.abs(d) <= m ? want : cur + Math.sign(d) * m;
+    };
+    state.capOuter = step(state.capOuter, state.capOuterT);
+    state.capInner = step(state.capInner, state.capInnerT);
+    state.needle = step(state.needle, state.needleT);
+    // 按钮：按下 0.12 s，松手 0.2 s
+    state.press += ((state.pressT ? 1 : 0) - state.press) * Math.min(1, h * (state.pressT ? 14 : 8));
+    // 注射：pending 就是"这一针要打掉的剂量"，windMg 与 delivered 同步反向变化
+    if (state.pending > 0.0005) {
+      const d = Math.min(state.pending, INJECT_RATE * h);
+      state.pending -= d;
+      state.windMg = Math.max(0, state.windMg - d);
+      state.delivered = Math.min(TOTAL, state.delivered + d);
+      state.targetMg = Math.max(0, state.targetMg - d);
+      if (state.pending <= 0.0005) {
+        state.pending = 0; state.windMg = 0; state.targetMg = 0; state.pressT = 0;
+        state.lastKind = 'done';
+      }
+    } else {
+      // 拨剂量：旋钮追目标，几何与读数同步走
+      const d = state.targetMg - state.windMg, m = DIAL_RATE * h;
+      state.windMg = Math.abs(d) <= m ? state.targetMg : state.windMg + Math.sign(d) * m;
+    }
+  }
+
+  function reset() {
+    Object.assign(state, initial());
+    state.needle = 0; state.needleT = 0; state.capOuter = 0; state.capInner = 0;
+    state.capOuterT = 1; state.capInnerT = 1;
+    return { ok: true, kind: 'restart', message: '新的装配开始了——先把药筒组件放进笔身。' };
+  }
+  function demo() {
+    Object.assign(state, initial());
+    state.placed = PEN_MODS.map((m) => m.id);
+    state.completed = [true, true, true];
+    state.chapter = PEN_CH.length - 1;
+    state.phase = 'lab';
+    state.capOuter = 1; state.capOuterT = 1;
+    state.capInner = 1; state.capInnerT = 1;
+    state.needle = 1; state.needleT = 1;
+    return { ok: true, kind: 'demo', message: '整支笔装好了（帽还盖着）：先拔外帽、再拔内帽，然后拨剂量、按按钮。' };
+  }
+
+  return {
+    state, current, select, place, undo, experiment, answer, next,
+    dialTo, clickOne, inject, uncapOuter, uncapInner, mountNeedle, unmountNeedle,
+    update, reset, demo,
+    capsOff, slack, total: TOTAL,
+  };
+}
+
+/* ==== injection-pen/main.mjs ==== */
+/* 注射笔 · 接线（规则在 logic.mjs，几何在 model.mjs，文案在 manifest.mjs） */
+const game = createGame();
+const state = game.state;
+const CH = MANIFEST.chapters;
+const MODS = MANIFEST.modules;
+const $ = (s) => document.querySelector(s);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const lab = mountLab(MANIFEST);
+const stage = createStage({
+  host: document.getElementById('viewport'),
+  stageEl: document.getElementById('stage'),
+  world: MODEL.world,
+  modules: MODS,
+  model: MODEL,
+  config: MANIFEST.scene,
+  getState: () => state,
+  nextModule: () => game.current(),
+  canDrag: () => state.phase === 'build' && !!state.selected,
+  targetAlways: () => true,
+  onDrop: (id, onTarget) => act('place', onTarget),
+  onPickKey: (key) => {
+    if (['dial', 'button', 'pawl', 'scale'].includes(key)) stage.fitCamera('rear');
+    else if (['spring', 'sleeve', 'nut', 'screw'].includes(key)) stage.fitCamera('drive');
+    else if (['holder', 'cartridge', 'drug', 'bung'].includes(key)) stage.fitCamera('cart');
+    else if (['hub', 'needle', 'capInner', 'capOuter'].includes(key)) stage.fitCamera('tip');
+    else stage.fitCamera('all');
+  },
+  tick: (dt) => penFrame(dt),
+});
+lab.attached3d = true;
+lab.stage = stage;
+const view = stage.view;
+view.cut = true;
+
+/* ---------- 每帧：机构动画 + 读数（读数与几何同源） ---------- */
+let wasInjecting = false;
+function penFrame(dt) {
+  view.clock = (view.clock || 0) + dt;
+  game.update(dt);
+  // 一针打完要把面板刷新回来（否则按钮还停在"注射中"的禁用态）
+  const injecting = state.pending > 0;
+  if (wasInjecting && !injecting) refreshPen();
+  wasInjecting = injecting;
+  penReadout();
+}
+function penReadout() {
+  const left = Math.max(0, game.total - state.delivered);
+  lab.paint({
+    dose: state.windMg.toFixed(2) + ' mg',
+    stroke: (MODEL.PEN.strokePerMg * state.delivered).toFixed(2) + ' mm',
+    left: left.toFixed(2) + ' mg · ' + (left / 5).toFixed(2) + ' mL',
+    clicks: Math.round(state.windMg / MODEL.PEN.clickMg) + ' 格',
+  });
+  syncDoseSlider();
+}
+function syncDoseSlider() {
+  const el = document.querySelector('[data-exp="dose"]');
+  if (!el || document.activeElement === el) return;
+  const want = String(Math.round(state.windMg / MODEL.PEN.clickMg));
+  if (el.value !== want) el.value = want;
+  const out = document.querySelector('[data-exp-out="dose"]');
+  if (out) out.textContent = want + ' 格';
+}
+
+/* ---------- 教练面板 ---------- */
+const undoBtn = () => {
+  const last = MODS.find((m) => m.id === state.placed.at(-1));
+  return `<div class="sub"><button id="undo" ${last && last.chapter === state.chapter && state.phase !== 'lab' ? '' : 'disabled'}>撤回一步</button></div>`;
+};
+
+lab.task(({ chapter: ch, chapterIndex: i, phase }) => {
+  const next = game.current();
+  const sel = MODS.find((m) => m.id === state.selected);
+
+  if (phase === 'build') {
+    return {
+      html: `<p class="label">现在要装</p><h3>${next ? next.name : ''}</h3><p>${next ? next.tip : ''}</p>
+        <div class="note">${sel ? '已拿起：' + sel.name : '从下方零件盒选择一块模块'}</div>
+        <button class="primary action" id="place" ${sel ? '' : 'disabled'}>装入当前模块</button>
+        ${undoBtn()}`,
+      bind(root) {
+        root.querySelector('#place').onclick = () => act('place');
+        root.querySelector('#undo').onclick = () => act('undo');
+      },
+    };
+  }
+
+  if (phase === 'experiment') {
+    if (state.chapter === 0) {
+      return {
+        html: `<p class="label">模块已归位，现在验证一下</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+          <button class="primary action" id="cut-look">剖开，转到药筒</button>
+          <button class="action" id="peek">剥开支架看药液</button>
+          <button class="action" id="to-quiz">看完现象，去答题</button>${undoBtn()}`,
+        bind(root) {
+          root.querySelector('#cut-look').onclick = () => act('lookCart');
+          root.querySelector('#peek').onclick = () => act('lookCart');
+          root.querySelector('#to-quiz').onclick = () => act('experiment');
+          root.querySelector('#undo').onclick = () => act('undo');
+        },
+      };
+    }
+    if (state.chapter === 1) {
+      const clicks = Math.round(state.windMg / MODEL.PEN.clickMg);
+      return {
+        html: `<p class="label">模块已归位，现在验证一下</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+          <button class="penstep ${clicks >= 8 ? 'done' : ''}" id="dose-full"><i>${clicks >= 8 ? '✓' : '1'}</i>拨满 8 格（1.0 mg）</button>
+          <button class="penstep ${clicks > 0 ? 'done' : ''}" id="dose-one"><i>${clicks > 0 ? '✓' : '2'}</i>再拨一格，听一声咔哒</button>
+          <button class="action" id="focus-drive">凑近看丝杠与螺母</button>
+          <button class="action" id="to-quiz">看完现象，去答题</button>${undoBtn()}`,
+        bind(root) {
+          root.querySelector('#dose-full').onclick = () => act('doseFull');
+          root.querySelector('#dose-one').onclick = () => act('doseOne');
+          root.querySelector('#focus-drive').onclick = () => { stage.fitCamera('drive'); refreshPen(); };
+          root.querySelector('#to-quiz').onclick = () => act('experiment');
+          root.querySelector('#undo').onclick = () => act('undo');
+        },
+      };
+    }
+    return {
+      html: `<p class="label">最后一步：走一遍真实取用流程</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+        <button class="penstep ${state.capOuterT < 0.5 ? 'done' : ''}" id="uncap-outer"><i>${state.capOuterT < 0.5 ? '✓' : '1'}</i>拔外帽</button>
+        <button class="penstep ${state.capInnerT < 0.5 ? 'done' : ''}" id="uncap-inner"><i>${state.capInnerT < 0.5 ? '✓' : '2'}</i>拔内帽</button>
+        <button class="penstep ${state.needleT > 0.5 ? 'done' : ''}" id="needle-on"><i>${state.needleT > 0.5 ? '✓' : '3'}</i>把针头拧到针座</button>
+        <button class="penstep ${state.windMg > 0.5 ? 'done' : ''}" id="dose-full"><i>${state.windMg > 0.5 ? '✓' : '4'}</i>拨 1.0 mg</button>
+        <button class="primary action" id="inject">按下注射按钮</button>
+        <button class="action" id="to-quiz">看完现象，去答题</button>${undoBtn()}`,
+      bind(root) {
+        root.querySelector('#uncap-outer').onclick = () => act('uncapOuter');
+        root.querySelector('#uncap-inner').onclick = () => act('uncapInner');
+        root.querySelector('#needle-on').onclick = () => act('mountNeedle');
+        root.querySelector('#dose-full').onclick = () => act('doseFull');
+        root.querySelector('#inject').onclick = () => act('inject');
+        root.querySelector('#to-quiz').onclick = () => act('experiment');
+        root.querySelector('#undo').onclick = () => act('undo');
+      },
+    };
+  }
+
+  if (phase === 'quiz') {
+    const replay = state.chapter === 0 ? '再剖一次' : state.chapter === 1 ? '再拨一次 8 格' : '再注射一次';
+    return {
+      html: `<p class="label">看一看，想一想</p><h3>${ch.q}</h3>
+        <div class="options">${ch.options.map((o, k) => `<button data-opt="${k}"><b>${String.fromCharCode(65 + k)}</b>${o}</button>`).join('')}</div>
+        <button class="action" id="replay-exp" style="margin-top:12px">${replay}</button>
+        <p class="note" style="margin-top:10px">答错不会清空进度，观察会帮你找到原因。</p>`,
+      bind(root) {
+        root.querySelector('#replay-exp').onclick = () => {
+          if (state.chapter === 0) act('lookCart');
+          else if (state.chapter === 1) { act('doseZero'); setTimeout(() => act('doseFull'), 400); }
+          else { act('resetFlow'); setTimeout(() => act('demoRun'), 500); }
+        };
+      },
+    };
+  }
+
+  if (phase === 'checkpoint') {
+    return {
+      html: `<div class="badge" aria-hidden="true">✓</div><p class="label">新发现徽章</p><h3>${ch.badge}</h3>
+        <p>${ch.why}</p>
+        <button class="primary action" id="next">${i === CH.length - 1 ? '进入自由实验室' : '继续第 ' + (i + 2) + ' 关'}</button>`,
+      bind(root) {
+        root.querySelector('#next').onclick = () => act('next');
+      },
+    };
+  }
+
+  /* ---------- 自由实验 ---------- */
+  const click = Math.round(state.windMg / MODEL.PEN.clickMg);
+  const injecting = state.pending > 0;
+  return {
+    html: `<div class="labgrid">
+        <button class="primary" id="dose-half" ${injecting ? 'disabled' : ''}>拨 0.5 mg</button>
+        <button id="dose-full" ${injecting ? 'disabled' : ''}>拨 1.0 mg</button>
+        <button id="dose-one" ${injecting ? 'disabled' : ''}>拨一格</button>
+        <button id="dose-zero" ${injecting ? 'disabled' : ''}>旋钮回 0</button>
+        <button id="inject" class="${state.windMg > 0.06 ? 'primary' : ''}">按注射按钮</button>
+        <button id="uncap">${state.capOuterT > 0.5 ? '拔外帽' : state.capInnerT > 0.5 ? '拔内帽' : '帽已拔完'}</button>
+        <button id="needle">${state.needleT > 0.5 ? '卸下针头' : '装针头'}</button>
+      </div>
+      <div class="labgrid">
+        <button id="focus-tip">看针座</button>
+        <button id="focus-drive">看传动</button>
+        <button id="focus-rear">看旋钮</button>
+        <button id="focus-cart">看药筒</button>
+      </div>
+      <div class="penflow">
+        <span class="${click > 0 ? 'on' : ''}">旋钮 ${click} 格</span><i>›</i>
+        <span class="${click > 0 ? 'on' : ''}">扭簧上弦</span><i>›</i>
+        <span class="${injecting ? 'on' : ''}">螺母转</span><i>›</i>
+        <span class="${state.delivered > 0.0001 ? 'on' : ''}">丝杠直推</span><i>›</i>
+        <span class="${state.delivered > 0.0001 ? 'on' : ''}">活塞</span><i>›</i>
+        <span class="${state.delivered > 0.0001 ? 'on' : ''}">药 → 针</span>
+      </div>
+      <p class="note">${injecting ? '扭簧正在释放：旋钮回零、螺母转、丝杠直推活塞。' : click > 0 ? '扭簧已上弦，丝杠没动——按按钮才松闸。' : '旋钮在 0，按钮锁死：先拨剂量。'}</p>
+      <div class="earned">${CH.map((c) => `<span>✓ ${c.badge}</span>`).join('')}</div>`,
+    bind(root) {
+      const on = (id, name) => { const el = root.querySelector('#' + id); if (el) el.onclick = () => act(name); };
+      on('dose-half', 'doseHalf'); on('dose-full', 'doseFull'); on('dose-one', 'doseOne'); on('dose-zero', 'doseZero');
+      on('inject', 'inject'); on('uncap', 'uncapBoth'); on('needle', 'toggleNeedle');
+      for (const [id, cam] of [['focus-tip', 'tip'], ['focus-drive', 'drive'], ['focus-rear', 'rear'], ['focus-cart', 'cart']]) {
+        root.querySelector('#' + id).onclick = () => { stage.fitCamera(cam); refreshPen(); };
+      }
+    },
+  };
+});
+
+/* ---------- 刷新显示态 ---------- */
+const BOX = ['第一盒 · 药与活塞', '第二盒 · 传动链', '第三盒 · 外壳、帽与针'];
+function refreshPen() {
+  const labPhase = state.phase === 'lab';
+  const s = lab.state;
+  s.chapter = state.chapter;
+  s.phase = state.phase;
+  s.placed = state.placed;
+  s.selected = state.selected;
+  s.completed = state.completed;
+  s.badges = labPhase ? CH.map((c) => c.badge) : state.completed.map((ok, k) => (ok ? CH[k].badge : null)).filter(Boolean);
+  s.progress = { done: state.placed.length, total: MODS.length };
+  s.cardsLocked = state.phase !== 'build';
+  s.visible.readout = true;
+  s.coach = labPhase
+    ? { tag: '三个发现，全部解锁', title: '这支笔，只会往前推', intro: '自由实验：拨剂量、按按钮、拔帽装针，或者剖开看螺母怎么把转角换成直线。' }
+    : null;
+  s.trayTitle = labPhase ? '你的装配记录' : BOX[state.chapter];
+  s.trayHint = labPhase ? '12 块模块，拼成一支一次性预充笔' : '点选模块，再拖到笔身上';
+  s.stageHint = labPhase
+    ? '拨剂量 → 按按钮；也可以剖开看丝杠怎么走。'
+    : state.phase === 'build'
+    ? '选一块模块，把它放到笔身上它该在的位置。'
+    : state.phase === 'experiment'
+    ? '这一段已拼好，亲手做一次实验。'
+    : '看清谁在动，再完成原理挑战。';
+  lab.render();
+  $('[data-tool="cut"]').setAttribute('aria-pressed', String(view.cut));
+}
+
+/* ---------- 动作 ---------- */
+const ACTIONS = {
+  select: (id) => game.select(id),
+  place: (onTarget) => game.place(onTarget !== false),
+  undo: () => game.undo(),
+  experiment: () => game.experiment(),
+  answer: (i) => game.answer(i),
+  next: () => game.next(),
+  doseHalf: () => game.dialTo(0.5),
+  doseFull: () => game.dialTo(1.0),
+  doseTo: (clicks) => game.dialTo((Number(clicks) || 0) * MODEL.PEN.clickMg),
+  doseOne: () => game.clickOne(),
+  doseZero: () => game.dialTo(0),
+  inject: () => game.inject(),
+  uncapOuter: () => game.uncapOuter(),
+  uncapInner: () => game.uncapInner(),
+  mountNeedle: () => game.mountNeedle(),
+  unmountNeedle: () => game.unmountNeedle(),
+  toggleNeedle: () => (state.needleT > 0.5 ? game.unmountNeedle() : game.mountNeedle()),
+  uncapBoth: () => {
+    if (state.capOuterT > 0.5) return game.uncapOuter();
+    return game.uncapInner();
+  },
+  resetFlow: () => {
+    state.delivered = 0; state.windMg = 0; state.targetMg = 0; state.pending = 0;
+    state.capOuterT = 0; state.capInnerT = 0; state.needleT = 1;
+    return { ok: true, kind: 'restart', message: '换上一支新笔：药满、帽已拔、针头在位。' };
+  },
+  demoRun: () => {
+    ACTIONS.doseFull();
+    setTimeout(() => act('inject'), 900);
+    return { ok: true, message: '拨 1.0 mg，再按注射按钮。' };
+  },
+  restart: () => game.reset(),
+  demo: () => game.demo(),
+  lookCart: () => {
+    view.cut = true;
+    $('[data-tool="cut"]').setAttribute('aria-pressed', 'true');
+    stage.fitCamera('cart');
+    return { ok: true, kind: 'lookCart', message: '剖开了：玻璃卡式瓶里的药液，尾部那块黑色橡胶活塞就是唯一的活动边界。' };
+  },
+};
+
+function act(name, ...args) {
+  const before = state.chapter;
+  const res = ACTIONS[name](...args);
+  lab.state.feedback = res.message || '';
+  lab.state.feedbackKind = res.ok ? 'success' : 'error';
+  if (res.learn) lab.setDiscovery(res.learn);
+  if (res.ok) {
+    if (res.kind === 'lookCart') { view.cut = true; stage.fitCamera('cart'); }
+    if (res.kind === 'restart' || res.kind === 'demo') {
+      view.offsets.clear();
+      view.cut = true;
+      stage.setNavigation('rotate');
+      lab.setDiscovery('');
+    }
+    if (res.kind === 'restart' || res.kind === 'demo' || res.kind === 'chapter') stage.fitCamera('all');
+    if (res.kind === 'correct') lab.celebrate();
+    if (res.kind === 'complete') { lab.celebrate(); stage.fitCamera('all'); }
+  }
+  if (before !== state.chapter) stage.fitCamera('all');
+  refreshPen();
+  return res;
+}
+
+/* ---------- 事件 ---------- */
+lab.on('select', (id) => act('select', id));
+lab.on('place', () => act('place'));
+lab.on('undo', () => act('undo'));
+lab.on('answer', (i) => act('answer', i));
+lab.on('next', () => act('next'));
+lab.on('restart', () => act('restart'));
+lab.on('free', () => { act('demo'); stage.fitCamera('all'); });
+lab.on('experiment', ({ id, value }) => {
+  if (id === 'dose') act('doseTo', value);
+  else if (id === 'inject') act('inject');
+});
+lab.on('tool', (id) => {
+  if (id === 'cut') view.cut = $('[data-tool="cut"]').getAttribute('aria-pressed') === 'true';
+  if (id === 'home') stage.fitCamera('all');
+  if (id === 'rotate' || id === 'pan') stage.setNavigation(id);
+  refreshPen();
+});
+
+view.cut = true;
+$('[data-tool="cut"]').setAttribute('aria-pressed', 'true');
+lab.state.feedback = '从下方零件盒选中「药筒组件」，开始第一步。';
+penReadout();
+refreshPen();
+stage.start();
+
+</script>
+</body>
+</html>
