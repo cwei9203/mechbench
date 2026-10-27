@@ -47,7 +47,7 @@ dist/           构建产物（<slug>.html + <slug>.logic.mjs）+ 验收报告 +
 | 布局渲染 `kit/lab.mjs` + 图标库 | ✅ |
 | 通用构建 `tools/build.py` | ✅ |
 | 浏览器验收 `tools/accept.mjs`（CDP，无依赖） | ✅ |
-| 无浏览器断言 `tools/verify.mjs`（静态契约 + `logic.spec.mjs`） | ✅ 6 物品 1101 项 / 0.3 秒 |
+| 无浏览器断言 `tools/verify.mjs`（静态契约 + `logic.spec.mjs`） | ✅ 7 物品 1636 项 |
 | 示例物品 `items/_template`（无三维） | ✅ 25 项检查通过 |
 | `kit/scene.mjs` 三维舞台 | ✅ |
 | `items/double-cylinder-engine` 迁移 | ✅ 41 项检查 × 3 宽度 + 离线单文件 |
@@ -56,6 +56,7 @@ dist/           构建产物（<slug>.html + <slug>.logic.mjs）+ 验收报告 +
 | `items/nail-gun-lab` 迁移 | ✅ 49–52 项 × 3 宽度 + 几何自检 9 项 |
 | `items/hand-crank-flashlight` 迁移 | ✅ 42–45 项 × 3 宽度 |
 | `items/spherical-lock` 迁移 | ✅ 95–100 项 × 3 宽度 + 几何自检 97 项 |
+| `items/coin-comparator-lab` 新建 | ✅ 三关装配、比较识币、退币与断电实验；三宽度验收 + 几何自检 47 项 |
 | `items/injection-pen` 新建 | ✅ 82–85 项 × 3 宽度 + 几何自检 30 项 |
 
 ## 项目内 skill

@@ -1,0 +1,2643 @@
+<!doctype html>
+<!-- mechbench · 固定页面骨架。物品不许改这个文件；个性化一律走插槽（kit/slots.md）。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>装配实验室</title>
+<style>/* mechbench · 固定布局层
+ * 只放"所有物品共用"的东西：区域、断点、控件外观、无障碍焦点。
+ * 物品自己的视觉微调写在 items/<slug>/lab.css。
+ */
+
+:root{
+  --ink:#1d2228; --muted:#63707d; --line:#cfd6dc; --stage:#e7ebee; --paper:#f8fafb;
+  --accent:#c2452d; --accent-dark:#93301e;
+  --steel:#4d5966; --blue:#2f6f9f; --green:#2f7d5c; --gold:#b8862f;
+  --topbar-h:70px; --coach-w:344px; --tray-h:182px; --radius:9px;
+}
+
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:#dfe4e8;color:var(--ink);
+  font:14px/1.5 "Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button,input{font:inherit}
+button{cursor:pointer;color:inherit;border:1px solid var(--line);background:#fff;
+  border-radius:var(--radius);padding:8px 13px;font-weight:600;transition:background .14s,transform .1s}
+button:hover:not(:disabled){background:#f4f7f9}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:default}
+:focus-visible{outline:3px solid #d99b2b;outline-offset:2px}
+button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 0 var(--accent-dark)}
+.primary:hover:not(:disabled){background:#b03c26}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- 顶栏 ---------- */
+.topbar{height:var(--topbar-h);display:flex;align-items:center;gap:22px;padding:0 24px;
+  border-bottom:1px solid var(--line);background:#f7f9fa}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.mark{width:34px;height:34px;border-radius:8px;background:var(--steel);position:relative;overflow:hidden;flex:none}
+.mark svg{display:block;width:100%;height:100%}
+.brand strong{display:block;font-size:16px;letter-spacing:-.2px}
+.brand small{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.journey{list-style:none;display:flex;gap:6px;margin:0 auto;padding:0}
+.journey li{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8b98a4;white-space:nowrap}
+.journey b{width:23px;height:23px;display:grid;place-items:center;border:1px solid #cbd4dc;border-radius:50%;font-size:11px}
+.journey .active{color:var(--accent);font-weight:700}
+.journey .active b{background:var(--accent);color:#fff;border-color:var(--accent)}
+.journey .done{color:var(--green)}
+.journey .done b{background:#e3f1ea;border-color:#a9cdbc}
+.topacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex:none}
+.topacts .ghost{font-size:11px;padding:6px 10px;border-radius:999px;background:#fff}
+.topacts .ghost:hover{border-color:var(--accent);color:var(--accent)}
+.topacts .bare{font-size:11px;background:transparent;border-color:transparent;padding:6px}
+
+/* ---------- 主网格 ---------- */
+.lab{display:grid;grid-template-columns:minmax(0,1fr) var(--coach-w);
+  grid-template-rows:minmax(420px,1fr) var(--tray-h);
+  grid-template-areas:"stage coach" "tray coach";
+  height:calc(100dvh - var(--topbar-h));min-height:640px}
+.stage{grid-area:stage;position:relative;overflow:hidden;min-width:0;background-color:var(--stage);
+  background-image:radial-gradient(#c6cfd7 1px,transparent 1px);background-size:24px 24px}
+#viewport{position:absolute;inset:0}
+#viewport canvas{display:block;touch-action:none}
+.stage-title{position:absolute;top:18px;left:22px;pointer-events:none;max-width:360px}
+.stage-title h1{font-size:27px;line-height:1.2;margin:0 0 5px;letter-spacing:-.6px;font-weight:800}
+.stage-title p{margin:0;font-size:11px;color:var(--muted)}
+.toolbar{position:absolute;top:18px;right:16px;display:flex;flex-wrap:wrap;gap:5px;max-width:250px;justify-content:flex-end}
+.toolbar button{font-size:10.5px;padding:6px 10px;background:#fffefbe8}
+.toolbar button[aria-pressed=true]{background:var(--steel);color:#fff;border-color:var(--steel)}
+.socket{position:absolute;z-index:4;transform:translate(-50%,-50%);background:var(--accent);color:#fff;
+  border:2px solid #fff;border-radius:20px;box-shadow:0 2px 0 #8f2d1b,0 3px 12px #c2452d30;
+  white-space:nowrap;font-size:11px;padding:6px 12px}
+.socket.near{background:var(--green);box-shadow:0 0 0 8px #2f7d5c22}
+.preview-label{position:absolute;pointer-events:none;transform:translate(-50%,0);background:#fff6ec;
+  border:1px solid #e2b393;border-radius:6px;padding:3px 8px;font-size:10px;color:#96562f;white-space:nowrap}
+.scene-footer{position:absolute;bottom:12px;left:20px;right:20px;display:flex;align-items:flex-end;
+  justify-content:space-between;gap:12px;pointer-events:none}
+.scene-footer>span{font-size:9.5px;color:#7d8b98;line-height:1.6;max-width:44%}
+.readout{display:none;background:#ffffffef;border:1px solid #ccd6de;border-radius:var(--radius);
+  padding:8px 12px;min-width:196px;pointer-events:auto}
+.readout.on{display:block}
+.readout .row{display:flex;justify-content:space-between;gap:12px;font-size:10.5px;color:var(--muted);
+  font-variant-numeric:tabular-nums;line-height:1.75}
+.readout .row b{color:var(--ink);font-weight:700}
+.readout .big{font-size:12px;color:var(--steel);font-weight:800}
+#inset{position:absolute;left:22px;bottom:91px;z-index:5;width:192px;height:188px;border:1px solid #c3ccd5;
+  border-radius:12px;overflow:hidden;pointer-events:none;box-shadow:0 4px 16px #1d22281a}
+#inset[hidden]{display:none}
+#inset .top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;gap:10px;
+  padding:7px 10px;font-size:10px;color:var(--muted);background:#f5f9ffeb;
+  border-bottom:1px solid var(--line)}
+#inset .top span:last-child{letter-spacing:.12em;font-size:8.5px}
+.discovery{margin-top:12px;border-left:3px solid var(--gold);background:#fdf8ea;border-radius:8px;
+  padding:9px 11px;font-size:11px;line-height:1.75;color:#7a5c1e}
+.discovery[hidden]{display:none}
+.discovery b{display:block;font-size:10.5px;margin-bottom:3px;color:#8a6a1c}
+#celebration{position:fixed;inset:0;pointer-events:none;z-index:40;display:grid;place-items:center}
+#celebration i{position:absolute;width:9px;height:9px;border-radius:2px;opacity:0;
+  animation:confetti 1.1s ease-out forwards}
+@keyframes confetti{
+  0%{opacity:1;transform:translate(0,0) rotate(0)}
+  100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r))}}
+#fault{position:absolute;inset:34% 12%;z-index:20;background:#fff;padding:18px;border:2px solid #e0b088;
+  border-radius:10px;color:#7c4a22;display:none;font-size:13px}
+
+/* ---------- 教练面板 ---------- */
+.coach{grid-area:coach;background:var(--paper);border-left:1px solid var(--line);padding:22px 22px 26px;overflow:auto}
+.coach .ctag{color:var(--accent);font-weight:700;font-size:11px;margin-bottom:6px}
+.coach h2{font-size:21px;line-height:1.28;margin:0 0 8px;letter-spacing:-.4px;font-weight:800}
+.coach .intro{font-size:12px;line-height:1.8;color:var(--muted);margin:0 0 16px}
+.progress{height:6px;border-radius:6px;background:#e0e7ec;overflow:hidden;margin:6px 0 4px}
+.progress i{display:block;background:var(--accent);height:100%;width:0;transition:width .3s}
+.plabel{font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+.task{margin-top:18px}
+.task .label{font-size:10px;color:var(--muted);margin:0 0 4px}
+.task h3{font-size:17px;line-height:1.4;margin:0 0 8px;font-weight:750}
+.task p{font-size:12px;line-height:1.8;margin:0 0 10px}
+.task .action{width:100%;margin-top:6px}
+.sub{display:flex;gap:6px;margin-top:10px}
+.sub button{font-size:11px;padding:7px 9px;flex:1}
+.feedback{min-height:40px;padding:9px 11px;background:#e9eef3;border-radius:8px;font-size:11px;
+  line-height:1.7;margin:16px 0 0;border-left:3px solid #8fa4b8}
+.feedback.error{background:#fdf0e8;border-color:#d59a6c;color:#7c4a22}
+.feedback.success{background:#e8f3ed;border-color:#77b295;color:#2f6b52}
+.hintbox{border-top:1px solid var(--line);padding-top:14px;margin-top:16px;font-size:11px;line-height:1.8;color:var(--muted)}
+.hintbox b{display:block;font-size:11px;color:#8a6a1c;margin-bottom:4px}
+.options{display:grid;gap:7px;margin-top:12px}
+.options button{text-align:left;font-size:12px;font-weight:500;padding:10px 11px;line-height:1.6}
+.options button b{display:inline-block;color:var(--accent);margin-right:7px}
+.badge{display:grid;place-items:center;width:66px;height:66px;background:var(--gold);color:#fff;
+  border:5px solid #e4c98c;border-radius:50%;margin:10px 0;font-size:28px;font-weight:800}
+.earned{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px}
+.earned span{border:1px solid #ddc98d;background:#fbf5e3;color:#8a6a1c;font-size:9px;padding:3px 6px;border-radius:5px}
+.technical{font-size:10px;color:var(--muted);line-height:1.8;border-top:1px solid var(--line);margin-top:18px;padding-top:11px}
+.technical summary{cursor:pointer;font-weight:600}
+.technical p{margin:8px 0 0}
+.note{font-size:10.5px!important;color:var(--muted)}
+
+/* ---------- 实验台控件（experiments 插槽） ---------- */
+.labctl{margin-top:12px;font-size:11px}
+.labctl output{float:right;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.labctl input[type=range]{width:100%;accent-color:var(--blue);margin:8px 0 0}
+.labctl.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.labgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+.labgrid .primary{grid-column:1/-1}
+.labgrid button{font-size:11px;padding:8px 6px}
+
+/* ---------- 零件盒 ---------- */
+.tray{grid-area:tray;border-top:2px solid #c3ccd5;padding:12px 22px 14px;background:#dae1e7;min-width:0;overflow:auto}
+.tray-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;font-size:12px;font-weight:700;gap:12px}
+.tray-head small{font-size:10px;color:#7c8a96;font-weight:400;text-align:right}
+.mlist{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.card{position:relative;border:1px solid #c3ccd5;border-bottom:4px solid #b2bec8;background:#fbfcfd;
+  border-radius:10px;display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:6px;
+  text-align:left;padding:10px 9px;min-height:74px;--pc:#5b6470}
+.card svg{width:34px;height:34px;stroke:var(--pc);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.card strong{font-size:11.5px;display:block;line-height:1.3}
+.card small{font-size:9.5px;color:var(--muted);font-weight:400;display:block;margin-top:3px}
+.card[aria-pressed=true]{border-color:#d99878;border-bottom-color:var(--accent);background:#fdf1ea;color:var(--ink)}
+.card[data-installed=true]{background:#e9f2ec;border-color:#b2cec0;border-bottom-color:#9dbfae}
+.card[data-installed=true] small{color:var(--green)}
+.empty{font-size:12px;color:#5f7488;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0}
+.empty strong{display:block;color:#2f4c63;margin-bottom:4px}
+.empty .primary{flex:none}
+
+#debug{display:none;position:fixed;left:0;bottom:0;background:#fff;font-size:10px;z-index:30;padding:2px}
+
+/* ---------- 断点 ---------- */
+@media(max-width:1180px){
+  .lab{grid-template-columns:minmax(0,1fr) 306px}
+  .coach{padding:20px 16px}
+  .card{grid-template-columns:1fr;text-align:center;padding:9px 6px}
+  .card svg{display:none}
+  .mlist{gap:6px}
+}
+@media(max-width:780px){
+  .topbar{height:auto;min-height:96px;padding:12px 14px 8px;flex-wrap:wrap;gap:8px}
+  .brand{min-width:0;flex:1}
+  .brand strong{font-size:13.5px}
+  .brand small{font-size:9px}
+  .journey{order:3;width:100%;justify-content:space-between;margin:0;gap:2px}
+  .journey li{font-size:9.5px;gap:5px;min-width:0}
+  .journey b{width:19px;height:19px;font-size:9.5px}
+  .tray-head small{max-width:130px;font-size:9px}
+  .lab{grid-template-columns:1fr;grid-template-areas:"stage" "tray" "coach";
+    grid-template-rows:minmax(360px,56dvh) auto auto;height:auto;min-height:0}
+  .stage-title h1{font-size:21px}
+  .stage-title{max-width:calc(100% - 172px)}
+  .toolbar{top:14px;max-width:150px}
+  .mlist{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .card{grid-template-columns:32px minmax(0,1fr);text-align:left;min-height:62px}
+  .card svg{display:block;width:28px;height:28px}
+  .coach{border-left:0;border-top:1px solid var(--line);padding:20px}
+  #inset{left:12px;bottom:12px;width:132px;height:150px}
+  .readout{min-width:0;padding:6px 9px}
+  .readout .row{font-size:9.5px;gap:8px}
+  .scene-footer>span{max-width:150px;font-size:8.5px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
+<style>/* 比较式投币器：窄屏时标题要让出工具栏；面板文字比通用文案长一点 */
+@media (max-width: 1000px) {
+  .stage-title { max-width: calc(100% - 230px); }
+  .stage-title h1 { font-size: 19px; }
+}
+@media (max-width: 900px) and (min-width: 781px) {
+  .stage-title h1 { font-size: 18px; }
+}
+@media (max-width: 780px) {
+  .stage-title { max-width: calc(100% - 190px); }
+  .stage-title h1 { font-size: 18px; line-height: 1.28; text-wrap: balance; }
+  .stage-title p { font-size: 10px; }
+  .toolbar { max-width: 172px; }
+  .toolbar button { font-size: 9.5px; padding: 5px 8px; }
+}
+@media (max-width: 430px) {
+  .stage-title { max-width: calc(100% - 158px); }
+  .stage-title h1 { font-size: 16px; letter-spacing: -.3px; text-wrap: balance; }
+  .stage-title p { font-size: 9.5px; line-height: 1.55; }
+  .toolbar { max-width: 145px; }
+  .toolbar button { font-size: 9px; padding: 5px 7px; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="mark" data-slot="brand.mark" aria-hidden="true"></div>
+    <div><strong data-slot="brand.title"></strong><small data-slot="brand.subtitle"></small></div>
+  </div>
+  <ol class="journey" data-slot="journey" aria-label="关卡进度"></ol>
+  <div class="topacts">
+    <button class="ghost" id="free-lab">自由实验</button>
+    <button class="bare" id="restart">重新开始</button>
+  </div>
+</header>
+
+<main class="lab">
+  <section class="stage" id="stage" aria-label="三维装配工作台">
+    <div id="viewport"></div>
+    <div class="stage-title">
+      <h1 data-slot="stage.title"></h1>
+      <p data-slot="stage.hint"></p>
+    </div>
+    <div class="toolbar" data-slot="stage.tools" aria-label="观察工具"></div>
+    <button class="socket" id="socket" hidden>装到这里</button>
+    <div class="preview-label" id="preview-label" hidden>拖动这块</div>
+    <div class="scene-footer">
+      <span data-slot="stage.gestures"></span>
+      <div class="readout" id="readout" data-slot="stage.readout"></div>
+    </div>
+    <div id="inset" hidden><div class="top"><span id="inset-title">局部放大</span><span>DETAIL VIEW</span></div></div>
+    <div id="fault" role="alert"></div>
+  </section>
+
+  <aside class="coach">
+    <div class="ctag" data-slot="coach.tag"></div>
+    <h2 data-slot="coach.title"></h2>
+    <p class="intro" data-slot="coach.intro"></p>
+    <div class="progress" role="progressbar" aria-label="装配进度" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" id="progress"><i id="pfill"></i></div>
+    <div class="plabel"><span id="plabel"></span><span id="bcount"></span></div>
+    <div class="task" id="task"></div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+    <div class="discovery" id="discovery" hidden><b>刚刚发现</b><span id="discovery-text"></span></div>
+    <div class="hintbox"><b data-slot="coach.hintLabel"></b><span id="hinttext"></span></div>
+    <div data-slot="coach.extras"></div>
+    <details class="technical" id="notes">
+      <summary data-slot="coach.notesLabel"></summary>
+      <div data-slot="coach.notes"></div>
+    </details>
+  </aside>
+
+  <section class="tray" aria-label="零件盒">
+    <div class="tray-head"><span id="tray-title"></span><small id="tray-hint"></small></div>
+    <div class="mlist" id="mlist"></div>
+  </section>
+</main>
+<script>window.__mechbench={slug:'coin-comparator-lab',built:true}</script>
+
+<div id="celebration" aria-hidden="true"></div>
+<pre id="debug"></pre>
+
+<script>
+window.addEventListener('error', e => {
+  const el = document.getElementById('fault');
+  el.style.display = 'block';
+  el.textContent = '工作台未能加载：' + e.message;
+});
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ==== kit/icons.mjs ==== */
+/* mechbench · 通用零件图标（24×24，描边）
+ * 物品在 manifest 里写 icon:'gear' 即可；要自定义就写 icon:'<path d="..."/>' 原样 SVG。
+ */
+const ICONS = {
+  box:'<rect x="4" y="8" width="16" height="11" rx="1.5"/><path d="M4 12h16M9 8V5h6v3"/>',
+  shell:'<path d="M4 9l8-4 8 4v7l-8 4-8-4z"/><path d="M4 9l8 4 8-4M12 13v7"/>',
+  shaft:'<path d="M3 12h18"/><path d="M6 9v6M18 9v6"/>',
+  gear:'<circle cx="12" cy="12" r="5"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3M6.5 6.5l2 2M15.5 15.5l2 2M17.5 6.5l-2 2M8.5 15.5l-2 2"/>',
+  spring:'<path d="M8 4h8M8 20h8"/><path d="M8 6l8 3-8 3 8 3-8 3"/>',
+  screw:'<path d="M9 4h6l-1 3H10z"/><path d="M10 7v10l2 3 2-3V7"/><path d="M10 11h4M10 14h4"/>',
+  plate:'<path d="M4 14l8-4 8 4-8 4z"/><path d="M7 13l3 1.5"/>',
+  disc:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/>',
+  piston:'<path d="M7 5h10v7H7z"/><path d="M10 12v6M14 12v6"/><path d="M7 8h10"/>',
+  valve:'<path d="M12 4v9"/><path d="M8 16h8l-4 4z"/><path d="M9 4h6"/>',
+  coil:'<circle cx="12" cy="12" r="6"/><path d="M12 6v12M9 6.8v10.4M15 6.8v10.4"/>',
+  battery:'<rect x="3" y="8" width="15" height="8" rx="1.5"/><path d="M21 11v2"/><path d="M7 10v4M11 10v4"/>',
+  bolt:'<path d="M12 4l5 3v6l-5 3-5-3V7z"/><circle cx="12" cy="10" r="2"/>',
+  lever:'<path d="M4 18h16"/><path d="M8 18l6-10"/><circle cx="15" cy="7" r="2"/>',
+  housing:'<rect x="4" y="6" width="16" height="13" rx="2"/><path d="M8 6V4h8v2M4 12h16"/>',
+  pin:'<path d="M5 12h14"/><path d="M8 9v6M16 9v6"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/>',
+};
+function iconSvg(name, color) {
+  const body = ICONS[name] || ICONS.box;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"${color ? ` style="--pc:${color}"` : ''}>${body}</svg>`;
+}
+
+/* ==== kit/lab.mjs ==== */
+/* mechbench · 布局渲染层
+ * 把 manifest 的插槽填进固定骨架，并把玩家操作转成事件。
+ * 不做三维（kit/scene.mjs）、不做业务规则（物品的 logic.mjs / main.mjs）。
+ */
+
+const COPY = {
+  brand: { title: '装配实验室', subtitle: '', mark: { a: '#c2452d', b: '#9aa6b2' } },
+  stage: {
+    title: '装一台能动的机器',
+    hint: '从下方零件盒选一块模块，拖到机身高亮处。',
+    gestures: '拖动空白处旋转 · 右键平移 · 滚轮缩放<br>触屏双指平移 / 缩放',
+  },
+  tray: { title: '零件盒', hint: '点选模块，再拖到高亮位置' },
+  coach: { tag: '第 {n} 关 / {total}', hintLabel: '工作台提示', notesLabel: '这是怎样的一套模型？' },
+  tools: [
+    { id: 'rotate', label: '旋转', pressed: true },
+    { id: 'pan', label: '平移' },
+    { id: 'cut', label: '剖开看' },
+    { id: 'home', label: '复位' },
+  ],
+  labels: {
+    exp: '本关要观察的', quiz: '判断一下', done: '本关完成',
+    installed: '✓ 已归位', picked: '拿起这块', preloaded: '{n} 组零件预装',
+  },
+};
+
+const q = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function pick(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? pick(base[k] || {}, v) : v;
+  }
+  return out;
+}
+function mountLab(item) {
+  const copy = pick(COPY, item.copy);
+  const chapters = item.chapters || [];
+  const modules = item.modules || [];
+  const tasks = item.tasks || [];
+  const readout = item.readout || [];
+  const tools = item.tools || copy.tools;
+
+  const lab = {
+    item,
+    chapters,
+    modules,
+    attached3d: false,
+    taskRenderer: null,
+    state: {
+      chapter: 0,
+      placed: [],
+      selected: null,
+      phase: 'build',
+      completed: [],
+      badges: [],
+      progress: null, // {done,total} 覆盖默认的「本关模块数」
+      readout: {},
+      visible: {},
+      hint: '',
+      feedback: '',
+      feedbackKind: '',
+      stageHint: '',
+      trayTitle: '',
+      trayHint: '',
+      cardsLocked: false,
+      discovery: '',
+    },
+    handlers: {},
+    on(name, fn) {
+      (lab.handlers[name] ||= []).push(fn);
+      return lab;
+    },
+    emit(name, payload) {
+      for (const fn of lab.handlers[name] || []) fn(payload);
+    },
+    moduleOf(id) {
+      return modules.find((m) => m.id === id);
+    },
+    chapterModules(i = lab.state.chapter) {
+      return modules.filter((m) => m.chapter === i);
+    },
+    /** 物品自定义教练面板：fn({chapter, phase, state, lab}) => {html, bind(root)} */
+    task(fn) {
+      lab.taskRenderer = fn;
+      return lab;
+    },
+    /** 发现卡：放一段“刚刚发现”的观察，传空串隐藏 */
+    setDiscovery(text) {
+      lab.state.discovery = text || '';
+      const box = q('#discovery');
+      if (!box) return lab;
+      box.hidden = !text;
+      if (text) q('#discovery-text').textContent = text;
+      return lab;
+    },
+    /** 通关撒花：纯装饰，reduced-motion 下静默 */
+    celebrate() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return lab;
+      const el = q('#celebration');
+      if (!el) return lab;
+      el.replaceChildren();
+      const colors = ['#c2452d', '#b8862f', '#2f6f9f', '#2f7d5c'];
+      for (let i = 0; i < 28; i++) {
+        const bit = document.createElement('i');
+        bit.style.background = colors[i % 4];
+        const angle = (i / 28) * Math.PI * 2;
+        bit.style.setProperty('--x', Math.cos(angle) * (95 + (i % 5) * 27) + 'px');
+        bit.style.setProperty('--y', Math.sin(angle) * 130 + 130 + 'px');
+        bit.style.setProperty('--r', i * 47 + 'deg');
+        el.appendChild(bit);
+      }
+      setTimeout(() => el.replaceChildren(), 1500);
+      return lab;
+    },
+    setInsetTitle(text) {
+      const el = q('#inset-title');
+      if (el) el.textContent = text;
+      return lab;
+    },
+    /** 按 {key: 显示值} 批量写读数，内部 diff（可以每帧调，不碰 DOM）。
+     * 读数的格式化留在物品侧（那里才知道 model/view/game）；这里只管写。 */
+    paint(values) {
+      for (const k of Object.keys(values || {})) {
+        const el = rdEls.get(k);
+        if (!el) continue;
+        const text = values[k] == null ? '—' : String(values[k]);
+        if (el.textContent !== text) el.textContent = text;
+        lab.state.readout[k] = text;
+      }
+      return lab;
+    },
+    render,
+  };
+
+  /* ---------- 静态插槽：挂载时填一次 ---------- */
+  document.title = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.title"]').textContent = item.brand?.title || copy.brand.title;
+  q('[data-slot="brand.subtitle"]').textContent = item.brand?.subtitle || copy.brand.subtitle;
+  const mark = item.brand?.mark || copy.brand.mark;
+  q('[data-slot="brand.mark"]').innerHTML = mark.svg
+    ? mark.svg
+    : `<span style="position:absolute;left:6px;top:9px;width:9px;height:16px;border-radius:2px;background:${mark.a || '#c2452d'}"></span>
+       <span style="position:absolute;left:19px;top:6px;width:9px;height:16px;border-radius:2px;background:${mark.b || '#9aa6b2'}"></span>`;
+
+  q('[data-slot="stage.title"]').textContent = item.stage?.title || copy.stage.title;
+  q('[data-slot="stage.hint"]').textContent = item.stage?.hint || copy.stage.hint;
+  q('[data-slot="stage.gestures"]').innerHTML = item.stage?.gestures || copy.stage.gestures;
+  q('[data-slot="coach.hintLabel"]').textContent = copy.coach.hintLabel;
+  q('[data-slot="coach.notesLabel"]').textContent = copy.coach.notesLabel;
+  q('[data-slot="coach.notes"]').innerHTML = (item.notes || []).map((p) => `<p>${p}</p>`).join('');
+  q('#notes').hidden = !(item.notes || []).length;
+
+  q('[data-slot="journey"]').innerHTML = chapters
+    .map((c, i) => `<li data-chapter="${i}"><b>${i + 1}</b>${esc(c.title)}</li>`)
+    .join('');
+
+  q('[data-slot="stage.tools"]').innerHTML = tools
+    .map((t) => `<button data-tool="${t.id}" aria-pressed="${t.pressed ? 'true' : 'false'}">${esc(t.label)}</button>`)
+    .join('');
+
+  q('#readout').innerHTML = readout
+    .map((r) => `<div class="row"><span>${esc(r.label)}</span><b data-rd="${r.key}"${r.big ? ' class="big"' : ''}>—</b></div>`)
+    .join('');
+  const rdEls = new Map();
+  for (const r of readout) rdEls.set(r.key, q(`[data-rd="${r.key}"]`));
+
+  q('[data-slot="coach.extras"]').innerHTML = (item.experiments || [])
+    .map((x) => {
+      if (x.control === 'toggle') {
+        return `<div class="labctl toggle"><span>${esc(x.label)}</span>
+          <button data-exp="${x.id}" aria-pressed="${x.value ? 'true' : 'false'}">${x.value ? '开' : '关'}</button></div>`;
+      }
+      if (x.control === 'button') return `<div class="labgrid"><button data-exp="${x.id}">${esc(x.label)}</button></div>`;
+      return `<label class="labctl">${esc(x.label)}<output data-exp-out="${x.id}">${x.value ?? ''}${x.unit || ''}</output>
+        <input type="range" data-exp="${x.id}" min="${x.min}" max="${x.max}" step="${x.step || 1}" value="${x.value ?? x.min}"></label>`;
+    })
+    .join('');
+
+  /* ---------- 动态插槽 ---------- */
+  function renderCards() {
+    const list = q('#mlist');
+    const chMods = lab.chapterModules();
+    if (!chMods.length) {
+      list.innerHTML = '<div class="empty"><div><strong>这一关没有模块</strong>检查 manifest 的 modules[].chapter。</div></div>';
+      return;
+    }
+    list.innerHTML = chMods
+      .map((m) => {
+        const installed = lab.state.placed.includes(m.id);
+        const sub = installed
+          ? copy.labels.installed
+          : m.sub || (m.parts?.length > 1 ? copy.labels.preloaded.replace('{n}', m.parts.length) : copy.labels.picked);
+        return `<button class="card" data-id="${m.id}" data-installed="${installed}" style="--pc:${m.color || '#5b6470'}"
+          aria-pressed="${lab.state.selected === m.id}"${installed || lab.state.cardsLocked ? ' disabled' : ''}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">${m.icon && m.icon.startsWith('<') ? m.icon : iconBody(m.icon || 'box')}</svg>
+          <span><strong>${esc(m.name)}</strong><small>${esc(sub)}</small></span></button>`;
+      })
+      .join('');
+  }
+
+  function renderTask() {
+    const ch = chapters[lab.state.chapter] || {};
+    if (lab.taskRenderer) {
+      const out = lab.taskRenderer({ chapter: ch, chapterIndex: lab.state.chapter, phase: lab.state.phase, state: lab.state, lab }) || {};
+      q('#task').innerHTML = out.html || '';
+      out.bind?.(q('#task'));
+      return;
+    }
+    const task = tasks[lab.state.chapter] || {};
+    const s = lab.state;
+    const head = `<p class="label">${esc(copy.labels.exp)}</p><h3>${esc(task.exp || ch.title || '')}</h3>
+      <p>${esc(task.expText || ch.subtitle || '')}</p>`;
+    if (s.phase === 'check' && task.options) {
+      q('#task').innerHTML =
+        head +
+        `<p class="label">${esc(copy.labels.quiz)}</p><div class="options">${task.options
+          .map((o, i) => `<button data-opt="${i}"><b>${'ABCD'[i]}</b>${esc(o)}</button>`)
+          .join('')}</div>`;
+      return;
+    }
+    if (s.phase === 'done') {
+      q('#task').innerHTML =
+        head +
+        `<div class="badge">${esc(ch.badge || '✓')}</div><p>${esc(task.why || '')}</p>
+         <div class="sub">${
+           s.chapter < chapters.length - 1 ? '<button class="primary" data-act="next">进入下一关</button>' : ''
+         }<button data-act="replay">再看一遍</button></div>`;
+      return;
+    }
+    q('#task').innerHTML =
+      head +
+      `<div class="sub"><button class="primary" data-act="place"${s.selected ? '' : ' disabled'}>装到这里</button>
+       <button data-act="undo"${s.placed.length ? '' : ' disabled'}>撤回一步</button></div>`;
+  }
+
+  function render() {
+    const s = lab.state;
+    for (const li of document.querySelectorAll('.journey li')) {
+      const i = Number(li.dataset.chapter);
+      li.className = s.completed?.[i] ? 'done' : i === s.chapter ? 'active' : '';
+      li.querySelector('b').textContent = s.completed?.[i] ? '✓' : i + 1;
+    }
+    const ch = chapters[s.chapter] || {};
+    const co = s.coach || {};
+    q('[data-slot="coach.tag"]').textContent =
+      co.tag ?? (copy.coach.tag || '').replace('{n}', s.chapter + 1).replace('{total}', chapters.length);
+    q('[data-slot="coach.title"]').textContent = co.title ?? ch.title ?? '';
+    q('[data-slot="coach.intro"]').textContent = co.intro ?? ch.subtitle ?? '';
+    q('[data-slot="stage.hint"]').textContent = s.stageHint || item.stage?.hint || copy.stage.hint;
+
+    const chMods = lab.chapterModules();
+    const p = s.progress || { done: chMods.filter((m) => s.placed.includes(m.id)).length, total: chMods.length };
+    const bar = q('#progress');
+    bar.setAttribute('aria-valuemax', String(p.total || 1));
+    bar.setAttribute('aria-valuenow', String(p.done));
+    q('#pfill').style.width = (p.total ? (p.done / p.total) * 100 : 0) + '%';
+    q('#plabel').textContent = `${p.done} / ${p.total} 块模块`;
+    q('#bcount').textContent = `${(s.badges || []).length} 个徽章`;
+
+    q('#tray-title').textContent = s.trayTitle || item.tray?.title || copy.tray.title;
+    q('#tray-hint').textContent = s.trayHint || item.tray?.hint || copy.tray.hint;
+
+    renderTask();
+    renderCards();
+
+    const fb = q('#feedback');
+    fb.className = 'feedback' + (s.feedbackKind ? ' ' + s.feedbackKind : '');
+    if (s.feedback) fb.textContent = s.feedback;
+    q('#hinttext').textContent = s.hint || '';
+
+    const ro = q('#readout');
+    ro.classList.toggle('on', !!s.visible.readout);
+    for (const b of ro.querySelectorAll('[data-rd]')) {
+      const v = s.readout[b.dataset.rd];
+      if (v != null && b.textContent !== String(v)) b.textContent = v;
+    }
+    // 有三维时 socket 的显隐与位置由 kit/scene.mjs 负责
+    if (!lab.attached3d) q('#socket').hidden = !(s.selected && s.phase === 'build');
+  }
+
+  /* ---------- 交互：只发事件 ---------- */
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.card');
+    if (card && !card.disabled) return lab.emit('select', card.dataset.id);
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act) return lab.emit(act);
+    const tool = e.target.closest('[data-tool]')?.dataset.tool;
+    if (tool) {
+      if (tool === 'cut') {
+        const b = e.target.closest('[data-tool]');
+        b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+      }
+      return lab.emit('tool', tool);
+    }
+    if (e.target.id === 'free-lab') return lab.emit('free');
+    if (e.target.id === 'restart') return lab.emit('restart');
+    if (e.target.id === 'socket') return lab.emit('place');
+    const opt = e.target.closest('[data-opt]');
+    if (opt) return lab.emit('answer', Number(opt.dataset.opt));
+    const exp = e.target.closest('[data-exp]');
+    if (exp) {
+      const id = exp.dataset.exp;
+      const spec = (item.experiments || []).find((x) => x.id === id) || {};
+      const value =
+        exp.tagName === 'BUTTON'
+          ? spec.control === 'toggle'
+            ? exp.getAttribute('aria-pressed') !== 'true'
+            : null
+          : Number(exp.value);
+      return lab.emit('experiment', { id, value });
+    }
+  });
+
+  document.addEventListener('input', (e) => {
+    const id = e.target.dataset?.exp;
+    if (!id) return;
+    const out = document.querySelector(`[data-exp-out="${id}"]`);
+    const exp = (item.experiments || []).find((x) => x.id === id);
+    if (out) out.textContent = e.target.value + (exp?.unit || '');
+    lab.emit('experiment', { id, value: Number(e.target.value) });
+  });
+
+  render();
+  // 调试钩子：?debug=1 时把 lab（含 lab.stage）挂到 window，方便控制台/验收排查
+  if (new URLSearchParams(location.search).has('debug')) window.__lab = lab;
+  return lab;
+}
+
+function iconBody(name) {
+  const set = typeof ICONS === 'undefined' ? {} : ICONS;
+  return set[name] || set.box || '<rect x="4" y="8" width="16" height="11" rx="1.5"/>';
+}
+
+/* ==== kit/scene.mjs ==== */
+/* mechbench · 三维舞台（kit）
+ * 相机/灯光/地面/剖切/目标轮廓/拾取/拖放/取景/循环 —— 所有物品共用。
+ * 物品只给几何（model.mjs）、数值（manifest.scene）、回调。
+ */
+
+
+
+const vec = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+
+const DEFAULT = {
+  spawn: [255, 26, 155],
+  renderer: { exposure: 0.94, pixelRatio: 1.5 },
+  camera: { fov: 32, near: 2, far: 6000, defaultFocus: 'engine' },
+  orbit: { minDistance: 190, maxDistance: 1800, minPolar: 0.06, maxPolar: 0.54 },
+  bench: { y: -110, color: 0xdfe5ea, size: 4000 },
+  env: 0.48,
+  lights: {
+    hemi: [0xffffff, 0x9aa7b3, 0.62],
+    key: { color: 0xfff6ec, intensity: 2.0, pos: [-190, 300, 240] },
+    fill: { color: 0xdce8f4, intensity: 0.85, pos: [280, 90, 240] },
+    rim: { color: 0xcfe0f0, intensity: 0.8, pos: [160, 200, -300] },
+  },
+  cut: { normal: [0, 0, -1], constant: 0 },
+  ghost: { color: 0x9aa4ad, opacity: 0.62 },
+  target: { color: 0x2f6f9f, opacity: 0.17 },
+  focus: {},
+  nearRadius: { wide: 52, narrow: 66 },
+};
+
+function merge(base, over) {
+  const out = { ...base };
+  for (const k of Object.keys(over || {})) {
+    const v = over[k];
+    out[k] = v && typeof v === 'object' && !Array.isArray(v) ? merge(base[k] || {}, v) : v;
+  }
+  return out;
+}
+function createStage(opts) {
+  const cfg = merge(DEFAULT, opts.config);
+  const host = opts.host;
+  const stageEl = opts.stageEl;
+  const worldGroup = opts.world;
+  const modules = opts.modules || [];
+  const model = opts.model || {};
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 渲染器 / 场景 ---------- */
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, cfg.renderer.pixelRatio));
+  renderer.setSize(stageEl.clientWidth, stageEl.clientHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = cfg.renderer.exposure;
+  renderer.localClippingEnabled = true;
+  renderer.domElement.setAttribute('aria-label', '三维装配台：选中模块后拖到安装位置，也可用「装到这里」按钮');
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.add(worldGroup);
+  const camera = new THREE.PerspectiveCamera(cfg.camera.fov, stageEl.clientWidth / stageEl.clientHeight, cfg.camera.near, cfg.camera.far);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.085;
+  controls.enablePan = true;
+  controls.screenSpacePanning = true;
+  controls.rotateSpeed = 0.62;
+  controls.zoomSpeed = 0.8;
+  controls.panSpeed = 0.8;
+  controls.minDistance = cfg.orbit.minDistance;
+  controls.maxDistance = cfg.orbit.maxDistance;
+  controls.minPolarAngle = Math.PI * cfg.orbit.minPolar;
+  controls.maxPolarAngle = Math.PI * cfg.orbit.maxPolar;
+  controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  scene.environmentIntensity = cfg.env;
+
+  const [hs, hg, hi] = cfg.lights.hemi;
+  scene.add(new THREE.HemisphereLight(hs, hg, hi));
+  for (const k of ['key', 'fill', 'rim']) {
+    const l = cfg.lights[k];
+    if (!l) continue;
+    const dir = new THREE.DirectionalLight(l.color, l.intensity);
+    dir.position.set(...l.pos);
+    scene.add(dir);
+  }
+
+  if (cfg.bench !== false) {
+  const bench = new THREE.Mesh(
+    new THREE.PlaneGeometry(cfg.bench.size, cfg.bench.size),
+    new THREE.MeshStandardMaterial({ color: cfg.bench.color, roughness: 0.97, metalness: 0 })
+  );
+  bench.rotation.x = -Math.PI / 2;
+  bench.position.y = cfg.bench.y;
+  scene.add(bench);
+  }
+
+  /* ---------- 剖切 ---------- */
+  const CUT = new THREE.Plane(vec(...cfg.cut.normal), cfg.cut.constant);
+  const GHOST = new THREE.MeshStandardMaterial({
+    color: cfg.ghost.color, roughness: 0.9, metalness: 0,
+    transparent: true, opacity: cfg.ghost.opacity, depthWrite: false,
+    side: THREE.DoubleSide, clippingPlanes: [CUT],
+  });
+  const TARGET = new THREE.MeshBasicMaterial({
+    color: cfg.target.color, transparent: true, opacity: cfg.target.opacity,
+    depthWrite: false, side: THREE.DoubleSide,
+  });
+  const ghostGroup = new THREE.Group();
+  scene.add(ghostGroup);
+  let targetKey = null;
+
+  /* ---------- 视图状态 ---------- */
+  const view = {
+    crankDeg: 0, camDeg: 0, speed: 1, running: false, cut: false, solid: false,
+    navigation: 'rotate', selected: null, offsets: new Map(), drag: null, focus: cfg.camera.defaultFocus,
+    hintOn: false,
+  };
+  const SPAWN = vec(...cfg.spawn);
+
+  const byKey = model.byKey;
+  const info = new Map(
+    modules.map((m) => {
+      const b = model.moduleBounds(m.parts);
+      return [m.id, { ...m, bounds: b, center: b.getCenter(vec()), size: b.getSize(vec()) }];
+    })
+  );
+
+  const socketEl = document.getElementById('socket');
+  const previewEl = document.getElementById('preview-label');
+  const state = () => (opts.getState ? opts.getState() : {});
+
+  /* ---------- 摆位与材质 ---------- */
+  const moduleOffsetTarget = (id) => {
+    if (state().placed?.includes(id)) return vec();
+    if (typeof cfg.spawnFor === 'function') {
+      const v = cfg.spawnFor(id, info.get(id), state(), view);
+      if (v) return v.isVector3 ? v.clone() : vec(...v);
+    }
+    return SPAWN.clone();
+  };
+
+  function render(dt = 1) {
+    const s = state();
+    for (const m of modules) {
+      const installed = s.placed?.includes(m.id);
+      const selected = s.selected === m.id;
+      const visible = installed || selected;
+      let off = view.offsets.get(m.id);
+      if (!off) {
+        off = moduleOffsetTarget(m.id).clone();
+        view.offsets.set(m.id, off);
+      }
+      if (view.drag?.id !== m.id) {
+        const want = moduleOffsetTarget(m.id);
+        if (reduced || dt === 1) off.copy(want);
+        else off.lerp(want, Math.min(1, dt * 12));
+      }
+      for (const key of m.parts) {
+        const p = byKey.get(key);
+        if (!p) continue;
+        p.g.visible =
+          visible && !(cfg.hiddenPart && cfg.hiddenPart(key, s));
+        p.g.position.copy(off);
+        materials(p, installed || view.solid);
+      }
+    }
+    model.applyMotion(view, s);
+    worldGroup.updateMatrixWorld(true);
+  }
+
+  // 剖开：外壳换玻璃；带 userData.cutaway 的网格（被切掉的那半）直接隐藏
+  function materials(p, showSolid) {
+    const cutting = showSolid && view.cut;
+    p.g.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.userData.cutaway) o.visible = !cutting;
+      const ghost = cutting && (p.shell || o.userData.socketCover) && !(view.focus !== 'all' && view.focus === p.key);
+      if (ghost) {
+        if (!p.ghostMat) {
+          p.ghostMat = GHOST.clone();
+          p.ghostMat.opacity = 0.58 + 0.06 * Math.min(p.layer || 0, 2);
+        }
+        o.material = p.ghostMat;
+        o.renderOrder = 3;
+      } else if (o.material !== o.userData.omat) {
+        o.material = o.userData.omat;
+        o.renderOrder = 0;
+      }
+    });
+  }
+
+  /* ---------- 目标轮廓 ---------- */
+  function setTarget(keys) {
+    const want = keys ? keys.join('|') : null;
+    const always = typeof opts.targetAlways === 'function' ? opts.targetAlways() : !!opts.targetAlways;
+    const show = !!keys && keys.length && (view.hintOn || always);
+    if (want === targetKey && !show) {
+      ghostGroup.visible = show;
+      return;
+    }
+    for (const c of [...ghostGroup.children]) ghostGroup.remove(c);
+    targetKey = want;
+    if (!show) {
+      ghostGroup.visible = false;
+      return;
+    }
+    for (const key of keys) {
+      const p = byKey.get(key);
+      if (!p) continue;
+      const clone = p.obj.clone(true);
+      clone.traverse((o) => {
+        if (o.isMesh) o.material = TARGET;
+      });
+      ghostGroup.add(clone);
+    }
+    ghostGroup.visible = true;
+  }
+
+  /* ---------- 相机 ---------- */
+  const box = new THREE.Box3();
+  for (const p of model.PARTS || []) box.union(new THREE.Box3().setFromObject(p.g));
+  const MODEL_CENTER = box.getCenter(vec());
+  const MODEL_SIZE = box.getSize(vec());
+
+  function focusSpec(name) {
+    const f = cfg.focus[name] || {};
+    const dir = f.dir || [0, 18];
+    if (f.box) {
+      const b = typeof f.box === 'function' ? f.box(state(), view) : f.box;
+      return { center: vec(...b[0]), size: vec(...b[1]), dir, fit: f.fit || 1 };
+    }
+    if (name === cfg.camera.defaultFocus || !name) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
+    const p = byKey.get(name);
+    if (!p) return { center: MODEL_CENTER.clone(), size: MODEL_SIZE.clone(), dir, fit: f.fit || 1.1 };
+    const b = new THREE.Box3().setFromObject(p.g);
+    const size = b.getSize(vec());
+    size.set(Math.max(size.x, 30), Math.max(size.y, 30), Math.max(size.z, 30));
+    return { center: b.getCenter(vec()), size, dir, fit: f.fit || 1.75 };
+  }
+
+  function fitCamera(name = cfg.camera.defaultFocus) {
+    view.focus = name;
+    const { center, size, dir, fit } = focusSpec(name);
+    const f = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const narrow = stageEl.clientWidth < 620;
+    const usableW = stageEl.clientWidth - (narrow ? 40 : 90);
+    const usableH = stageEl.clientHeight - (narrow ? 150 : 40);
+    const dist =
+      Math.max(
+        (size.y / (2 * f)) * (stageEl.clientHeight / usableH),
+        (size.x / (2 * f * camera.aspect)) * (stageEl.clientWidth / usableW)
+      ) * fit + 40;
+    const [yaw, pitch] = dir.map((d) => (d * Math.PI) / 180);
+    camera.position.copy(center).add(vec(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).multiplyScalar(dist));
+    controls.target.copy(center);
+    controls.update();
+  }
+
+  let userNavigated = false;
+  controls.addEventListener('start', () => {
+    userNavigated = true;
+  });
+
+  /* ---------- 导航 ---------- */
+  function setNavigation(mode) {
+    view.navigation = mode;
+    controls.mouseButtons.LEFT = mode === 'pan' ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.touches.ONE = mode === 'pan' ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+    for (const b of document.querySelectorAll('[data-tool]')) {
+      if (b.dataset.tool === 'rotate' || b.dataset.tool === 'pan') b.setAttribute('aria-pressed', String(b.dataset.tool === mode));
+    }
+    renderer.domElement.style.cursor = mode === 'pan' ? 'move' : 'grab';
+  }
+
+  /* ---------- 屏幕坐标 ---------- */
+  function project(v) {
+    const p = v.clone().project(camera);
+    return { x: (p.x * 0.5 + 0.5) * stageEl.clientWidth, y: (-0.5 * p.y + 0.5) * stageEl.clientHeight };
+  }
+
+  function nearTarget(id) {
+    const next = opts.nextModule ? opts.nextModule() : null;
+    if (!next || !info.get(id)) return false;
+    const a = project(info.get(id).center.clone().add(view.offsets.get(id) || vec()));
+    const b = project(info.get(next.id).center);
+    const r = stageEl.clientWidth < 620 ? cfg.nearRadius.narrow : cfg.nearRadius.wide;
+    return Math.hypot(a.x - b.x, a.y - b.y) < r;
+  }
+
+  function overlay() {
+    const s = state();
+    const next = opts.nextModule ? opts.nextModule() : null;
+    const showSocket = !!next && s.phase === 'build' && !s.lab;
+    if (socketEl) {
+      socketEl.hidden = !showSocket;
+      if (showSocket) {
+        const md = info.get(next.id);
+        const p = project(vec(md.center.x, md.bounds.max.y + 16, md.center.z));
+        socketEl.style.left = p.x + 'px';
+        socketEl.style.top = p.y + 'px';
+        socketEl.disabled = !s.selected;
+        socketEl.classList.toggle('near', !!s.selected && nearTarget(s.selected));
+      }
+    }
+    const sel = s.selected && info.get(s.selected);
+    if (previewEl) {
+      previewEl.hidden = !sel || s.phase !== 'build';
+      if (sel) {
+        const c = sel.center.clone().add(view.offsets.get(sel.id) || vec());
+        const p = project(vec(c.x, c.y + sel.size.y / 2 + 14, c.z));
+        previewEl.style.left = p.x + 'px';
+        previewEl.style.top = p.y + 'px';
+      }
+    }
+    if (next) setTarget(next.parts);
+    else setTarget(null);
+  }
+
+  /* ---------- 拾取与拖放 ---------- */
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const clickables = [];
+  for (const p of model.PARTS || []) p.g.traverse((o) => o.isMesh && clickables.push(o));
+
+  function rayAt(e) {
+    const r = renderer.domElement.getBoundingClientRect();
+    pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, 1 - ((e.clientY - r.top) / r.height) * 2);
+    raycaster.setFromCamera(pointer, camera);
+  }
+  const visibleIn = (o) => {
+    for (let x = o; x; x = x.parent) if (!x.visible) return false;
+    return true;
+  };
+  function pickKey(e) {
+    rayAt(e);
+    const hit = raycaster.intersectObjects(clickables.filter(visibleIn), false)[0];
+    if (!hit) return null;
+    let o = hit.object;
+    while (o && !o.userData.key) o = o.parent;
+    return o ? o.userData.key : null;
+  }
+
+  const canDrag = () => (opts.canDrag ? opts.canDrag() : true) && view.navigation !== 'pan';
+  let downPt = null;
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    downPt = { x: e.clientX, y: e.clientY };
+  }, { capture: true });
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !canDrag()) return;
+    const s = state();
+    const m = info.get(s.selected);
+    if (!m) return;
+    rayAt(e);
+    const objs = m.parts.map((k) => byKey.get(k).g).filter(Boolean);
+    const hit = raycaster.intersectObjects(objs, true).find((h) => visibleIn(h.object));
+    if (!hit) return;
+    const off = view.offsets.get(m.id) || vec();
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(vec()), m.center.clone().add(off));
+    const point = raycaster.ray.intersectPlane(plane, vec());
+    if (!point) return;
+    view.drag = { id: m.id, pointerId: e.pointerId, plane, start: point.clone(), offset: off.clone() };
+    controls.enabled = false;
+    renderer.domElement.setPointerCapture?.(e.pointerId);
+    renderer.domElement.style.cursor = 'grabbing';
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!view.drag || view.drag.pointerId !== e.pointerId) return;
+    rayAt(e);
+    const p = raycaster.ray.intersectPlane(view.drag.plane, vec());
+    if (p) {
+      if (!view.offsets.has(view.drag.id)) view.offsets.set(view.drag.id, vec());
+      view.offsets.get(view.drag.id).copy(view.drag.offset).add(p.sub(view.drag.start));
+    }
+    socketEl?.classList.toggle('near', nearTarget(view.drag.id));
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  function releaseDrag(e, cancel) {
+    if (!view.drag || view.drag.pointerId !== e.pointerId) return;
+    const id = view.drag.id;
+    const onTarget = !cancel && nearTarget(id);
+    view.drag = null;
+    controls.enabled = true;
+    renderer.domElement.releasePointerCapture?.(e.pointerId);
+    setNavigation(view.navigation);
+    socketEl?.classList.remove('near');
+    if (!cancel && onTarget) opts.onDrop?.(id, true);
+    else if (!cancel) opts.onDrop?.(id, false);
+    e.stopImmediatePropagation();
+  }
+  renderer.domElement.addEventListener('pointerup', (e) => releaseDrag(e, false), { capture: true });
+  renderer.domElement.addEventListener('pointercancel', (e) => releaseDrag(e, true), { capture: true });
+
+  renderer.domElement.addEventListener('click', (e) => {
+    // 旋转/平移后松手也会派发 click：位移 > 5px 就不算点击
+    if (downPt && Math.hypot(e.clientX - downPt.x, e.clientY - downPt.y) > 5) return;
+    if (view.drag) return;
+    const k = pickKey(e);
+    if (k && opts.onPickKey) opts.onPickKey(k, view.focus === k);
+  });
+
+  /* ---------- 局部放大窗（同一个 canvas 里用 scissor 画第二视角） ---------- */
+  const insetEl = document.getElementById('inset');
+  const insetCam = new THREE.PerspectiveCamera(cfg.inset?.fov || 36, 1, cfg.inset?.near || 0.1, cfg.inset?.far || 500);
+  function drawInset() {
+    if (!insetEl || !cfg.inset) return;
+    const s = state();
+    const ic = cfg.inset;
+    const fits = stageEl.clientWidth > (ic.minWidth || 760) && stageEl.clientHeight > (ic.minHeight || 430);
+    const spec = fits && ic.visible?.(s, view) ? ic.target?.(s, view) : null;
+    const part = spec && byKey.get(spec.part);
+    insetEl.hidden = !part;
+    if (!part) return;
+    const title = insetEl.querySelector('#inset-title');
+    if (title && spec.title) title.textContent = spec.title;
+    const target = part.g.localToWorld(vec(...(spec.local || [0, 0, 0])));
+    insetCam.position.copy(target).add(vec(...spec.offset));
+    insetCam.lookAt(target);
+    const r = insetEl.getBoundingClientRect(), base = stageEl.getBoundingClientRect();
+    if (r.width < 10 || r.height < 10) return;
+    insetCam.aspect = r.width / r.height;
+    insetCam.updateProjectionMatrix();
+    const x = r.left - base.left, y = stageEl.clientHeight - (r.bottom - base.top);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+    renderer.setScissor(x, y, r.width, r.height);
+    renderer.setViewport(x, y, r.width, r.height);
+    renderer.setScissorTest(true);
+    renderer.clearDepth();
+    renderer.render(scene, insetCam);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, stageEl.clientWidth, stageEl.clientHeight);
+  }
+
+  /* ---------- 像素探针：给验收用，肉眼看不到的"空"要能被机器测出来 ---------- */
+  // 必须在渲染循环里紧接着 render() 读，否则默认帧缓冲内容已经丢弃（读到全 0）
+  const pendingProbes = [];
+  function probe(rect) {
+    return new Promise((res) => pendingProbes.push({ rect, res }));
+  }
+  function runProbes() {
+    if (!pendingProbes.length) return;
+    const gl = renderer.getContext();
+    const pr = renderer.getPixelRatio();
+    const H = renderer.domElement.height;
+    for (const { rect, res } of pendingProbes.splice(0)) {
+      const x = Math.max(0, Math.round(rect.x * pr));
+      const y = Math.max(0, Math.round(H - (rect.y + rect.height) * pr));
+      const w = Math.max(1, Math.round(rect.width * pr));
+      const h = Math.max(1, Math.round(rect.height * pr));
+      const buf = new Uint8Array(w * h * 4);
+      gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      const colors = new Set();
+      const rows = new Array(h).fill(0);
+      const cols = new Array(w).fill(0);
+      let lit = 0;
+      for (let j = 0; j < h; j++) {
+        for (let i = 0; i < w; i++) {
+          const k = ((h - 1 - j) * w + i) * 4;
+          const r = buf[k], g = buf[k + 1], b = buf[k + 2], a = buf[k + 3];
+          // 画布是 alpha:true 的清屏，舞台底色是 CSS 背景 → alpha 就是最干净的"有没有物体"判据
+          if (a < 8) continue;
+          colors.add((r >> 3) * 1024 + (g >> 3) * 32 + (b >> 3));
+          rows[j]++;
+          cols[i]++;
+          lit++;
+        }
+      }
+      res({ colors: colors.size, lit, rows, cols, w, h });
+    }
+  }
+
+  /* ---------- 尺寸与循环 ---------- */
+  function resize() {
+    const w = stageEl.clientWidth, h = stageEl.clientHeight;
+    if (!w || !h) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    if (!userNavigated) fitCamera(view.focus);
+  }
+  new ResizeObserver(resize).observe(stageEl);
+
+  function start() {
+    let prev = performance.now();
+    renderer.setAnimationLoop((now) => {
+      const dt = Math.min(0.05, Math.max(0, (now - prev) / 1000));
+      prev = now;
+      opts.tick?.(dt);
+      render(dt);
+      controls.update();
+      overlay();
+      renderer.render(scene, camera);
+      drawInset();
+      runProbes();
+    });
+  }
+
+  resize();
+  render(1);
+  fitCamera(view.focus);
+
+  return {
+    view, renderer, scene, camera, controls, info, spawn: SPAWN, fitCamera, setNavigation, project,
+    nearTarget, overlay, render, start, setTarget, resize, probe,
+    get solidScreen() {
+      return renderer.domElement;
+    },
+  };
+}
+
+
+/* ==== coin-comparator-lab/model.mjs ==== */
+
+/* 比较式投币器 · 几何与运动（唯一真源）
+ * 基准 1 unit = 1 mm。整体包络约 131×214×46 mm（含背面安装凸台、底部接币盒/退币杯、右侧电磁铁外罩）；前盖 124×178×5。内部为教学排布。
+ *
+ * 零件表（编号 · 名称 · 依据 / 建模尺寸 · 结论）
+ * 01 base        底板与机架   120×174×6 铝板 + 4 橡胶脚；同类整机包络取整
+ * 02 runway      币道+厚度门  弧形槽轨，槽宽 2.6；1 元(1.85)过，厚垫圈(3.2)被挡
+ * 03 entry       投币口/入口  喇叭口 + 前面板槽口，币立姿进入
+ * 04 returnBtn   退币按钮+推杆 红色按钮 Ø18、行程 4；纯机械旁路
+ * 05 cashbox     接币盒+退币杯 透明接币盒、回收杯；两个出口分开
+ * 06 sampleHolder 样币座    右上，透明窗，弹簧夹
+ * 07 sampleCoin  样币        1 元 Ø25.0×1.85 或 游戏币 Ø24.0×1.80（黄铜）
+ * 08 coil        双线圈      测试线圈/参考线圈各 4 圈，铜线 Ø1.6；桥路两臂
+ * 09 board       比较器板    34×28 PCB、比较器、灵敏度电位器、表头、LED
+ * 10 pot         灵敏度旋钮  旋钮 Ø16 穿前盖，行程 0..10
+ * 11 gate        分选活门+弹簧 活门 15 mm、回位弹簧；默认退币位
+ * 12 solenoid    电磁铁      12 V，行程 8 mm，拉杆扣活门尾
+ * 13 counter     机械计数表  双拨盘 0..99，币身拨棘爪
+ * 14 cover       前盖面板    120×174×5，四个真开孔+透明窗
+ * 15 coin        投入币（场景件，不注册零件）五种币，Ø20.5..25、厚 1.65..3.2
+ *
+ * 币道中心线：立姿硬币在 x-y 平面内沿弧线滚动，厚度方向 z；币面中心 z=-8.4。
+ * 入口(-34,78) → 厚度门(-33,44) → 测试线圈(-12,6) → 活门(34,-34) → 接币盒/退币杯。
+ */
+const world = new THREE.Group();
+
+const M = {
+  alu:     new THREE.MeshPhysicalMaterial({ color: 0xb6bcc4, metalness: .72, roughness: .42, clearcoat: .25, clearcoatRoughness: .55 }),
+  aluDark: new THREE.MeshStandardMaterial({ color: 0x747c86, metalness: .65, roughness: .5 }),
+  steel:   new THREE.MeshStandardMaterial({ color: 0xb8c0c8, metalness: .95, roughness: .25 }),
+  dark:    new THREE.MeshStandardMaterial({ color: 0x30343a, metalness: .3, roughness: .62 }),
+  black:   new THREE.MeshStandardMaterial({ color: 0x1d2024, metalness: .2, roughness: .7 }),
+  rubber:  new THREE.MeshStandardMaterial({ color: 0x24272b, roughness: .95 }),
+  brass:   new THREE.MeshStandardMaterial({ color: 0xc9a24e, metalness: .9, roughness: .32 }),
+  copper:  new THREE.MeshStandardMaterial({ color: 0xb87333, metalness: .9, roughness: .3, emissive: 0x3a1705, emissiveIntensity: .35 }),
+  pcb:     new THREE.MeshStandardMaterial({ color: 0x24684f, roughness: .75 }),
+  chip:    new THREE.MeshStandardMaterial({ color: 0x181a1d, roughness: .55 }),
+  red:     new THREE.MeshStandardMaterial({ color: 0xc2452d, roughness: .5 }),
+  glow:    new THREE.MeshStandardMaterial({ color: 0x66d18f, emissive: 0x2f9a5e, emissiveIntensity: 1.4, roughness: .4 }),
+  clear:   new THREE.MeshPhysicalMaterial({ color: 0xcfe3ea, metalness: 0, roughness: .08, transmission: .85, transparent: true, opacity: .32, depthWrite: false }),
+  nickel:  new THREE.MeshStandardMaterial({ color: 0xd2d7dd, metalness: .88, roughness: .28 }),
+  brassCoin: new THREE.MeshStandardMaterial({ color: 0xd4ad58, metalness: .82, roughness: .32 }),
+  steelCoin: new THREE.MeshStandardMaterial({ color: 0x59616a, metalness: .9, roughness: .34 }),
+  yellow:  new THREE.MeshStandardMaterial({ color: 0xe0b13f, roughness: .5 }),
+  white:   new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: .8 }),
+};
+
+const TAU = Math.PI * 2;
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const group = () => new THREE.Group();
+const mesh = (g, m, parent, pos) => { const o = new THREE.Mesh(g, m); if (pos) o.position.copy(pos); if (parent) parent.add(o); return o; };
+const box = (w, h, d, m, parent, pos) => mesh(new THREE.BoxGeometry(w, h, d), m, parent, pos);
+const cylZ = (r, h, m, parent, pos, seg = 32) => { const o = mesh(new THREE.CylinderGeometry(r, r, h, seg), m, parent, pos); o.rotation.x = Math.PI / 2; return o; };
+const cylY = (r, h, m, parent, pos, seg = 32) => mesh(new THREE.CylinderGeometry(r, r, h, seg), m, parent, pos, seg);
+const cylX = (r, h, m, parent, pos, seg = 32) => { const o = cylY(r, h, m, parent, pos, seg); o.rotation.z = Math.PI / 2; return o; };
+const torusZ = (r, wire, m, parent, pos) => mesh(new THREE.TorusGeometry(r, wire, 10, 48), m, parent, pos);
+const torusY = (r, wire, m, parent, pos) => { const o = mesh(new THREE.TorusGeometry(r, wire, 10, 48), m, parent, pos); o.rotation.x = Math.PI / 2; return o; };
+function wire(pts, r, m, parent) {
+  return mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => V(...p)), false, 'chordal'), Math.max(20, pts.length * 5), r, 7, false), m, parent);
+}
+function polyWire(pts, r, m, parent) {
+  const g = group();
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = V(...pts[i]), b = V(...pts[i + 1]);
+    const d = b.clone().sub(a), len = d.length();
+    const c = mesh(new THREE.CylinderGeometry(r, r, len + r * 1.2, 8), m, g);
+    c.position.copy(a).add(b).multiplyScalar(.5);
+    c.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize());
+    mesh(new THREE.SphereGeometry(r * 1.05, 8, 6), m, g, a);
+  }
+  const end = V(...pts[pts.length - 1]);
+  mesh(new THREE.SphereGeometry(r * 1.05, 8, 6), m, g, end);
+  parent.add(g);
+  return g;
+}
+function rrect(x0, y0, x1, y1, r) {
+  const s = new THREE.Shape();
+  s.moveTo(x0 + r, y0); s.lineTo(x1 - r, y0); s.quadraticCurveTo(x1, y0, x1, y0 + r);
+  s.lineTo(x1, y1 - r); s.quadraticCurveTo(x1, y1, x1 - r, y1);
+  s.lineTo(x0 + r, y1); s.quadraticCurveTo(x0, y1, x0, y1 - r);
+  s.lineTo(x0, y0 + r); s.quadraticCurveTo(x0, y0, x0 + r, y0);
+  return s;
+}
+function holeRect(x0, y0, x1, y1, r) {
+  const p = new THREE.Path();
+  p.moveTo(x0 + r, y0); p.quadraticCurveTo(x0, y0, x0, y0 + r);
+  p.lineTo(x0, y1 - r); p.quadraticCurveTo(x0, y1, x0 + r, y1);
+  p.lineTo(x1 - r, y1); p.quadraticCurveTo(x1, y1, x1, y1 - r);
+  p.lineTo(x1, y0 + r); p.quadraticCurveTo(x1, y0, x1 - r, y0);
+  p.closePath();
+  return p;
+}
+function panel(x0, y0, x1, y1, r, holes, thick, z, m, parent) {
+  const s = rrect(x0, y0, x1, y1, r);
+  for (const h of holes) {
+    if (h.kind === 'circle') { const p = new THREE.Path(); p.absarc(h.x, h.y, h.r, 0, TAU, true); s.holes.push(p); }
+    else s.holes.push(holeRect(h.x0, h.y0, h.x1, h.y1, h.r || 1));
+  }
+  const g = new THREE.ExtrudeGeometry(s, { depth: thick, bevelEnabled: false, curveSegments: 20 });
+  g.translate(0, 0, z);
+  return mesh(g, m, parent);
+}
+function printLabel(text, w, h, parent, pos, rotY = 0, color = '#6d6558') {
+  const c = document.createElement('canvas'); c.width = 512; c.height = Math.max(32, Math.round(512 * h / w));
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = color; ctx.font = `700 ${Math.floor(c.height * .62)}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, c.width / 2, c.height / 2);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const o = mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }), parent, pos);
+  o.rotation.y = rotY; o.userData.label = true; o.userData.keepMat = true;
+  return o;
+}
+function springUnit(turns = 7, radius = 2.2, wireR = .45) {
+  const pts = [];
+  const n = turns * 28;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, a = t * turns * TAU;
+    pts.push([radius * Math.cos(a), t, radius * Math.sin(a)]);
+  }
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => V(...p))), n, wireR, 6, false);
+}
+function placeSpring(obj, a, b) {
+  const d = b.clone().sub(a), len = Math.max(1, d.length());
+  obj.position.copy(a);
+  obj.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize());
+  obj.scale.set(1, len, 1);
+}
+
+/* ---------- 硬币规格（几何/逻辑唯一来源） ---------- */
+const COINS = {
+  yuan:   { name: '1 元',   d: 25.0, t: 1.85, mat: 'nickel', label: '1',  color: 0xd2d7dd },
+  token:  { name: '游戏币', d: 24.0, t: 1.80, mat: 'brass',  label: '★',  color: 0xd4ad58 },
+  jiao:   { name: '5 角',   d: 20.5, t: 1.65, mat: 'nickel', label: '5',  color: 0xd2d7dd },
+  fake:   { name: '铜章',   d: 25.0, t: 1.80, mat: 'brass',  label: '章', color: 0xc79c45 },
+  washer: { name: '厚垫圈', d: 25.0, t: 3.20, mat: 'steel',  label: '垫', color: 0x8f969e, hole: 8 },
+};
+const SAMPLES = { yuan: COINS.yuan, token: COINS.token };
+const GATE_MAX_T = 2.6;          // 厚度门净宽
+const REF_R = 12.5;              // 1 元半径，币道基准
+const COIN_Z = -8.4;
+const GATE_T = 0.72;             // 主币道在整条参数里的占比
+
+/* ---------- 币道中心线 ---------- */
+const mainPts = [[-34, 78], [-34, 56], [-33, 44], [-30, 32], [-24, 20], [-16, 10], [-8, 2], [2, -8], [14, -18], [26, -27], [34, -34]];
+const acceptPts = [[34, -34], [36, -46], [36, -60], [36, -76], [36, -96]];
+const rejectPts = [[34, -34], [27, -39], [18, -45], [6, -51], [-8, -55], [-18, -60], [-18, -76], [-18, -96]];
+const mkCurve = (pts, z = COIN_Z) => new THREE.CatmullRomCurve3(pts.map((p) => V(p[0], p[1], z)), false, 'catmullrom', .25);
+const mainCurve = mkCurve(mainPts), acceptCurve = mkCurve(acceptPts), rejectCurve = mkCurve(rejectPts);
+const L_MAIN = mainCurve.getLength(), L_ACC = acceptCurve.getLength(), L_REJ = rejectCurve.getLength();
+function nearestU(curve, x, y) {
+  let best = 0, bd = 1e9;
+  for (let i = 0; i <= 600; i++) {
+    const p = curve.getPointAt(i / 600);
+    const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+    if (d < bd) { bd = d; best = i / 600; }
+  }
+  return best;
+}
+const U_BLOCK = nearestU(mainCurve, -33, 44);
+const U_COIL = nearestU(mainCurve, -12, 6);
+const STATIONS = { block: U_BLOCK * GATE_T, stop: Math.max(0, U_BLOCK * GATE_T - .13), coil: U_COIL * GATE_T, gate: GATE_T, end: 1 };
+const DIR = (u) => { const t = mainCurve.getTangentAt(u); return { x: t.x, y: t.y, a: Math.atan2(t.y, t.x) }; };
+
+
+/* ---------- 零件注册 ---------- */
+const parts = [], byKey = new Map(), PIV = {};
+function addPart(key, name, obj, mat, opt = {}) {
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    if (!o.userData.keepMat) o.material = (o.userData.mat || o.material || mat).clone();
+    o.userData.omat = o.material;
+    o.userData.key = key;
+  });
+  const g = new THREE.Group(); g.add(obj); g.userData.key = key;
+  world.add(g);
+  const p = { key, name, g, obj, anim: new THREE.Vector3(), shell: !!opt.shell };
+  parts.push(p); byKey.set(key, p);
+  return p;
+}
+
+/* ---------- 01 底板与机架 ---------- */
+{
+  const g = group();
+  panel(-62, -86, 62, 92, 7, [], 6, -18, M.alu, g);                 // 背板 -18..-12
+  for (const [x, y] of [[-52, -76], [52, -76], [-52, 82], [52, 82]]) {
+    box(10, 8, 12, M.dark, g, V(x, y, -18 - 3));
+  }
+  for (const x of [-48, 0, 48]) box(8, 4, 4, M.aluDark, g, V(x, -40, -10.5)); // 加强筋
+  for (const s of [-1, 1]) box(8, 18, 40, M.aluDark, g, V(s * 58, -95, -1));
+  for (const s of [-1, 1]) cylY(6, 6, M.rubber, g, V(s * 58, -107, -1), 14);
+  for (const [x, y] of [[-40, 18], [-40, -24]]) {                           // 线圈定位柱
+    cylZ(3, 2, M.aluDark, g, V(x, y, -11.6), 12);
+  }
+  box(36, 1.2, .3, M.aluDark, g, V(0, 88, -11.9));
+  addPart('base', '底板与机架', g, M.alu);
+}
+
+/* ---------- 02 币道 + 厚度门 ---------- */
+{
+  const g = group();
+  const N = 46;
+  for (let i = 0; i < N - 2; i++) {
+    const u0 = i / N, u1 = (i + 1) / N;
+    const p0 = mainCurve.getPointAt(u0), p1 = mainCurve.getPointAt(u1);
+    const mid = p0.clone().add(p1).multiplyScalar(.5);
+    const tan = mainCurve.getTangentAt((u0 + u1) / 2);
+    const ang = Math.atan2(tan.y, tan.x), len = p0.distanceTo(p1) + 1.1;
+    const rail = box(len, 4, 3.2, M.aluDark, g);
+    rail.position.set(mid.x, mid.y - REF_R - 2, mid.z); rail.rotation.z = ang;
+    const lip = box(len, 5, .9, M.dark, g);
+    lip.position.set(mid.x, mid.y - REF_R + 2, -6.75); lip.rotation.z = ang;
+  }
+  // 币道托脚：把轨道和底板连起来
+  box(6, 2.4, 3, M.aluDark, g, V(-30, 15.8, -10.3));
+  box(6, 2.4, 3, M.aluDark, g, V(11, -32.5, -10.3));
+  // 厚度门：两片夹板，净缝 2.6；厚垫圈停在这里
+  const gp = mainCurve.getPointAt(U_BLOCK), gt = mainCurve.getTangentAt(U_BLOCK);
+  const gateG = group();
+  gateG.position.copy(gp); gateG.rotation.z = Math.atan2(gt.y, gt.x);
+  for (const s of [-1, 1]) {
+    const jaw = box(11, 32, 2, M.steel, gateG, V(0, 0, s * (GATE_MAX_T / 2 + 1.0)));
+    if (s > 0) jaw.userData.cutaway = true;   // 剖开时只留后夹板，能看见卡在缝里的币
+  }
+  for (const y of [-16, 16]) box(11, 2.4, 7.6, M.steel, gateG, V(0, y, 0));
+  printLabel('2.6', 8, 3, gateG, V(0, 18.2, 3.82), 0, '#40382c');
+  g.add(gateG);
+  addPart('runway', '币道与厚度门', g, M.aluDark);
+}
+
+/* ---------- 03 投币口与入口 ---------- */
+{
+  const g = group();
+  // 入口腔：前盖上的 3 mm 竖缝只容币厚；币以“边先入”的姿势进来，在腔内转 90° 后落到币道
+  for (const s of [-1, 1]) box(4, 36, 21, M.dark, g, V(-34 + s * 19, 76, -1.4));
+  box(38, 4, 21, M.dark, g, V(-34, 96, -1.4));
+  for (const s of [-1, 1]) box(3, 30, 2.5, M.alu, g, V(-34 + s * 2.9, 78, 15.5));
+  printLabel('投币口', 11, 3.6, g, V(-34, 99.5, 11.4), 0, '#4b463c');
+  addPart('entry', '投币口与入口', g, M.dark);
+}
+
+/* ---------- 04 退币按钮与推杆 ---------- */
+{
+  const g = group();
+  const btn = group(); btn.position.set(-52, 56, 14);
+  cylZ(9, 5, M.red, btn, V(0, 0, 1.5), 28);
+  cylZ(10.5, 1.5, M.aluDark, btn, V(0, 0, .8), 28);
+  printLabel('退币', 9, 3.2, btn, V(0, 0, 4.2), 0, '#f5eee2');
+  g.add(btn); PIV.retBtn = btn;
+  box(4, 4, 24, M.steel, g, V(-52, 56, 2));
+  const kick = group(); kick.position.set(-44, 64, -8.2);
+  box(4, 22, 2.0, M.steel, kick, V(0, -9, 0));
+  box(10, 4, 2.0, M.steel, kick, V(5, 2, 0));
+  g.add(kick); PIV.kick = kick;
+  box(6, 3, 6, M.aluDark, g, V(-47, 60, -5));
+  box(6, 6, 4.5, M.aluDark, g, V(-47, 60, -9.75));
+  addPart('returnBtn', '退币按钮与推杆', g, M.red);
+}
+
+/* ---------- 05 接币盒与退币杯 ---------- */
+{
+  const g = group();
+  // 接受通道：两侧挡板把币导进接币盒，币面朝前保持可见
+  for (const s of [-1, 1]) box(1.6, 40, 18, M.aluDark, g, V(36 + s * 14, -62, -3));
+  // 接币盒：透明亚克力
+  box(30, 2, 22, M.dark, g, V(36, -88, 0));
+  for (const s of [-1, 1]) {
+    box(30, 18, 1.5, M.clear, g, V(36, -97, s * 11));
+    box(1.5, 18, 22, M.clear, g, V(36 + s * 15, -97, 0));
+  }
+  box(30, 1.5, 22, M.clear, g, V(36, -106, 0));
+  printLabel('接币盒', 12, 4, g, V(36, -109.5, 11.6), 0, '#6f8a7f');
+  // 退币滑道：沿拒绝曲线铺一条托轨
+  const RN = 26;
+  for (let i = 1; i < RN; i++) {
+    const p0 = rejectCurve.getPointAt(i / RN), p1 = rejectCurve.getPointAt((i + 1) / RN);
+    const mid = p0.clone().add(p1).multiplyScalar(.5);
+    const tan = rejectCurve.getTangentAt((i + .5) / RN);
+    const seg = box(p0.distanceTo(p1) + 1.1, 4, 3.2, M.aluDark, g);
+    seg.position.set(mid.x, mid.y - REF_R - 2, mid.z); seg.rotation.z = Math.atan2(tan.y, tan.x);
+    const lip = box(p0.distanceTo(p1) + 1.1, 4.5, .9, M.dark, g);
+    lip.position.set(mid.x, mid.y - REF_R + 2, -6.75); lip.rotation.z = Math.atan2(tan.y, tan.x);
+  }
+  // 退币杯
+  box(28, 2, 20, M.dark, g, V(-18, -90, 0));
+  for (const s of [-1, 1]) {
+    box(28, 18, 1.5, M.clear, g, V(-18, -99, s * 10));
+    box(1.5, 18, 20, M.clear, g, V(-18 + s * 14, -99, 0));
+  }
+  box(28, 1.5, 20, M.clear, g, V(-18, -108, 0));
+  box(28, 1.5, 1.3, M.alu, g, V(-18, -89.5, 10));
+  printLabel('退币杯', 12, 4, g, V(-18, -111, 10.6), 0, '#6f8a7f');
+  addPart('cashbox', '接币盒与退币杯', g, M.aluDark);
+}
+
+/* ---------- 06 样币座 ---------- */
+{
+  const g = group();
+  box(34, 4, 3.5, M.aluDark, g, V(44, 78, -8.0));
+  box(4, 30, 3.5, M.aluDark, g, V(27, 63, -8.0));
+  box(4, 30, 3.5, M.aluDark, g, V(61, 63, -8.0));
+  box(34, 4, 3.5, M.aluDark, g, V(44, 48, -8.0));
+  for (const x of [28, 60]) for (const y of [50, 76]) cylZ(2, 3, M.aluDark, g, V(x, y, -10.5), 12);
+  const clip = group(); clip.position.set(44, 80, -5.5);
+  box(3, 5, 3, M.steel, clip, V(0, -2.5, 0));
+  box(12, 3, 4, M.steel, clip, V(0, .5, 0));
+  g.add(clip); PIV.sampleClip = clip;
+  printLabel('样币 SAMPLE', 18, 4, g, V(44, 82.5, -4.6), 0, '#4b463c');
+  addPart('sampleHolder', '样币座', g, M.aluDark);
+}
+
+/* ---------- 07 样币（两枚，切换显隐） ---------- */
+function coinGroup(spec, z = 0) {
+  const g = group();
+  const r = spec.d / 2;
+  const mat = spec.mat === 'brass' ? M.brassCoin : spec.mat === 'steel' ? M.steelCoin : M.nickel;
+  if (spec.hole) {
+    const shape = new THREE.Shape(); shape.absarc(0, 0, r, 0, TAU, false);
+    const hole = new THREE.Path(); hole.absarc(0, 0, spec.hole / 2, 0, TAU, true); shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: spec.t, bevelEnabled: false, curveSegments: 40 });
+    geo.translate(0, 0, -spec.t / 2 + z);
+    mesh(geo, mat, g);
+    for (const s of [-1, 1]) {
+      torusZ(r - .45, .32, M.steel, g, V(0, 0, z + s * spec.t / 2));
+      torusZ(spec.hole / 2 + .35, .3, M.steel, g, V(0, 0, z + s * spec.t / 2));
+    }
+  } else {
+    cylZ(r, spec.t, mat, g, V(0, 0, z), 44);
+    for (const s of [-1, 1]) { const t = torusZ(r - .55, .28, mat, g, V(0, 0, z + s * spec.t / 2)); }
+  }
+  if (!spec.hole) {
+  const star = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .17 : r * .38;
+    const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+    i ? star.lineTo(x, y) : star.moveTo(x, y);
+  }
+  star.closePath();
+  const sg = new THREE.ExtrudeGeometry(star, { depth: .35, bevelEnabled: false, curveSegments: 8 });
+  sg.translate(0, 0, z + spec.t / 2);
+  mesh(sg, mat, g);
+  printLabel(spec.label, r * .8, r * .8, g, V(0, 0, z + spec.t / 2 + .42), 0, '#2a2620');
+  }
+  return g;
+}
+{
+  const g = group();
+  const yuan = coinGroup(SAMPLES.yuan, -7.0); yuan.position.set(44, 62, 2.0); yuan.name = 'sample-yuan';
+  const token = coinGroup(SAMPLES.token, -7.0); token.position.set(44, 62, 2.0); token.name = 'sample-token';
+  g.add(yuan, token); PIV.sampleYuan = yuan; PIV.sampleToken = token;
+  PIV.sampleToken.visible = false;
+  addPart('sampleCoin', '样币', g, M.nickel);
+}
+
+/* ---------- 08 测试线圈 + 参考线圈 ---------- */
+function pancakeCoil(cx, cy, parent, name) {
+  const g = group(); g.position.set(cx, cy, -11.0);
+  cylZ(11, 1.2, M.chip, g, V(0, 0, -.4), 28);          // 铁氧体背板
+  for (let k = 0; k < 4; k++) {
+    const r = 5.6 + k * 3.0;
+    const pts = [];
+    for (let i = 0; i <= 96; i++) { const a = i / 96 * TAU; pts.push(V(Math.cos(a) * r, Math.sin(a) * r, 0)); }
+    mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 96, .85, 6, true), M.copper, g);
+  }
+  torusZ(16, .5, M.brass, g, V(0, 0, -.2));
+  g.name = name;
+  parent.add(g);
+  return g;
+}
+{
+  const g = group();
+  pancakeCoil(-12, 6, g, 'testCoil');
+  const ref = pancakeCoil(44, 62, g, 'refCoil');
+  PIV.testCoil = g.getObjectByName('testCoil');
+  // 引线：测试线圈 → 板，参考线圈 → 板
+  wire([[-12, 6, -10.4], [-2, 10, -10.6], [12, 16, -10.6], [26, 18, -9.6]], .55, M.copper, g);
+  wire([[44, 62, -10.4], [50, 52, -10.6], [50, 40, -10.6], [46, 30, -9.6]], .55, M.copper, g);
+  addPart('coil', '测试线圈与参考线圈', g, M.copper);
+}
+
+/* ---------- 09 比较器板 + 10 灵敏度电位器 ---------- */
+{
+  const g = group();
+  box(34, 30, 2, M.pcb, g, V(44, 8, -9.4));
+  for (const [x, y] of [[-14, -12], [14, -12], [-14, 12], [14, 12]]) cylZ(1.5, 3.6, M.brass, g, V(44 + x, 8 + y, -10.1), 8);
+  box(10, 7, 2.2, M.chip, g, V(38, 12, -7.8));
+  for (let i = 0; i < 6; i++) box(.8, 5.2, .5, M.steel, g, V(34.6 + i * 1.25, 12, -6.6));
+  for (const [x, y, r] of [[28, 2, 2.4], [31, 4, 1.4], [55, 2, 1.8]]) {
+    cylZ(1.2, 5, M.steel, g, V(x, y, -6.6), 8);
+    cylZ(r, 3.2, M.chip, g, V(x, y, -5.2), 16);
+  }
+  // 表头：0..门限，红区
+  const dial = group(); dial.position.set(43, 3, -7.3);
+  box(18, 13, 1.5, M.dark, dial, V(0, 0, -.8));
+  const dc = document.createElement('canvas'); dc.width = 512; dc.height = 360;
+  const dx = dc.getContext('2d');
+  dx.fillStyle = '#f2efe6'; dx.fillRect(0, 0, 512, 360);
+  dx.strokeStyle = '#3a3a35'; dx.lineWidth = 3;
+  dx.beginPath(); dx.arc(256, 300, 175, Math.PI * 1.18, Math.PI * 1.82); dx.stroke();
+  dx.fillStyle = '#b23a26'; dx.beginPath(); dx.arc(256, 300, 175, Math.PI * 1.72, Math.PI * 1.82); dx.lineTo(256, 300); dx.fill();
+  dx.fillStyle = '#3a3a35'; dx.font = '700 42px sans-serif'; dx.textAlign = 'center';
+  dx.fillText('比较', 256, 120); dx.font = '600 26px sans-serif'; dx.fillText('0', 160, 210); dx.fillText('门限', 340, 180);
+  const tex = new THREE.CanvasTexture(dc); tex.colorSpace = THREE.SRGBColorSpace;
+  const face = mesh(new THREE.PlaneGeometry(16, 11), new THREE.MeshBasicMaterial({ map: tex }), dial, V(0, 0, .02));
+  face.userData.keepMat = true;
+  const needle = group(); needle.position.set(0, -2.7, .2);
+  box(.7, 8.5, .3, M.red, needle, V(0, 4.2, 0));
+  torusZ(1.6, .35, M.dark, needle, V(0, 0, 0));
+  dial.add(needle); PIV.needle = needle;
+  g.add(dial);
+  // LED
+  const led = cylZ(1.7, 1.2, M.glow, g, V(32, 19.5, -6.9), 16);
+  led.userData.keepMat = true; PIV.led = led;
+  addPart('board', '比较器板', g, M.pcb);
+
+  const p = group();
+  cylZ(4, 2.5, M.dark, p, V(52, 22, -7.2), 20);
+  cylZ(1.4, 22, M.steel, p, V(52, 22, 3.4), 10);
+  const knob = group(); knob.position.set(52, 22, 14.6);
+  cylZ(8, 4, M.dark, knob, V(0, 0, 0), 32);
+  cylZ(8.6, 1, M.brass, knob, V(0, 0, -2.1), 32);
+  const mark = box(1.6, 6, .6, M.red, knob, V(0, 4.2, 2.1));
+  printLabel('灵敏度', 8, 2.6, p, V(52, 13.2, 17.2), 0, '#5a5042');
+  p.add(knob); PIV.knob = knob;
+  addPart('pot', '灵敏度旋钮', p, M.dark);
+}
+
+/* ---------- 11 分选活门 + 回位弹簧 ---------- */
+const GATE_PIVOT = V(46, -30, COIN_Z);
+{
+  const g = group();
+  const piv = group(); piv.position.copy(GATE_PIVOT);
+  cylZ(4.2, 4, M.steel, piv, V(0, 0, 0), 20);
+  torusZ(4.2, 1.1, M.brass, piv, V(0, 0, 2.4));
+  const vane = group();
+  const vb = box(17, 4.2, 3.2, M.steel, vane, V(-8.5, -4.2, 0)); vb.rotation.z = -.22;
+  box(6, 2.2, .6, M.yellow, vane, V(-7, -3.2, 1.75));
+  box(4.5, 5, 3.2, M.dark, vane, V(-16.5, -6.5, 0));
+  const tail = box(15, 4, 3.2, M.steel, piv, V(9, 3.6, 0)); tail.rotation.z = .3;
+  box(4, 6, 4, M.dark, piv, V(15, 5.2, 0));
+  piv.add(vane);
+  g.add(piv); PIV.gate = piv;
+  const sp = mesh(springUnit(7, 2.1, .42), M.steel, g);
+  g.add(sp); PIV.gateSpring = sp;
+  box(5, 5, 6, M.dark, g, V(54, -12, COIN_Z));
+  box(7, 8, 3.5, M.aluDark, g, V(46, -30, -9.25));
+  addPart('gate', '分选活门与回位弹簧', g, M.steel);
+}
+
+/* ---------- 12 电磁铁 ---------- */
+{
+  const g = group();
+  cylY(6.2, 24, M.dark, g, V(60, -47, -4.6), 28);
+  for (let i = 0; i < 5; i++) { torusY(6.4, .7, M.copper, g, V(60, -57 + i * 5, -4.6)); }
+  box(4, 4, 8, M.aluDark, g, V(60, -35, -4.6));
+  box(8, 6, 3, M.aluDark, g, V(60, -34, -10.5));
+  const rod = cylY(1.8, 18, M.steel, g, V(60, -44, -5.2), 14);
+  g.add(rod); PIV.solRod = rod;
+  polyWire([[60, -59, -4.6], [60, -68, -11.2], [60, -40, -11.2], [60, -10, -11.2], [60, 20, -11.2], [63, 20, -11.2]], .6, M.black, g);
+  addPart('solenoid', '电磁铁', g, M.dark);
+}
+
+/* ---------- 13 机械计数表 ---------- */
+function dialTexture() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+  const x = c.getContext('2d');
+  x.fillStyle = '#f2efe6'; x.beginPath(); x.arc(128, 128, 124, 0, TAU); x.fill();
+  x.strokeStyle = '#6b6355'; x.lineWidth = 4; x.beginPath(); x.arc(128, 128, 116, 0, TAU); x.stroke();
+  x.fillStyle = '#2c2924'; x.font = '700 44px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * TAU / 10;
+    x.fillText(String(i), 128 + Math.cos(a) * 84, 128 + Math.sin(a) * 84);
+  }
+  x.fillStyle = '#b23a26'; x.beginPath(); x.arc(128, 38, 6, 0, TAU); x.fill();
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+{
+  const g = group();
+  box(34, 16, 6, M.dark, g, V(0, -45, -5));
+  for (const x of [-12, 12]) cylZ(2, 4, M.aluDark, g, V(x, -45, -10), 12);
+  const unit = group(); unit.position.set(-6, -45, -1.4); unit.name = 'unitDial';
+  const d1 = mesh(new THREE.CircleGeometry(8, 40), new THREE.MeshBasicMaterial({ map: dialTexture() }), unit, V(0, 0, .2));
+  d1.userData.keepMat = true;
+  g.add(unit); PIV.unitDial = unit;
+  const tens = group(); tens.position.set(5, -45, -1.4); tens.name = 'tensDial';
+  const d2 = mesh(new THREE.CircleGeometry(8, 40), new THREE.MeshBasicMaterial({ map: dialTexture() }), tens, V(0, 0, .2));
+  d2.userData.keepMat = true;
+  g.add(tens); PIV.tensDial = tens;
+  const ptr = new THREE.Shape(); ptr.moveTo(0, 0); ptr.lineTo(1.8, 5.5); ptr.lineTo(-1.8, 5.5); ptr.closePath();
+  for (const x of [-6, 5]) {
+    const o = mesh(new THREE.ExtrudeGeometry(ptr, { depth: .4, bevelEnabled: false }), M.red, g, V(x, -52.6, 0.1));
+    o.rotation.z = Math.PI;
+  }
+  // 币身拨动的棘爪，接受币经过时被压一下
+  const pawl = box(1.8, 18, 1.8, M.steel, g, V(19.5, -41, -4)); pawl.rotation.z = -.3;
+  g.add(pawl); PIV.pawl = pawl;
+  box(30, 1.4, 1.2, M.alu, g, V(0, -35.5, 2.2));
+  addPart('counter', '机械计数表', g, M.dark);
+}
+
+/* ---------- 14 前盖面板 ---------- */
+{
+  const g = group();
+  const holes = [
+    { x0: -35.6, y0: 63, x1: -32.4, y1: 91, r: 1.2 },
+    { kind: 'circle', x: 44, y: 62, r: 15.5 },
+    { kind: 'circle', x: -52, y: 56, r: 9.6 },
+    { kind: 'circle', x: 52, y: 22, r: 9.4 },
+    { x0: -15.5, y0: -53.5, x1: 19.5, y1: -36.5, r: 2 },
+  ];
+  panel(-62, -86, 62, 92, 7, holes, 5, 9, M.alu, g);
+  const glass = new THREE.MeshBasicMaterial({ color: 0xdfeef2, transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide });
+  cylZ(15.4, .8, glass, g, V(44, 62, 12));
+  box(34.6, 16.6, .8, glass, g, V(0, -45, 12));
+  // 投币口唇缘（3 mm 竖缝）
+  for (const s of [-1, 1]) box(2.2, 32, 3, M.steel, g, V(-34 + s * 3.1, 78, 14.6));
+  for (const y of [62.2, 91.8]) box(9, 2.2, 3, M.steel, g, V(-34, y, 14.6));
+  // 铭牌与丝印
+  box(40, 1.4, .25, M.dark, g, V(-8, 74, 14.2));
+  printLabel('COIN ACCEPTOR', 30, 5, g, V(-12, 84, 14.3), 0, '#575145');
+  printLabel('SAMPLE', 16, 4, g, V(44, 80.5, 14.3), 0, '#575145');
+  printLabel('COUNT', 12, 3.4, g, V(0, -33.5, 14.3), 0, '#575145');
+  printLabel('SENSITIVITY', 18, 4, g, V(52, 32.5, 14.3), 0, '#575145');
+  printLabel('PUSH RETURN', 14, 3.4, g, V(-52, 41.5, 14.3), 0, '#575145');
+  printLabel('INSERT COIN', 15, 3.2, g, V(-34, 57.5, 14.3), 0, '#575145');
+  printLabel('CC-12 · 比较式', 24, 4.8, g, V(-12, 44, 14.3), 0, '#6a6255');
+  for (const x of [-58, 58]) for (const y of [-82, 84]) cylZ(3, 21, M.dark, g, V(x, y, -1.5), 14);
+  const cled = cylZ(2.2, 1.2, M.glow, g, V(26, 34, 14.0), 18);
+  cled.userData.keepMat = true; PIV.coverLed = cled;
+  addPart('cover', '前盖与面板', g, M.alu, { shell: true });
+}
+
+/* ---------- 15 投入币（场景件，不注册） ---------- */
+const coinsGroup = group(); world.add(coinsGroup);
+const coinMeshes = {};
+for (const k of Object.keys(COINS)) {
+  const c = coinGroup(COINS[k], 0);
+  c.visible = false; c.name = 'coin-' + k;
+  coinsGroup.add(c); coinMeshes[k] = c;
+}
+const returnCurve = new THREE.CatmullRomCurve3([V(-34, 78, 18), V(-30, 30, 22), V(-24, -40, 24), V(-18, -95, 20)]);
+
+/* ---------- 运动状态 ---------- */
+const MECH = {
+  now: 0, gate: 0, lastCount: 0, countAge: 9,
+};
+const ease = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+function poseCoin(state) {
+  const c = state.coin;
+  for (const k of Object.keys(coinMeshes)) coinMeshes[k].visible = false;
+  if (!c) return;
+  const meshC = coinMeshes[c.kind]; if (!meshC) return;
+  meshC.visible = true;
+  const spec = COINS[c.kind] || COINS.yuan;
+  const rad = REF_R - spec.d / 2;
+  let pos = null, rotZ = 0, rotY = 0;
+  const shift = (curve, u) => {
+    const p = curve.getPointAt(Math.min(1, Math.max(0, u)));
+    p.y -= rad;
+    return p;
+  };
+  if (c.stage === 'returning') {
+    const u = Math.min(1, Math.max(0, c.t / GATE_T));
+    pos = shift(mainCurve, u);
+    rotZ = -u * L_MAIN / (spec.d / 2);
+    if (c.t < .05) rotY = Math.PI / 2 * (1 - c.t / .05);
+  } else if (c.stage === 'returned' || c.stage === 'done-returned') {
+    const u = Math.min(1, (c.rt || 0) / .55);
+    pos = returnCurve.getPointAt(ease(u));
+    rotZ = -3.2 * u; rotY = Math.PI / 2;
+  } else if (c.stage === 'blocked') {
+    pos = shift(mainCurve, Math.max(0, c.t / GATE_T));
+    rotZ = -(c.t * 260) / (spec.d / 2);
+  } else {
+    const t = c.t;
+    if (t < .05) {
+      const u = t / .05;
+      pos = mainCurve.getPointAt(0);
+      pos.z = 18 - 26.4 * ease(u);
+      rotY = Math.PI / 2 * (1 - ease(u));
+      rotZ = -u * 9 / (spec.d / 2);
+    } else if (t <= GATE_T) {
+      pos = shift(mainCurve, t / GATE_T);
+      rotZ = -(t * 190) / (spec.d / 2);
+    } else {
+      const branch = (c.stage === 'accepted' || c.stage === 'done-accepted') ? acceptCurve : rejectCurve;
+      const u = Math.min(1, (t - GATE_T) / (1 - GATE_T));
+      pos = shift(branch, u);
+      rotZ = -(GATE_T * 190 + (t - GATE_T) * 170) / (spec.d / 2);
+    }
+  }
+  if (pos) meshC.position.copy(pos);
+  meshC.rotation.set(0, rotY, rotZ);
+}
+
+function applyMotion(view, state) {
+  MECH.gate = state.gate || 0;
+  MECH.now = MECH.now || 0;
+  // 样币切换
+  if (PIV.sampleYuan) PIV.sampleYuan.visible = state.sample !== 'token';
+  if (PIV.sampleToken) PIV.sampleToken.visible = state.sample === 'token';
+  // 活门角度：0 退币位（弹簧），-0.95 接受位（电磁铁）
+  const th = -0.95 * MECH.gate;
+  if (PIV.gate) PIV.gate.rotation.z = th;
+  if (PIV.gateSpring) {
+    const tail = V(GATE_PIVOT.x + 14 * Math.cos(th) - 6 * Math.sin(th),
+                   GATE_PIVOT.y + 14 * Math.sin(th) + 6 * Math.cos(th), COIN_Z);
+    placeSpring(PIV.gateSpring, V(56, -12, COIN_Z), tail);
+  }
+  if (PIV.solRod) {
+    const tailY = GATE_PIVOT.y + 14 * Math.sin(th) + 6 * Math.cos(th);
+    PIV.solRod.position.y = tailY - 9;
+    PIV.solRod.position.x = GATE_PIVOT.x + 14 * Math.cos(th) - 6 * Math.sin(th);
+  }
+  // 退币按钮与推杆
+  const rb = state.returnBtn || 0;
+  if (PIV.retBtn) PIV.retBtn.position.z = 14 - 4.2 * rb;
+  if (PIV.kick) PIV.kick.rotation.z = -.95 * rb;
+  // 灵敏度旋钮
+  if (PIV.knob) PIV.knob.rotation.z = -1.5 * (state.sensitivity ?? 6) / 10;
+  // 表头
+  if (PIV.needle) {
+    let ang = -1.05;
+    if (state.verdict && state.verdict !== 'off' && Number.isFinite(state.diff) && state.threshold) {
+      ang = -1.05 + 2.0 * Math.min(1.25, state.diff / state.threshold);
+    }
+    PIV.needle.rotation.z = ang;
+  }
+  // LED 与测试线圈微亮
+  for (const key of ['led', 'coverLed']) {
+    const L = PIV[key];
+    if (!L) continue;
+    const on = !!state.power && !!state.placed?.includes('board');
+    const pass = state.verdict === 'pass';
+    L.material.color.setHex(on ? (pass ? 0x66d18f : 0xd4553d) : 0x2a2d31);
+    L.material.emissive.setHex(on ? (pass ? 0x2f9a5e : 0x8e2a1c) : 0x000000);
+    L.material.emissiveIntensity = on ? 1.4 : 0;
+  }
+  if (PIV.testCoil) {
+    const near = state.coin && Math.abs((state.coin.t || 0) - STATIONS.coil) < .085;
+    PIV.testCoil.scale.setScalar(near ? 1.06 : 1);
+  }
+  // 计数表：接受数驱动拨盘；到位后拨爪落一下
+  const ac = state.acceptCount || 0;
+  if (ac !== MECH.lastCount) { MECH.lastCount = ac; MECH.countAge = 0; }
+  MECH.countAge += 1 / 60;
+  if (PIV.unitDial) PIV.unitDial.rotation.z = -ac * TAU / 10;
+  if (PIV.tensDial) PIV.tensDial.rotation.z = -Math.floor(ac / 10) * TAU / 10;
+  if (PIV.pawl) PIV.pawl.rotation.z = -.35 - .35 * Math.max(0, 1 - MECH.countAge / .35);
+  // 硬币
+  poseCoin(state);
+}
+
+/* ---------- 包围盒 ---------- */
+function moduleBounds(keys) {
+  const b = new THREE.Box3();
+  for (const k of keys) {
+    const p = byKey.get(k);
+    if (p) b.union(new THREE.Box3().setFromObject(p.g));
+  }
+  return b;
+}
+const MODEL = { world, byKey, PARTS: parts, moduleBounds, applyMotion, mech: MECH,
+  COINS, SAMPLES, STATIONS, GATE_MAX_T, GATE_T, mainCurve, U_BLOCK, U_COIL, coinMeshes };
+
+/* ==== coin-comparator-lab/manifest.mjs ==== */
+/* 比较式投币器 · 插槽填充（纯数据 + 少量回调）
+ * 依据：街机“比较式”投币器（sample-coin comparator）公开分类与工作方式——实体样币做参考、
+ * 投入币经感应线圈与样币信号比较、灵敏度可调、弹簧活门断电退币。
+ * 前盖 124×178×5，整体包络约 131×214×46 mm（含底部接币盒和右侧电磁铁）；内部排布、币种参数、线圈匝数为教学估算。
+ * 硬币基准：1 元 Ø25.0×1.85（钢芯镀镍）、5 角 Ø20.5×1.65、游戏币 Ø24.0×1.80（黄铜）。
+ */
+const MANIFEST = {
+  slug: 'coin-comparator-lab',
+  brand: {
+    title: '比较式投币器装配实验室',
+    subtitle: '一枚样币，一台会认币的机器 · 12 模块 · 3 关',
+    mark: { a: '#c2452d', b: '#d8b25a' },
+  },
+
+  chapters: [
+    {
+      title: '先让币走得通',
+      subtitle: '币道、厚度门、退币推杆——先不认币，只看它能不能顺着轨道走、能不能退回来。',
+      badge: '币道检验员',
+      exp: '投厚垫圈，再退币',
+      expText: '点「投厚垫圈」：3.2 mm 的垫圈在 2.6 mm 的厚度门前停住，进不去。再点「按退币」：红按钮经推杆把卡住的币推回入口，掉进退币杯。然后再投一枚 1 元，看它顺着币道落进接币盒。',
+      q: '厚垫圈为什么进不去，按退币按钮又为什么能退出来？',
+      options: [
+        '厚度门是一道固定窄缝，垫圈太厚被挡住；退币按钮经推杆把币从门口推回入口',
+        '比较器认出垫圈是假的，电磁铁把它弹出来',
+        '币道自己会变宽，让垫圈掉进退币杯',
+      ],
+      a: 0,
+      why: '这一关还没有线圈、比较器和电磁铁。厚度门、推杆、退币杯全是机械件：厚度门只放行薄于 2.6 mm 的币；退币按钮是纯机械旁路，任何停在门口的币都能被推回去。',
+    },
+    {
+      title: '让线圈认出它',
+      subtitle: '样币坐在参考线圈上，投入币扫过测试线圈；两路信号在比较器里相减。',
+      badge: '样币对照员',
+      exp: '三枚币各投一次',
+      expText: '先投与样币相同的 1 元：比较差值≈0，判定合格；再投 5 角（直径小 4.5 mm）：差值超门限，判定不合格；最后投铜章（同直径、不同材质）：差值落在门限附近，转「灵敏度」看判定怎么翻转。想验证“换样币就是换参考”，点「样币换游戏币」，再投游戏币。',
+      q: '为什么换一枚样币，机器就换了一种认的币？',
+      options: [
+        '样币在参考线圈里提供基准信号，投入币在测试线圈里产生信号；两路相减的差值小于门限才合格',
+        '样币的直径会撑开币道，机器只量直径',
+        '样币会被拍照，比较器拿照片比对花纹',
+      ],
+      a: 0,
+      why: '比较式投币器不存“币种档案”，它只把当前样币当参考。样币一换，参考信号就变了；灵敏度旋钮改的是差值门限，不是币道尺寸。',
+    },
+    {
+      title: '让结果去分选',
+      subtitle: '比较器只做判断；真正把币分到两边的是电磁铁、弹簧和活门。',
+      badge: '分选调试师',
+      exp: '一好一坏，再断一次电',
+      expText: '投 1 元：判定合格，电磁铁吸合，活门摆向接受位，币落进接币盒，计数 +1。投 5 角：不合格，弹簧把活门按在退币位，币滑进退币杯。现在点「断开电源」再投 1 元：比较器不工作，活门不动，币仍退回——断电时机器不会吞币。',
+      q: '断电时投 1 元，为什么机器还是退币？',
+      options: [
+        '活门由弹簧保持在退币位，只有电磁铁通电才能把它拉向接受位；断电就停在退币位',
+        '断电后比较器把 1 元错判成假币，所以退币',
+        '退币按钮在断电时会自动弹起，把币顶回来',
+      ],
+      a: 0,
+      why: '弹簧把活门默认按在退币位，这是 fail-safe：停电、断线、线圈坏，币都走退币口，不会把真币吞进钱箱。接受是“通电才成立”的例外，不是默认。',
+    },
+  ],
+
+  stage: {
+    title: '拼一台会认币的投币器',
+    hint: '选一块模块，把它放到蓝色轮廓里。',
+  },
+
+  readout: [
+    { key: 'sample', label: '参考样币' },
+    { key: 'signal', label: '比较差值' },
+    { key: 'verdict', label: '判定', big: true },
+    { key: 'gate', label: '分选活门' },
+    { key: 'count', label: '已收币' },
+  ],
+
+  tray: { title: '第一盒 · 币道与退币', hint: '点选模块，再拖到蓝色位置' },
+
+  modules: [
+    { id: 'base', chapter: 0, name: '底板与机架', parts: ['base'], color: '#7b8694', icon: 'housing',
+      tip: '把底板放上工作台。所有导轨、线圈和活门都以它为基准。',
+      learn: '底板是基准件：币道、线圈、比较器板和活门都装在它上面；四个橡胶脚把它垫在工作台上。' },
+    { id: 'runway', chapter: 0, name: '币道与厚度门', parts: ['runway'], color: '#b08a4a', icon: 'shaft',
+      tip: '把币道导轨装到底板正面，厚度门朝上。',
+      learn: '币道是一条带槽的弧形导轨：币立着滚，前后唇缘把它夹在槽里；顶部厚度门只留 2.6 mm，薄币通过，厚垫圈被挡。' },
+    { id: 'entry', chapter: 0, name: '投币口与入口', parts: ['entry'], color: '#5e7ea6', icon: 'plate',
+      tip: '把投币口的喇叭口装到币道顶端。',
+      learn: '喇叭口把斜着塞进来的币扶正，币以立姿进入币道。投币口本身不判别，只负责让币对准。' },
+    { id: 'returnBtn', chapter: 0, name: '退币按钮与推杆', parts: ['returnBtn'], color: '#c25a5a', icon: 'lever',
+      tip: '把红色退币按钮和推杆装到入口左侧。',
+      learn: '退币按钮是一根纯机械旁路：按下时推杆前伸，把停在厚度门前的币推回入口；没有电也能用。' },
+    { id: 'cashbox', chapter: 0, name: '接币盒与退币杯', parts: ['cashbox'], color: '#4a9a8c', icon: 'box',
+      tip: '把底部的接币盒和退币杯装到底板下缘。',
+      learn: '接币盒接住通过币道的币；退币杯接住被推回来或被活门挡回来的币。两个出口从第一关就分开。' },
+
+    { id: 'sample', chapter: 1, name: '样币与样币座', parts: ['sampleHolder', 'sampleCoin'], color: '#b8934a', icon: 'disc',
+      tip: '把样币座装到右上，再把 1 元样币卡进弹簧夹。',
+      learn: '样币是这台机器的“参考答案”。它坐在参考线圈上，换样币就换参考信号；样币座上的透明窗让操作员一眼看到当前样币。' },
+    { id: 'coil', chapter: 1, name: '测试线圈与参考线圈', parts: ['coil'], color: '#b87333', icon: 'coil',
+      tip: '把两只线圈装到底板：测试线圈在币道下方，参考线圈在样币座下方。',
+      learn: '两只线圈是同一副桥臂：样币在参考线圈里，投入币扫过测试线圈；币的直径、厚度、材质都会改变线圈的阻抗，比较器读的是两路的差。' },
+    { id: 'board', chapter: 1, name: '比较器板与灵敏度', parts: ['board', 'pot'], color: '#2f7d5c', icon: 'coil',
+      tip: '把比较器板装到右侧，电位器轴穿过底板，旋钮朝前。',
+      learn: '板上的比较器把两路线圈的差值放大，再与灵敏度设定的门限比较。灵敏度越松，门限越高，越容易接受，也越容易被假币蒙混。' },
+
+    { id: 'gate', chapter: 2, name: '分选活门与回位弹簧', parts: ['gate'], color: '#9a6a4a', icon: 'lever',
+      tip: '把活门装到币道出口，回位弹簧朝右下。',
+      learn: '活门是分岔口的道岔：弹簧把它按在退币位，挡住接币盒入口；只有电磁铁把它拉过去，币才落进接币盒。' },
+    { id: 'solenoid', chapter: 2, name: '电磁铁', parts: ['solenoid'], color: '#5a6272', icon: 'coil',
+      tip: '把电磁铁装到活门右侧，拉杆扣住活门摇臂。',
+      learn: '12 V 电磁铁吸合行程约 8 mm，拉动活门从退币位摆到接受位。断电时电磁力消失，弹簧立刻把活门送回退币位。' },
+    { id: 'counter', chapter: 2, name: '机械计数表', parts: ['counter'], color: '#b8a24a', icon: 'gear',
+      tip: '把计数表装到面板右上方，拨轮窗口朝前。',
+      learn: '每有一枚币通过接受口，币身拨动计数表的棘爪，个位轮转过一格。计数是机械累加，断电不丢数。' },
+    { id: 'cover', chapter: 2, name: '前盖与面板', parts: ['cover'], color: '#8c8c94', icon: 'plate',
+      tip: '合上前盖：投币口、样币窗、计数窗和退币按钮孔要对齐。',
+      learn: '前盖把内部机构封住，只留下操作员要用的四个窗口：投币口、样币观察窗、计数窗、退币按钮。合盖后才能整机运行。' },
+  ],
+
+  notes: [
+    '<b>比较式怎么“比”：</b>样币一直坐在参考线圈上，投入币从测试线圈上方滚过。两只线圈接成桥路，币的直径、厚度、材质改变测试线圈的阻抗，桥路就输出一个与样币之差成正比的信号。比较器把差值和灵敏度门限比较：差值小于门限放行，否则退币。机器里没有“币种档案”，换样币就是换参考。',
+    '<b>为什么先机械、后电、再执行：</b>币道和厚度门决定“能不能进来”，双线圈与比较器决定“是不是同一种”，活门、电磁铁和弹簧决定“往哪边走”。三段各有各的失败方式，拆开看才不会把退币都归因于“识别不准”。',
+    '<b>fail-safe 的默认位：</b>回位弹簧把活门按在退币位，电磁铁通电才把它拉向接受位。断电、断线、线圈坏，币都走退币口——机器宁可少收，不会把真币吞进钱箱。',
+    '<b>灵敏度不是越高越好：</b>门限调严，假币更难混进来，但磨损币、脏币也更容易被退；门限调松，接受率高，同尺寸异材质的铜章也能过。这是运营者现场要做的取舍。',
+    '前盖 124×178×5 mm，整体包络约 131×214×46 mm（含背面安装凸台、底部接币盒/退币杯和右侧电磁铁外罩）。硬币尺寸用公开规格：1 元 Ø25.0×1.85、5 角 Ø20.5×1.65；游戏币与铜章为教学设定。内部排布、线圈匝数、信号权重为教学简化，<b>不对应某一品牌剖面</b>。',
+    '“比较式”分类与样币/线圈/灵敏度的工作方式参考宝联实业《街机投币器工作原理：机械式、比较式与 CPU 式怎么选》；专利 CN200965705Y《比较式投币器》给出同类命名的旁证。',
+  ],
+
+  scene: {
+    bench: { y: -111, color: 0xd9d4c8, size: 4000 },
+    spawnFor: (id, info) => [45, 2, 85],
+    camera: { fov: 32, near: 2, far: 3000, defaultFocus: 'all' },
+    orbit: { minDistance: 130, maxDistance: 1500, minPolar: 0.04, maxPolar: 0.56 },
+    renderer: { exposure: 1.0, pixelRatio: 1.5 },
+    env: 0.55,
+    lights: {
+      hemi: [0xffffff, 0xcfc4ac, 1.35],
+      key: { color: 0xfff6ec, intensity: 2.1, pos: [-220, 320, 280] },
+      fill: { color: 0xdfe9ff, intensity: 0.65, pos: [260, 120, 260] },
+      rim: { color: 0xe8eeff, intensity: 1.0, pos: [220, 140, -260] },
+    },
+    cut: { normal: [0, 0, -1], constant: 0 },
+    focus: {
+      all: { dir: [30, 17], fit: 0.98, box: () => [[0, -8, 0], [210, 248, 112]] },
+      entry: { dir: [18, 12], fit: 1.0, box: () => [[-32, 66, 0], [92, 82, 55]] },
+      coil: { dir: [25, 17], fit: 1.05, box: () => [[-6, 2, 0], [92, 62, 42]] },
+      gate: { dir: [27, 12], fit: 1.1, box: () => [[34, -36, 0], [70, 66, 44]] },
+      sample: { dir: [18, 11], fit: 1.1, box: () => [[44, 58, 0], [62, 62, 42]] },
+    },
+    inset: {
+      fov: 34,
+      visible: (s, v) => v.cut && s.placed.includes('coil'),
+      target: (s) => {
+        const near = s.coin && s.coin.stage === 'rolling' && Math.abs(s.coin.t - MODEL.STATIONS.coil) < .1;
+        return {
+          part: 'coil',
+          local: [-12, 6, -10.4],
+          offset: [-24, 24, 70],
+          title: s.coin && s.coin.stage === 'blocked' ? '厚度门挡住 · 币还没到测试线圈'
+            : near && s.verdict === 'pass' ? '比较中 · 两路线圈信号接近，差值小于门限'
+            : near && s.verdict === 'fail' ? '比较中 · 两路线圈信号差超门限'
+            : near && s.verdict === 'off' ? '断电 · 比较器不工作'
+            : '比较头特写 · 测试线圈在币道下，参考线圈在样币座下',
+        };
+      },
+    },
+  },
+};
+
+/* ==== coin-comparator-lab/logic.mjs ==== */
+/* 比较式投币器 · 装配与实验逻辑（纯逻辑，无 DOM、无三维）
+ * 规则：先校验，再改状态；失败不动已装件与正在走的币。
+ * 比较公式：直径差×14 + 厚度差×20 + 材质差；门限 = 100 − 灵敏度×9。
+ */
+const MODULES = MANIFEST.modules;
+const CHAPTERS = MANIFEST.chapters;
+const ST = MODEL.STATIONS;
+const MAT_DIFF = { nickel: 0, brass: 52, steel: 38 };
+const GATE_CLEAR = MODEL.GATE_MAX_T - .05;
+const BLOCK_STOP = ST.stop;   // 厚币停在门前的币边处，不穿进夹板
+const COIN_KEYS = Object.keys(MODEL.COINS);
+function createGame() {
+  const initial = () => ({
+    chapter: 0, phase: 'build', placed: [], selected: null,
+    completed: [false, false, false],
+    sample: 'yuan', sensitivity: 6, power: true,
+    coin: null, verdict: null, diff: null, threshold: 46,
+    gate: 0, returnBtn: 0,
+    acceptCount: 0, rejectCount: 0, returnCount: 0,
+    expStep: 0, slow: false, lastResult: '',
+  });
+  const state = initial();
+  const fail = (message) => ({ ok: false, message });
+  const mod = (id) => MODULES.find((m) => m.id === id);
+  const has = (id) => state.placed.includes(id);
+  const doneCoin = () => !state.coin || String(state.coin.stage).startsWith('done-');
+  const thresholdOf = (s = state.sensitivity) => 100 - s * 9;
+  const resetCoin = () => {
+    state.coin = null; state.verdict = null; state.diff = null;
+    state.threshold = thresholdOf(); state.gate = 0; state.returnBtn = 0;
+  };
+
+  function current() {
+    if (state.phase !== 'build') return null;
+    return MODULES.find((m) => m.chapter === state.chapter && !state.placed.includes(m.id)) || null;
+  }
+  function select(id) {
+    if (state.phase !== 'build') return fail(state.phase === 'lab' ? '自由实验室里不搞装配，想重拼请点「重新开始」。' : '先完成本章实验与挑战，再继续装配。');
+    const m = mod(id);
+    if (!m) return fail('没有这块模块，请从零件盒选择。');
+    if (state.placed.includes(id)) return fail(m.name + '已经装好了。');
+    if (m.chapter !== state.chapter) return fail('这一步还轮不到' + m.name + '——先完成当前模块。');
+    state.selected = id;
+    return { ok: true, message: m.tip };
+  }
+  function place(onTarget = true) {
+    if (state.phase !== 'build') return fail('本章装配已完成，请进行实验与挑战。');
+    if (!state.selected) return fail('先从零件盒选一块模块。');
+    if (onTarget !== true) return fail('还没对准装配位置——拖到蓝色轮廓里再松手，或按「装到这里」。');
+    const m = current();
+    if (!m) return fail('本章已经装完了。');
+    if (state.selected !== m.id) return fail('这一步需要「' + m.name + '」，顺序不能乱。');
+    state.placed.push(m.id); state.selected = null;
+    if (!MODULES.some((x) => x.chapter === state.chapter && !state.placed.includes(x.id))) state.phase = 'experiment';
+    return { ok: true, message: m.name + '已归位。', learn: m.learn, kind: 'placed' };
+  }
+  function undo() {
+    if (state.phase === 'lab') return fail('自由实验室不撤回；想重拼请点「重新开始」。');
+    const last = state.placed.at(-1), m = mod(last);
+    if (!m || m.chapter !== state.chapter) return fail('本章还没有可撤回的模块。');
+    state.placed.pop(); state.phase = 'build'; state.selected = null;
+    state.completed[state.chapter] = false; state.expStep = 0;
+    resetCoin();
+    return { ok: true, message: '已撤回' + m.name + '，可以重新装配。', kind: 'undo' };
+  }
+  function experiment() {
+    if (state.phase !== 'experiment') return fail('先把本章模块全部装好，再进行实验。');
+    state.phase = 'quiz'; state.expStep = 0;
+    return { ok: true, message: CHAPTERS[state.chapter].expText, kind: 'experiment' };
+  }
+  function answer(i) {
+    if (state.phase !== 'quiz') return fail('先亲手完成本章实验，再回答问题。');
+    const c = CHAPTERS[state.chapter];
+    if (!Number.isInteger(i) || i < 0 || i >= c.options.length) return fail('请选择一个有效答案。');
+    if (i !== c.a) return { ok: false, message: '再观察一下。' + c.why, kind: 'wrong' };
+    state.completed[state.chapter] = true; state.phase = 'checkpoint';
+    return { ok: true, message: '答对了！获得「' + c.badge + '」。', kind: 'correct' };
+  }
+  function next() {
+    if (state.phase !== 'checkpoint' || !state.completed[state.chapter]) return fail('先完成本章实验与挑战。');
+    if (state.chapter < CHAPTERS.length - 1) {
+      state.chapter++; state.phase = 'build'; state.expStep = 0;
+      state.sample = 'yuan'; state.sensitivity = 6; state.power = true;
+      resetCoin();
+      return { ok: true, message: CHAPTERS[state.chapter].subtitle, kind: 'chapter' };
+    }
+    state.phase = 'lab';
+    return { ok: true, message: '装配完成！进入自由实验室：投任意币、换样币、调灵敏度、断电试 fail-safe。', kind: 'complete' };
+  }
+
+  /* ---------- 投币与比较 ---------- */
+  function compare(kind) {
+    const cs = MODEL.COINS[kind];
+    const ss = MODEL.SAMPLES[state.sample] || MODEL.SAMPLES.yuan;
+    if (!state.power) return { verdict: 'off', diff: null, threshold: thresholdOf() };
+    if (!has('sample') || !has('coil') || !has('board')) return { verdict: 'none', diff: null, threshold: thresholdOf() };
+    const dd = Math.abs(cs.d - ss.d);
+    const dt = Math.abs(cs.t - ss.t);
+    const dm = Math.abs((MAT_DIFF[cs.mat] || 0) - (MAT_DIFF[ss.mat] || 0));
+    const diff = Math.round((dd * 14 + dt * 20 + dm) * 10) / 10;
+    const threshold = thresholdOf();
+    return { verdict: diff <= threshold ? 'pass' : 'fail', diff, threshold };
+  }
+  function insert(kind) {
+    if (state.phase !== 'experiment' && state.phase !== 'lab') return fail('先完成本章装配，再投币。');
+    if (!COIN_KEYS.includes(kind)) return fail('没有这种币。');
+    if (!has('entry') || !has('runway') || !has('cashbox')) return fail('币道还没装完整，先装入口、币道和接币盒。');
+    if (state.coin && !doneCoin()) return fail('上一枚币还没走完——先等它落定，或按「退币」把它退回来。');
+    const chapterKinds = state.phase === 'experiment'
+      ? (state.chapter === 0 ? ['yuan', 'washer'] : state.chapter === 1 ? ['yuan', 'token', 'jiao', 'fake'] : ['yuan', 'jiao'])
+      : COIN_KEYS;
+    if (!chapterKinds.includes(kind)) return fail('本关先测试这几种币：' + chapterKinds.map((k) => MODEL.COINS[k].name).join(' / ') + '。');
+    state.coin = { kind, stage: 'rolling', t: 0, rt: 0, blockChecked: false };
+    state.verdict = null; state.diff = null; state.threshold = thresholdOf();
+    state.lastResult = '';
+    return { ok: true, message: MODEL.COINS[kind].name + '已投进币道。', kind: 'insert' };
+  }
+  function pressReturn() {
+    if (state.phase !== 'experiment' && state.phase !== 'lab') return fail('完成装配后再操作退币按钮。');
+    if (state.coin && !doneCoin() && !['rolling', 'blocked'].includes(state.coin.stage)) {
+      return { ok: false, message: '币已经过分选口或正在退回，请等它落定。', kind: 'return-late' };
+    }
+    state.returnBtn = 1;
+    if (!state.coin || String(state.coin.stage).startsWith('done-')) {
+      return { ok: true, message: '推杆空走一下：币道里没有可退的币。', kind: 'return-idle' };
+    }
+    const st = state.coin.stage;
+    if (st === 'rolling' || st === 'blocked') {
+      state.coin.stage = 'returning';
+      state.verdict = null; state.diff = null; state.threshold = thresholdOf(); state.gate = 0;
+      if (state.phase === 'experiment' && state.chapter === 0) state.expStep = Math.max(state.expStep, 2);
+      return { ok: true, message: '退币按钮经推杆把币从币道推回入口，币掉进退币杯。', kind: 'return' };
+    }
+    return { ok: false, message: '币已经过分选口，退币推杆够不到它——这一枚只能算接受或拒绝。', kind: 'return-late' };
+  }
+  function setSensitivity(v) {
+    if (state.phase !== 'experiment' && state.phase !== 'lab') return fail('完成装配后再调灵敏度。');
+    if (!has('board')) return fail('先装上比较器板和灵敏度旋钮。');
+    if (!doneCoin()) return fail('币还在币道里，等它落定再调灵敏度。');
+    const value = Number(v);
+    if (!Number.isFinite(value)) return fail('灵敏度必须是有效数值。');
+    const n = Math.max(0, Math.min(10, Math.round(value)));
+    state.sensitivity = n; state.threshold = thresholdOf(n);
+    state.verdict = null; state.diff = null;
+    if (state.phase === 'experiment' && state.chapter === 1) state.expStep = Math.max(state.expStep, 3);
+    return { ok: true, message: `灵敏度 ${n}/10：比较门限 ${state.threshold}。越松越容易接受，也越容易被铜章蒙混。`, kind: 'sensitivity' };
+  }
+  function setSample(kind) {
+    if (state.phase !== 'experiment' && state.phase !== 'lab') return fail('完成装配后再换样币。');
+    if (!has('sample')) return fail('先装上样币座和样币。');
+    if (state.coin && !doneCoin()) return fail('币还在币道里，等它落定再换样币。');
+    if (!MODEL.SAMPLES[kind]) return fail('样币座里只有 1 元和游戏币两种样币。');
+    state.sample = kind;
+    state.verdict = null; state.diff = null; state.threshold = thresholdOf();
+    return { ok: true, message: `样币已换成${MODEL.SAMPLES[kind].name}：参考线圈里的基准信号也跟着换了。`, kind: 'sample' };
+  }
+  function setPower(on = true) {
+    if (state.phase !== 'experiment' && state.phase !== 'lab') return fail('完成装配后再操作电源。');
+    if (!has('board')) return fail('先装上比较器板。');
+    state.power = !!on;
+    if (!state.power) {
+      if (state.coin && !doneCoin()) state.verdict = 'off';
+      state.diff = null;
+    } else if (state.verdict === 'off') {
+      state.verdict = null; state.diff = null;
+    }
+    return { ok: true, message: state.power ? '电源接通：比较器工作，电磁铁待命。' : '电源断开：比较器停摆，活门被弹簧按在退币位——fail-safe。', kind: 'power' };
+  }
+  function toggleSlow() {
+    state.slow = !state.slow;
+    return { ok: true, message: state.slow ? '慢放 ×0.3：看清币经过线圈、活门换位。' : '恢复常速。', kind: 'slow' };
+  }
+
+  /* ---------- 每帧推进（只由 state 驱动；几何在 model.mjs 落位） ---------- */
+  function advance(dt) {
+    const k = Math.max(0, Math.min(.25, dt || 0));
+    state.returnBtn = Math.max(0, state.returnBtn - k * 5);
+    const wantGate = (state.verdict === 'pass' && state.power && has('gate') && has('solenoid')
+      && state.coin && !String(state.coin.stage).startsWith('done-')) ? 1 : 0;
+    state.gate += (wantGate - state.gate) * Math.min(1, k * 20);
+    if (Math.abs(state.gate - wantGate) < .003) state.gate = wantGate;
+    const c = state.coin;
+    if (!c) return;
+    const sp = state.slow ? .3 : 1;
+    if (c.stage === 'rolling') {
+      c.t += k * .55 * sp;
+      if (!c.blockChecked && c.t >= BLOCK_STOP) {
+        c.blockChecked = true;
+        if (MODEL.COINS[c.kind].t > GATE_CLEAR) {
+          c.t = BLOCK_STOP; c.stage = 'blocked';
+          if (state.phase === 'experiment' && state.chapter === 0) state.expStep = Math.max(state.expStep, 1);
+          return;
+        }
+      }
+      if (c.t >= ST.coil && state.verdict == null) {
+        const r = compare(c.kind);
+        state.verdict = r.verdict; state.diff = r.diff; state.threshold = r.threshold;
+        if (state.phase === 'experiment' && state.chapter === 1) {
+          state.expStep = Math.max(state.expStep, r.verdict === 'pass' ? 1 : 2);
+        }
+      }
+      if (c.t >= ST.gate) {
+        const accept = !has('gate') || (state.verdict === 'pass' && state.power && has('solenoid'));
+        c.stage = accept ? 'accepted' : 'rejected';
+        c.t = ST.gate;
+      }
+    } else if (c.stage === 'accepted' || c.stage === 'rejected') {
+      c.t += k * .62 * sp;
+      if (c.t >= 1) {
+        c.t = 1;
+        const ok = c.stage === 'accepted';
+        c.stage = ok ? 'done-accepted' : 'done-rejected';
+        state.lastResult = ok ? 'accepted' : 'rejected';
+        if (ok) { if (has('counter')) state.acceptCount++; } else state.rejectCount++;
+        state.gate = ok ? 1 : 0;
+        if (state.phase === 'experiment' && state.chapter === 2) {
+          state.expStep = Math.max(state.expStep, ok ? 1 : (state.power ? 2 : 3));
+        }
+      }
+    } else if (c.stage === 'returning') {
+      c.t -= k * .9 * sp;
+      if (c.t <= 0) { c.t = 0; c.stage = 'returned'; c.rt = 0; }
+    } else if (c.stage === 'returned') {
+      c.rt = (c.rt || 0) + k * 1.5;
+      if (c.rt >= .55) {
+        c.rt = .55; c.stage = 'done-returned';
+        state.returnCount++; state.lastResult = 'returned';
+      }
+    }
+  }
+
+  function freeview() {
+    Object.assign(state, initial());
+    state.placed = MODULES.map((m) => m.id);
+    state.completed = [true, true, true];
+    state.chapter = CHAPTERS.length - 1;
+    state.phase = 'lab';
+    state.sample = 'yuan'; state.sensitivity = 6; state.power = true;
+    state.threshold = thresholdOf();
+    return { ok: true, kind: 'freeview', message: '已装完整机，进入自由实验：投币、换样币、调灵敏度、断电试 fail-safe。' };
+  }
+  function restart() {
+    Object.assign(state, initial());
+    return { ok: true, kind: 'restart', message: '新的装配开始了——把底板放上工作台。' };
+  }
+
+  return { state, current, select, place, undo, experiment, answer, next,
+    insert, pressReturn, setSensitivity, setSample, setPower, toggleSlow, advance,
+    compare, freeview, restart, resetCoin, COIN_KEYS };
+}
+
+/* ==== coin-comparator-lab/main.mjs ==== */
+/* 比较式投币器 · 接线（规则在 logic.mjs，几何在 model.mjs，文案在 manifest.mjs） */
+const game = createGame();
+const state = game.state;
+const CH = MANIFEST.chapters;
+const MODS = MANIFEST.modules;
+const $ = (s) => document.querySelector(s);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const lab = mountLab(MANIFEST);
+const stage = createStage({
+  host: document.getElementById('viewport'),
+  stageEl: document.getElementById('stage'),
+  world: MODEL.world,
+  modules: MODS,
+  model: MODEL,
+  config: MANIFEST.scene,
+  getState: () => state,
+  nextModule: () => game.current(),
+  canDrag: () => state.phase === 'build' && !!state.selected,
+  targetAlways: () => true,
+  onDrop: (id, onTarget) => act('place', onTarget),
+  onPickKey: (key) => {
+    if (['sampleHolder', 'sampleCoin'].includes(key) && state.placed.includes('sample')) stage.fitCamera('sample');
+    else if (['coil', 'board', 'pot'].includes(key) && state.placed.includes('coil')) stage.fitCamera('coil');
+    else if (['gate', 'solenoid', 'counter', 'cashbox'].includes(key) && state.placed.includes('gate')) stage.fitCamera('gate');
+    else if (['entry', 'returnBtn', 'runway'].includes(key)) stage.fitCamera('entry');
+    else stage.fitCamera('all');
+  },
+  tick: (dt) => tick(dt),
+});
+lab.attached3d = true;
+lab.stage = stage;
+const view = stage.view;
+view.cut = true;
+const mech = MODEL.mech;
+
+let lastStage = '';
+let lastResult = '';
+
+/* ---------- 每一帧：推进币、活门、计数 ---------- */
+function tick(dt) {
+  mech.now += dt * 1000;
+  game.advance(dt);
+  const c = state.coin;
+  const stageNow = c ? c.stage : '';
+  if (stageNow !== lastStage) {
+    lastStage = stageNow;
+    if (stageNow === 'blocked') {
+      const spec = MODEL.COINS[c.kind];
+      say(`厚度门挡住：${spec.name} 厚 ${spec.t.toFixed(2)} mm，门缝只有 2.6 mm。点「按退币」把它推回去。`, 'error');
+    }
+  }
+  if (state.lastResult && state.lastResult !== lastResult) {
+    lastResult = state.lastResult;
+    if (lastResult === 'accepted') {
+      if (!state.placed.includes('coil')) {
+        say('币顺着币道落进接币盒。这一关只验币道和厚度门，比较头还没装。', 'success');
+      } else if (!state.placed.includes('gate')) {
+        const pass = state.verdict === 'pass';
+        say(pass
+          ? `比较器判合格（差值 ${state.diff} ≤ 门限 ${state.threshold}）；这一关还没装活门，币先落进接币盒。`
+          : `比较器判不合格（差值 ${state.diff} > 门限 ${state.threshold}）；活门还没装，币暂时也落进接币盒——装上活门后才会被分开。`, pass ? 'success' : 'error');
+      } else {
+        say(`通过！活门摆向接受位，币落进接币盒，计数 +1。差值 ${state.diff} 小于门限 ${state.threshold}。`, 'success');
+      }
+    } else if (lastResult === 'rejected') say(state.power ? `退回：差值 ${state.diff} 超过门限 ${state.threshold}，弹簧把活门按在退币位。` : '断电：比较器不工作，弹簧把活门按在退币位，币滑进退币杯。', state.power ? 'error' : 'success');
+    else if (lastResult === 'returned') say('退币按钮把币推回入口，币掉进退币杯。', 'success');
+  }
+  lastResult = state.lastResult;
+  updateReadout();
+}
+
+function say(text, kind = '') {
+  lab.state.feedback = text;
+  lab.state.feedbackKind = kind;
+  const fb = document.getElementById('feedback');
+  if (fb) {
+    fb.textContent = text;
+    fb.className = 'feedback' + (kind ? ' ' + kind : '');
+  }
+}
+function updateReadout() {
+  const verdict = state.verdict;
+  const c = state.coin;
+  labelVerdict = !c ? '待投币'
+    : c.stage === 'blocked' ? '厚度门阻挡'
+    : c.stage === 'done-accepted' ? '接受'
+    : c.stage === 'done-rejected' ? '退回'
+    : c.stage === 'done-returned' ? '已退币'
+    : verdict === 'pass' ? '合格'
+    : verdict === 'fail' ? '不合格'
+    : verdict === 'off' ? '断电容限'
+    : verdict === 'none' ? '缺比较头'
+    : '比较中';
+  const gateText = !state.placed.includes('gate') ? '未装'
+    : state.gate > .8 ? '接受位' : state.gate > .08 ? '动作中' : '退币位';
+  const sampleText = state.placed.includes('sample') ? (state.sample === 'yuan' ? '1 元' : '游戏币') : '—';
+  const signalText = verdict === 'pass' || verdict === 'fail'
+    ? `${state.diff} / 门限 ${state.threshold}`
+    : verdict === 'off' ? '断电' : verdict === 'none' ? '缺模块' : '—';
+  lab.paint({
+    sample: sampleText,
+    signal: signalText,
+    verdict: labelVerdict,
+    gate: gateText,
+    count: state.placed.includes('counter') ? state.acceptCount + ' 枚' : '—',
+  });
+}
+let labelVerdict = '待投币';
+
+/* ---------- 教练面板（按阶段给不同面板） ---------- */
+lab.task(({ chapter: ch, chapterIndex: i, phase }) => {
+  const next = game.current();
+  const sel = MODS.find((m) => m.id === state.selected);
+  const undoBtn = `<div class="sub"><button id="undo" ${MODS.find((m) => m.id === state.placed.at(-1))?.chapter === state.chapter ? '' : 'disabled'}>撤回一步</button></div>`;
+  const slowBtn = `<button class="action" id="slow">${state.slow ? '恢复常速' : '慢放 ×0.3'}</button>`;
+  const sensHtml = !state.placed.includes('board') ? '' : `<label class="labctl">灵敏度 <output id="sens-out">${state.sensitivity}/10 · 门限 ${state.threshold}</output>
+    <input id="sens" type="range" min="0" max="10" step="1" value="${state.sensitivity}"></label>`;
+  const status = `<p class="note">当前样币：${state.sample === 'yuan' ? '1 元' : '游戏币'} · 电源：${state.power ? '接通' : '断开'} · 已收 ${state.placed.includes('counter') ? state.acceptCount : '—'} 枚</p>`;
+
+  if (phase === 'build') {
+    return {
+      html: `<p class="label">现在要装</p><h3>${next ? next.name : ''}</h3><p>${next ? next.tip : ''}</p>
+        <div class="note">${sel ? '已拿起：' + sel.name : '从下方零件盒选择一块模块'}</div>
+        <button class="primary action" id="place" ${sel ? '' : 'disabled'}>装入当前模块</button>
+        ${undoBtn}`,
+      bind(root) {
+        root.querySelector('#place').onclick = () => act('place');
+        root.querySelector('#undo').onclick = () => act('undo');
+      },
+    };
+  }
+
+  if (phase === 'experiment' && state.chapter === 0) {
+    return {
+      html: `<p class="label">模块已归位，先让币走一遍</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+        <div class="labgrid">
+          <button id="ins-yuan">投 1 元</button>
+          <button id="ins-washer">投厚垫圈</button>
+          <button id="return">按退币</button>
+          <button id="to-quiz" class="primary">看完现象，去答题</button>
+        </div>
+        ${slowBtn}
+        ${status}
+        <p class="note">${state.expStep >= 2 ? '已经试过：厚度门挡住厚币，退币按钮能把它推回去。' : '先投厚垫圈，看它停在哪；再按退币。'}</p>`,
+      bind(root) {
+        root.querySelector('#ins-yuan').onclick = () => act('insert', 'yuan');
+        root.querySelector('#ins-washer').onclick = () => act('insert', 'washer');
+        root.querySelector('#return').onclick = () => act('pressReturn');
+        root.querySelector('#to-quiz').onclick = () => act('experiment');
+        root.querySelector('#slow').onclick = () => act('toggleSlow');
+      },
+    };
+  }
+
+  if (phase === 'experiment' && state.chapter === 1) {
+    return {
+      html: `<p class="label">比较头装好了，先看它怎么判</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+        <div class="labgrid">
+          <button id="ins-yuan">投 1 元</button>
+          <button id="ins-token">投游戏币</button>
+          <button id="ins-jiao">投 5 角</button>
+          <button id="ins-fake">投铜章</button>
+          <button id="swap">${state.sample === 'yuan' ? '样币换游戏币' : '样币换 1 元'}</button>
+          <button id="return">按退币</button>
+          <button id="to-quiz" class="primary">看完现象，去答题</button>
+        </div>
+        ${sensHtml}${slowBtn}${status}
+        <p class="note">${state.expStep >= 2 ? '5 角因直径差被拒；铜章因材质差落在门限附近。转灵敏度看它的判定翻转。' : '1 元应与样币几乎零差；再试 5 角和铜章。'}</p>`,
+      bind(root) {
+        root.querySelector('#ins-yuan').onclick = () => act('insert', 'yuan');
+        root.querySelector('#ins-token').onclick = () => act('insert', 'token');
+        root.querySelector('#ins-jiao').onclick = () => act('insert', 'jiao');
+        root.querySelector('#ins-fake').onclick = () => act('insert', 'fake');
+        root.querySelector('#swap').onclick = () => act('setSample', state.sample === 'yuan' ? 'token' : 'yuan');
+        root.querySelector('#return').onclick = () => act('pressReturn');
+        root.querySelector('#to-quiz').onclick = () => act('experiment');
+        root.querySelector('#slow').onclick = () => act('toggleSlow');
+        bindSens(root);
+      },
+    };
+  }
+
+  if (phase === 'experiment') {
+    return {
+      html: `<p class="label">最后一步：把判断变成动作</p><h3>${ch.exp}</h3><p>${ch.expText}</p>
+        <div class="labgrid">
+          <button id="ins-yuan">投 1 元</button>
+          <button id="ins-jiao">投 5 角</button>
+          <button id="return">按退币</button>
+          <button id="power">${state.power ? '断开电源' : '接通电源'}</button>
+          <button id="to-quiz" class="primary">看完现象，去答题</button>
+        </div>
+        ${slowBtn}${status}
+        <p class="note">${state.expStep >= 3 ? '好币接受、坏币退回、断电也退回——fail-safe 已验证。' : '先投 1 元看接受与计数，再投 5 角看退币，最后断电再投 1 元。'}</p>`,
+      bind(root) {
+        root.querySelector('#ins-yuan').onclick = () => act('insert', 'yuan');
+        root.querySelector('#ins-jiao').onclick = () => act('insert', 'jiao');
+        root.querySelector('#return').onclick = () => act('pressReturn');
+        root.querySelector('#power').onclick = () => act('setPower', !state.power);
+        root.querySelector('#to-quiz').onclick = () => act('experiment');
+        root.querySelector('#slow').onclick = () => act('toggleSlow');
+      },
+    };
+  }
+
+  if (phase === 'quiz') {
+    return {
+      html: `<p class="label">看一看，想一想</p><h3>${ch.q}</h3>
+        <div class="options">${ch.options.map((o, k) => `<button data-opt="${k}"><b>${String.fromCharCode(65 + k)}</b>${o}</button>`).join('')}</div>
+        <p class="note" style="margin-top:10px">答错不会清空进度，实验可以再做一遍。</p>`,
+    };
+  }
+
+  if (phase === 'checkpoint') {
+    return {
+      html: `<div class="badge" aria-hidden="true">✓</div><p class="label">新发现徽章</p><h3>${ch.badge}</h3>
+        <p>${ch.why}</p>
+        <button class="primary action" id="next">${i === CH.length - 1 ? '进入自由实验室' : '继续第 ' + (i + 2) + ' 关'}</button>`,
+      bind(root) {
+        root.querySelector('#next').onclick = () => act('next');
+      },
+    };
+  }
+
+  return {
+    html: `<div class="labgrid">
+        <button class="primary" id="ins-yuan">投 1 元</button>
+        <button id="ins-token">投游戏币</button>
+        <button id="ins-jiao">投 5 角</button>
+        <button id="ins-fake">投铜章</button>
+        <button id="ins-washer">投厚垫圈</button>
+        <button id="return">按退币</button>
+        <button id="power">${state.power ? '断开电源' : '接通电源'}</button>
+        <button id="swap">${state.sample === 'yuan' ? '样币换游戏币' : '样币换 1 元'}</button>
+        <button id="slow">${state.slow ? '恢复常速' : '慢放 ×0.3'}</button>
+      </div>
+      ${sensHtml}
+      <div class="flow" id="flow">
+        <span data-node="sample" class="${state.placed.includes('sample') ? '' : 'off'}">样币</span><i>›</i>
+        <span data-node="coil" class="${state.placed.includes('coil') ? '' : 'off'}">双线圈</span><i>›</i>
+        <span data-node="board" class="${state.placed.includes('board') ? '' : 'off'}">比较器</span><i>›</i>
+        <span data-node="gate" class="${state.placed.includes('gate') ? '' : 'off'}">活门</span><i>›</i>
+        <span data-node="counter" class="${state.placed.includes('counter') ? '' : 'off'}">计数</span>
+      </div>
+      <p class="note">投币后看币走的路：厚度门 → 测试线圈 → 活门。断电能验证 fail-safe：弹簧默认退币。</p>
+      <div class="earned">${CH.map((c) => `<span>✓ ${c.badge}</span>`).join('')}</div>`,
+    bind(root) {
+      for (const [id, kind] of [['ins-yuan', 'yuan'], ['ins-token', 'token'], ['ins-jiao', 'jiao'], ['ins-fake', 'fake'], ['ins-washer', 'washer']]) {
+        root.querySelector('#' + id).onclick = () => act('insert', kind);
+      }
+      root.querySelector('#return').onclick = () => act('pressReturn');
+      root.querySelector('#power').onclick = () => act('setPower', !state.power);
+      root.querySelector('#swap').onclick = () => act('setSample', state.sample === 'yuan' ? 'token' : 'yuan');
+      root.querySelector('#slow').onclick = () => act('toggleSlow');
+      bindSens(root);
+    },
+  };
+});
+
+function bindSens(root) {
+  const el = root.querySelector('#sens');
+  if (!el) return;
+  el.oninput = () => {
+    const res = game.setSensitivity(el.value);
+    el.value = String(state.sensitivity);
+    say(res.message, res.ok ? 'success' : 'error');
+    const out = root.querySelector('#sens-out');
+    if (out) out.textContent = `${state.sensitivity}/10 · 门限 ${state.threshold}`;
+    updateReadout();
+  };
+}
+
+/* ---------- 刷新显示态 ---------- */
+const BOX = ['第一盒 · 币道与退币', '第二盒 · 样币与比较头', '第三盒 · 分选与计数'];
+function refresh() {
+  const labPhase = state.phase === 'lab';
+  const s = lab.state;
+  s.chapter = state.chapter;
+  s.phase = state.phase;
+  s.placed = state.placed;
+  s.selected = state.selected;
+  s.completed = state.completed;
+  s.badges = labPhase ? CH.map((c) => c.badge) : state.completed.map((ok, k) => (ok ? CH[k].badge : null)).filter(Boolean);
+  s.progress = { done: state.placed.length, total: MODS.length };
+  s.cardsLocked = state.phase !== 'build';
+  s.visible.readout = true;
+  s.coach = labPhase
+    ? { tag: '三个发现，全部解锁', title: '你的投币器，认币了', intro: '自由实验：投五种币、换样币、调灵敏度、断电试 fail-safe，或剖开看线圈与活门。' }
+    : null;
+  s.trayTitle = labPhase ? '你的装配记录' : BOX[state.chapter];
+  s.trayHint = labPhase ? '12 块模块，拼成一台会认币的机器' : '点选模块，再拖到蓝色位置';
+  s.stageHint = labPhase
+    ? '投币、换样币、调灵敏度，或者断开电源看弹簧怎么退币。'
+    : state.phase === 'build'
+    ? '选一块模块，把它放到蓝色轮廓里。'
+    : state.phase === 'experiment'
+    ? '这一段已拼好，亲手做一次实验。'
+    : '看清谁在动，再完成原理挑战。';
+  lab.render();
+  $('[data-tool="cut"]')?.setAttribute('aria-pressed', String(view.cut));
+  updateReadout();
+}
+
+/* ---------- 动作 ---------- */
+const ACTIONS = {
+  select: (id) => game.select(id),
+  place: (onTarget) => game.place(onTarget !== false),
+  undo: () => game.undo(),
+  experiment: () => game.experiment(),
+  answer: (i) => game.answer(i),
+  next: () => game.next(),
+  insert: (kind) => game.insert(kind),
+  pressReturn: () => game.pressReturn(),
+  setSensitivity: (v) => game.setSensitivity(v),
+  setSample: (kind) => game.setSample(kind),
+  setPower: (on) => game.setPower(on),
+  toggleSlow: () => game.toggleSlow(),
+  restart: () => game.restart(),
+  freeview: () => game.freeview(),
+};
+
+function act(name, ...args) {
+  const res = ACTIONS[name](...args);
+  if (!res) return res;
+  lab.state.feedback = res.message || '';
+  lab.state.feedbackKind = res.ok ? 'success' : 'error';
+  if (res.learn) lab.setDiscovery(res.learn);
+  if (res.ok) {
+    if (res.kind === 'restart' || res.kind === 'freeview') {
+      view.offsets.clear();
+      view.cut = true;
+      stage.setNavigation('rotate');
+      lab.setDiscovery('');
+      mech.gate = 0; mech.lastCount = 0;
+      lastStage = ''; lastResult = '';
+      stage.fitCamera('all');
+    }
+    if (res.kind === 'chapter') stage.fitCamera('all');
+    if (res.kind === 'complete') { lab.celebrate(); stage.fitCamera('all'); }
+    if (name === 'select' || ['insert', 'return', 'power', 'sample'].includes(res.kind)) {
+      if (matchMedia('(max-width:760px)').matches) document.getElementById('stage').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    }
+  }
+  refresh();
+  return res;
+}
+
+/* ---------- 事件 ---------- */
+lab.on('select', (id) => act('select', id));
+lab.on('place', () => act('place'));
+lab.on('undo', () => act('undo'));
+lab.on('answer', (i) => act('answer', i));
+lab.on('next', () => act('next'));
+lab.on('restart', () => act('restart'));
+lab.on('free', () => { act('freeview'); stage.fitCamera('all'); });
+lab.on('tool', (id) => {
+  if (id === 'cut') view.cut = $('[data-tool="cut"]')?.getAttribute('aria-pressed') === 'true';
+  if (id === 'home') stage.fitCamera('all');
+  if (id === 'rotate' || id === 'pan') stage.setNavigation(id);
+  refresh();
+});
+
+view.cut = true;
+$('[data-tool="cut"]')?.setAttribute('aria-pressed', 'true');
+lab.state.feedback = '从下方零件盒选中「底板与机架」，开始第一步。';
+refresh();
+updateReadout();
+stage.start();
+
+</script>
+</body>
+</html>

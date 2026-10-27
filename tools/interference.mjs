@@ -35,10 +35,12 @@ const THREE = await import(pathToFileURL(HEAD).href);
 function stubDom() {
   const grad = () => ({ addColorStop() {} });
   const ctx = () => ({
-    fillStyle: '', strokeStyle: '', font: '', textAlign: '', textBaseline: '',
+    fillStyle: '', strokeStyle: '', font: '', textAlign: '', textBaseline: '', lineWidth: 1, globalAlpha: 1,
     fillRect() {}, strokeRect() {}, clearRect() {}, save() {}, restore() {},
-    translate() {}, rotate() {}, scale() {},
-    fillText() {}, measureText: () => ({ width: 10 }),
+    translate() {}, rotate() {}, scale() {}, setTransform() {}, transform() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {}, rect() {},
+    bezierCurveTo() {}, quadraticCurveTo() {}, stroke() {}, fill() {}, clip() {},
+    fillText() {}, strokeText() {}, measureText: () => ({ width: 10 }),
     createRadialGradient: grad, createLinearGradient: grad,
     getImageData: () => ({ data: new Uint8ClampedArray(4) }), putImageData() {},
   });
